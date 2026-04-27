@@ -7,6 +7,7 @@ const path = require('path');
 const chalk = require('chalk');
 const { orchestrate } = require('./orchestrator');
 const { runPlanningSession } = require('./planner');
+const { runDesignPicker } = require('./designPicker');
 
 const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
 
@@ -75,6 +76,20 @@ async function main() {
     if (!requirements) {
       console.log(chalk.red('❌  לא ניתן להמשיך ללא דרישות.'));
       process.exit(1);
+    }
+  }
+
+  // ── Design Picker ─────────────────────────────────────────────────────────
+  console.log(chalk.bold.cyan('\n━━━  שלב עיצוב  ━━━'));
+  console.log(chalk.gray('לפני שנתחיל לבנות — נבחר את הסגנון הויזואלי של האפליקציה.\n'));
+
+  const skipDesign = (await ask(chalk.bold.green('▶  האם לעצב את האפליקציה לפני הפיתוח? (y/n): '))).trim().toLowerCase();
+
+  if (skipDesign === 'y' || skipDesign === 'yes' || skipDesign === '') {
+    const designSpec = await runDesignPicker(requirements, ask);
+    if (designSpec) {
+      requirements = requirements + '\n\n' + designSpec;
+      console.log(chalk.green('\n✅  מפרט העיצוב נוסף לדרישות הפרויקט.\n'));
     }
   }
 
