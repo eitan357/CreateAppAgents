@@ -30,6 +30,10 @@ const { createMobileTechAdvisorAgent }   = require('./agents/mobileTechAdvisor')
 const { createBusinessPlanningAgent }    = require('./agents/businessPlanningAgent');
 const { createWebTechAdvisorAgent }      = require('./agents/webTechAdvisorAgent');
 
+// ── UX & Design System agents ─────────────────────────────────────────────────
+const { createUxDesignerAgent }          = require('./agents/uxDesignerAgent');
+const { createDesignSystemAgent }        = require('./agents/designSystemAgent');
+
 // ── Web Feature agents ────────────────────────────────────────────────────────
 const { createRenderingStrategyAgent }   = require('./agents/renderingStrategyAgent');
 const { createResponsiveDesignAgent }    = require('./agents/responsiveDesignAgent');
@@ -89,6 +93,9 @@ const AGENT_REGISTRY = {
   mobileTechAdvisor:        createMobileTechAdvisorAgent,
   businessPlanningAgent:    createBusinessPlanningAgent,
   webTechAdvisor:           createWebTechAdvisorAgent,
+  // UX & Design System
+  uxDesignerAgent:          createUxDesignerAgent,
+  designSystemAgent:        createDesignSystemAgent,
   // Web Features
   renderingStrategyAgent:   createRenderingStrategyAgent,
   responsiveDesignAgent:    createResponsiveDesignAgent,
@@ -137,7 +144,7 @@ const LAYER_DEFINITIONS = [
     id: 2,
     name: 'Design',
     parallel: true,
-    agents: ['dataArchitect', 'apiDesigner', 'frontendArchitect', 'renderingStrategyAgent'],
+    agents: ['dataArchitect', 'apiDesigner', 'frontendArchitect', 'renderingStrategyAgent', 'uxDesignerAgent', 'designSystemAgent'],
   },
   {
     id: 3,
@@ -224,6 +231,10 @@ const OPTIONAL_AGENTS_GUIDE = `
 - mobileTechAdvisor    : Include when technology choice is unclear, or requirements mention mobile (React Native/Expo/Flutter)
 - webTechAdvisor       : Include for web projects — framework selection (Next.js/Nuxt/Remix/Vite), TypeScript setup, monorepo, ESLint/Prettier/Husky
 - businessPlanningAgent: Include when requirements mention cost estimate, MVP scope, or business model
+
+### UX & Design (Layer 2) — Include whenever project has a frontend (web or mobile):
+- uxDesignerAgent      : Include for ANY project with a UI — defines user flows, text wireframes for every screen, empty/error/loading states, form UX patterns, microcopy. Essential for consistent UX.
+- designSystemAgent    : Include when project needs a consistent visual language — design tokens (colors/typography/spacing), base components (Button/Input/Modal/Toast/Skeleton), dark mode, Storybook stories. Depends on uxDesignerAgent.
 
 ### Web Design (Layer 2) — ONLY for web projects:
 - renderingStrategyAgent: Include for Next.js/Nuxt/Remix projects — CSR/SSR/SSG/ISR per-page decisions, App Router structure, React Query setup, protected routes, loading/error states
@@ -373,7 +384,7 @@ function formatPlan(plan) {
     '',
     '🤖  Layers:',
     `    Layer 1  — Discovery      : requirementsAnalyst, systemArchitect${optional.includes('mobileTechAdvisor') ? ', mobileTechAdvisor' : ''}${optional.includes('webTechAdvisor') ? ', webTechAdvisor' : ''}${optional.includes('businessPlanningAgent') ? ', businessPlanningAgent' : ''}`,
-    `    Layer 2  — Design         : dataArchitect, apiDesigner${l3.includeFrontend !== false ? ', frontendArchitect' : ''}${optional.includes('renderingStrategyAgent') ? ', renderingStrategyAgent' : ''}`,
+    `    Layer 2  — Design         : dataArchitect, apiDesigner${l3.includeFrontend !== false ? ', frontendArchitect' : ''}${optional.includes('uxDesignerAgent') ? ', uxDesignerAgent' : ''}${optional.includes('designSystemAgent') ? ', designSystemAgent' : ''}${optional.includes('renderingStrategyAgent') ? ', renderingStrategyAgent' : ''}`,
     `    Layer 3  — Implementation : backendDev, authAgent${l3.includeFrontend !== false ? ', frontendDev' : ''}${l3.includeIntegration ? ', integrationAgent' : ''}`,
   ];
 

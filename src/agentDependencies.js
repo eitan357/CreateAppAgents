@@ -15,10 +15,12 @@ const DEPENDENCY_MAP = {
   apiDesigner:            ['requirementsAnalyst', 'systemArchitect'],
   frontendArchitect:      ['requirementsAnalyst', 'systemArchitect'],
   renderingStrategyAgent: ['requirementsAnalyst', 'systemArchitect', 'frontendArchitect'],
+  uxDesignerAgent:        ['requirementsAnalyst', 'systemArchitect'],
+  designSystemAgent:      ['requirementsAnalyst', 'frontendArchitect', 'uxDesignerAgent'],
 
   // ── Core Implementation ───────────────────────────────────────────────────
   backendDev:             ['systemArchitect', 'dataArchitect', 'apiDesigner'],
-  frontendDev:            ['systemArchitect', 'frontendArchitect', 'apiDesigner'],
+  frontendDev:            ['systemArchitect', 'frontendArchitect', 'apiDesigner', 'uxDesignerAgent', 'designSystemAgent'],
   authAgent:              ['systemArchitect', 'apiDesigner', 'dataArchitect'],
   integrationAgent:       ['systemArchitect', 'apiDesigner'],
 
