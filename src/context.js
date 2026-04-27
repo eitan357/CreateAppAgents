@@ -12,7 +12,8 @@ class ProjectContext {
     this.outputDir = outputDir;
     this.agentOutputs = {};
     this.allFilesCreated = [];
-    this.feedbackNotes = null; // Quality findings injected during fix rounds
+    this.feedbackNotes = null;   // Quality findings injected during quality fix rounds
+    this.pmFeedbackNotes = null; // PM review findings injected during PM fix rounds
   }
 
   addAgentOutput(agentName, summary, files) {
@@ -20,9 +21,14 @@ class ProjectContext {
     this.allFilesCreated.push(...files);
   }
 
-  // Called before a fix round to inject quality findings into dev agent context
+  // Called before a quality fix round
   setFeedbackNotes(notes) {
     this.feedbackNotes = notes;
+  }
+
+  // Called before a PM fix round
+  setPmFeedbackNotes(notes) {
+    this.pmFeedbackNotes = notes;
   }
 
   buildScopedContext(agentName) {
@@ -58,7 +64,7 @@ class ProjectContext {
       }
     }
 
-    // Inject quality findings for development agents during a fix round
+    // Inject quality findings for development agents during a quality fix round
     if (this.feedbackNotes && FIX_ROUND_AGENTS.has(agentName)) {
       lines.push(
         '# ⚠️  Quality Findings — Fix Round',
@@ -66,6 +72,18 @@ class ProjectContext {
         'Read the relevant existing files using read_file and fix ALL issues listed below before writing updated files:',
         '',
         this.feedbackNotes,
+        '',
+      );
+    }
+
+    // Inject PM review findings for development agents during a PM fix round
+    if (this.pmFeedbackNotes && FIX_ROUND_AGENTS.has(agentName)) {
+      lines.push(
+        '# 🔴  PM Acceptance Review — Fix Round',
+        'The Product Manager reviewed the implementation and found gaps against the original requirements.',
+        'Read the relevant existing files using read_file, then implement or fix ALL items listed below:',
+        '',
+        this.pmFeedbackNotes,
         '',
       );
     }

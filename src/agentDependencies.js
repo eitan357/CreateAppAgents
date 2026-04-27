@@ -54,6 +54,9 @@ const DEPENDENCY_MAP = {
   // ── DevOps & Documentation ────────────────────────────────────────────────
   devops:                 ['systemArchitect', 'backendDev', 'frontendDev'],
   documentation:          ['requirementsAnalyst', 'apiDesigner', 'backendDev', 'frontendDev', 'devops'],
+
+  // ── PM Acceptance Review ──────────────────────────────────────────────────
+  pmReviewer:             ['requirementsAnalyst', 'systemArchitect', 'backendDev', 'frontendDev', 'authAgent', 'tester', 'reviewer', 'security'],
 };
 
 module.exports = { DEPENDENCY_MAP };
