@@ -68,7 +68,7 @@ class ProjectContext {
     if (this.feedbackNotes && FIX_ROUND_AGENTS.has(agentName)) {
       lines.push(
         '# ⚠️  Quality Findings — Fix Round',
-        'The Quality layer (tester, reviewer, security, performance, accessibility) identified the following issues.',
+        'The Quality layer (testWriter, testRunner, testFixer, reviewer, security, performance, accessibility) identified the following issues.',
         'Read the relevant existing files using read_file and fix ALL issues listed below before writing updated files:',
         '',
         this.feedbackNotes,

@@ -20,7 +20,9 @@ const { createFrontendDevAgent }         = require('./agents/frontendDev');
 const { createAuthAgent }                = require('./agents/authAgent');
 const { createIntegrationAgent }         = require('./agents/integrationAgent');
 const { createSecurityAgent }            = require('./agents/security');
-const { createTesterAgent }              = require('./agents/tester');
+const { createTestRunnerAgent }          = require('./agents/testRunner');
+const { createTestFixerAgent }           = require('./agents/testFixer');
+const { createTestWriterAgent }          = require('./agents/testWriter');
 const { createReviewerAgent }            = require('./agents/reviewer');
 const { createDevOpsAgent }              = require('./agents/devops');
 const { createDocumentationAgent }       = require('./agents/documentation');
@@ -84,7 +86,9 @@ const AGENT_REGISTRY = {
   frontendDev:              createFrontendDevAgent,
   authAgent:                createAuthAgent,
   integrationAgent:         createIntegrationAgent,
-  tester:                   createTesterAgent,
+  testWriter:               createTestWriterAgent,
+  testRunner:               createTestRunnerAgent,
+  testFixer:                createTestFixerAgent,
   security:                 createSecurityAgent,
   reviewer:                 createReviewerAgent,
   devops:                   createDevOpsAgent,
@@ -174,7 +178,19 @@ const LAYER_DEFINITIONS = [
     id: 4,
     name: 'Quality',
     parallel: true,
-    agents: ['tester', 'security', 'reviewer', 'performanceAgent', 'accessibilityAgent', 'loadTestingAgent', 'dependencyManagementAgent', 'webPerformanceAgent'],
+    agents: ['testWriter', 'security', 'reviewer', 'performanceAgent', 'accessibilityAgent', 'loadTestingAgent', 'dependencyManagementAgent', 'webPerformanceAgent'],
+  },
+  {
+    id: '4b',
+    name: 'Test Run',
+    parallel: false,
+    agents: ['testRunner'],
+  },
+  {
+    id: '4c',
+    name: 'Test Fix',
+    parallel: false,
+    agents: ['testFixer'],
   },
   {
     id: 5,
@@ -190,7 +206,7 @@ const LAYER_DEFINITIONS = [
 ];
 
 // Agents that require shell access (run_command tool)
-const SHELL_AGENTS = new Set(['devops', 'tester']);
+const SHELL_AGENTS = new Set(['devops', 'testRunner']);
 
 // Agents re-run during quality fix rounds
 const FIX_ROUND_AGENTS = ['backendDev', 'frontendDev', 'authAgent'];
@@ -220,7 +236,7 @@ const PM_PLAN_SCHEMA = `{
       "includeIntegration": false,
       "integrationReason": "why integration agent is or isn't needed"
     },
-    "layer4": { "agents": ["tester", "security", "reviewer"] },
+    "layer4": { "agents": ["testWriter", "testRunner", "testFixer", "security", "reviewer"] },
     "layer5": { "agents": ["devops", "documentation"] }
   },
   "optionalAgents": [],
@@ -292,7 +308,7 @@ Available agents by layer:
 - Layer 1 (Discovery, always included): requirementsAnalyst, systemArchitect
 - Layer 2 (Design, always included): dataArchitect, apiDesigner; frontendArchitect ONLY if project has a frontend
 - Layer 3 (Implementation): backendDev and authAgent always; frontendDev ONLY if project has a frontend; integrationAgent ONLY if requirements explicitly mention third-party APIs or webhooks
-- Layer 4 (Quality, always included): tester, security, reviewer
+- Layer 4 (Quality, always included): testWriter, testRunner, testFixer, security, reviewer
 - Layer 5 (Operations, always included): devops, documentation
 
 Rules:
@@ -349,7 +365,7 @@ function filterLayerAgents(layerDef, activeAgents, plan) {
 
 // ── Feedback loop helpers ─────────────────────────────────────────────────────
 function buildQualityFeedback(layerResults) {
-  const qualityAgents = ['tester', 'reviewer', 'security', 'performanceAgent', 'accessibilityAgent', 'dependencyManagementAgent'];
+  const qualityAgents = ['testWriter', 'testRunner', 'testFixer', 'reviewer', 'security', 'performanceAgent', 'accessibilityAgent', 'dependencyManagementAgent'];
   const sections = [];
 
   for (const agentName of qualityAgents) {
@@ -407,7 +423,9 @@ function formatPlan(plan) {
   }
 
   const extraQuality = optional.filter(a => ['performanceAgent','webPerformanceAgent','accessibilityAgent','loadTestingAgent','dependencyManagementAgent'].includes(a));
-  lines.push(`    Layer 4  — Quality        : tester, security, reviewer${extraQuality.length > 0 ? ', ' + extraQuality.join(', ') : ''}`);
+  lines.push(`    Layer 4  — Quality        : testWriter, security, reviewer${extraQuality.length > 0 ? ', ' + extraQuality.join(', ') : ''}`);
+  lines.push(`    Layer 4b — Test Run       : testRunner`);
+  lines.push(`    Layer 4c — Test Fix       : testFixer`);
 
   const extraOps = optional.filter(a => ['analyticsMonitoring','localizationAgent','privacyEthicsAgent','seoAgent','appStorePublisher','userTestingAgent','asoMarketingAgent'].includes(a));
   lines.push(`    Layer 5  — Operations     : devops, documentation${extraOps.length > 0 ? ', ' + extraOps.join(', ') : ''}`);
@@ -452,7 +470,7 @@ async function orchestrate(requirements, projectName, outputDir) {
   const activeAgents = getActiveAgents(plan);
 
   // 4. Execute layers
-  let layer4Results = null;
+  const allQualityResults = {};  // accumulates results from layers 4, 4b, 4c
 
   for (const layerDef of LAYER_DEFINITIONS) {
     const agentConfigs = filterLayerAgents(layerDef, activeAgents, plan);
@@ -473,9 +491,9 @@ async function orchestrate(requirements, projectName, outputDir) {
       layerResults = await runLayerSequential(agentConfigs, context, toolSets, AGENT_REGISTRY);
     }
 
-    // Save Layer 4 results for the feedback loop
-    if (layerDef.id === 4) {
-      layer4Results = layerResults;
+    // Accumulate quality results from layers 4, 4b, 4c
+    if (layerDef.id === 4 || layerDef.id === '4b' || layerDef.id === '4c') {
+      Object.assign(allQualityResults, layerResults);
     }
 
     if (!layerDef.skipApprovalGate) {
@@ -486,9 +504,9 @@ async function orchestrate(requirements, projectName, outputDir) {
       }
     }
 
-    // ── Feedback loop: run after Layer 4 ─────────────────────────────────────
-    if (layerDef.id === 4 && layer4Results) {
-      const qualityFeedback = buildQualityFeedback(layer4Results);
+    // ── Feedback loop: run after Layer 4c (all quality agents done) ───────────
+    if (layerDef.id === '4c') {
+      const qualityFeedback = buildQualityFeedback(allQualityResults);
 
       if (qualityFeedback) {
         for (let round = 1; round <= MAX_FIX_ROUNDS; round++) {

@@ -43,7 +43,9 @@ const DEPENDENCY_MAP = {
 
   // ── Quality & Hardening ───────────────────────────────────────────────────
   security:               ['backendDev', 'authAgent', 'apiDesigner'],
-  tester:                 ['backendDev', 'frontendDev', 'authAgent', 'dataArchitect'],
+  testWriter:             ['backendDev', 'frontendDev', 'authAgent', 'dataArchitect'],
+  testRunner:             ['testWriter', 'backendDev', 'frontendDev', 'authAgent'],
+  testFixer:              ['testRunner'],
   performanceAgent:       ['frontendDev', 'frontendArchitect'],
   webPerformanceAgent:    ['frontendDev', 'frontendArchitect', 'renderingStrategyAgent'],
   accessibilityAgent:     ['frontendDev'],
@@ -69,7 +71,7 @@ const DEPENDENCY_MAP = {
   seoAgent:               ['frontendDev', 'renderingStrategyAgent', 'frontendArchitect'],
 
   // ── PM Acceptance Review ──────────────────────────────────────────────────
-  pmReviewer:             ['requirementsAnalyst', 'systemArchitect', 'backendDev', 'frontendDev', 'authAgent', 'tester', 'reviewer', 'security'],
+  pmReviewer:             ['requirementsAnalyst', 'systemArchitect', 'backendDev', 'frontendDev', 'authAgent', 'testFixer', 'reviewer', 'security'],
 };
 
 module.exports = { DEPENDENCY_MAP };
