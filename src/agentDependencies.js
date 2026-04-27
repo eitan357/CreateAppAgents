@@ -5,6 +5,7 @@ const DEPENDENCY_MAP = {
   pmAgent:                [],
   requirementsAnalyst:    [],
   mobileTechAdvisor:      ['requirementsAnalyst'],
+  webTechAdvisor:         ['requirementsAnalyst'],
   businessPlanningAgent:  ['requirementsAnalyst'],
   asoMarketingAgent:      ['requirementsAnalyst'],
 
@@ -13,6 +14,7 @@ const DEPENDENCY_MAP = {
   dataArchitect:          ['requirementsAnalyst', 'systemArchitect'],
   apiDesigner:            ['requirementsAnalyst', 'systemArchitect'],
   frontendArchitect:      ['requirementsAnalyst', 'systemArchitect'],
+  renderingStrategyAgent: ['requirementsAnalyst', 'systemArchitect', 'frontendArchitect'],
 
   // ── Core Implementation ───────────────────────────────────────────────────
   backendDev:             ['systemArchitect', 'dataArchitect', 'apiDesigner'],
@@ -32,10 +34,16 @@ const DEPENDENCY_MAP = {
   mlMobileAgent:          ['frontendDev', 'systemArchitect'],
   arVrAgent:              ['frontendDev', 'systemArchitect'],
 
+  // ── Web-Specific Features ─────────────────────────────────────────────────
+  responsiveDesignAgent:  ['frontendArchitect', 'frontendDev'],
+  pwaAgent:               ['frontendDev', 'frontendArchitect'],
+  webMonetizationAgent:   ['backendDev', 'frontendDev', 'dataArchitect', 'apiDesigner'],
+
   // ── Quality & Hardening ───────────────────────────────────────────────────
   security:               ['backendDev', 'authAgent', 'apiDesigner'],
   tester:                 ['backendDev', 'frontendDev', 'authAgent', 'dataArchitect'],
   performanceAgent:       ['frontendDev', 'frontendArchitect'],
+  webPerformanceAgent:    ['frontendDev', 'frontendArchitect', 'renderingStrategyAgent'],
   accessibilityAgent:     ['frontendDev'],
   loadTestingAgent:       ['backendDev', 'apiDesigner', 'devops'],
   reviewer:               ['backendDev', 'frontendDev', 'authAgent', 'integrationAgent'],
@@ -54,6 +62,9 @@ const DEPENDENCY_MAP = {
   // ── DevOps & Documentation ────────────────────────────────────────────────
   devops:                 ['systemArchitect', 'backendDev', 'frontendDev'],
   documentation:          ['requirementsAnalyst', 'apiDesigner', 'backendDev', 'frontendDev', 'devops'],
+
+  // ── Web Operations ────────────────────────────────────────────────────────
+  seoAgent:               ['frontendDev', 'renderingStrategyAgent', 'frontendArchitect'],
 
   // ── PM Acceptance Review ──────────────────────────────────────────────────
   pmReviewer:             ['requirementsAnalyst', 'systemArchitect', 'backendDev', 'frontendDev', 'authAgent', 'tester', 'reviewer', 'security'],

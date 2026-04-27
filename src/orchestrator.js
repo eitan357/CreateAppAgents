@@ -28,6 +28,13 @@ const { createDocumentationAgent }       = require('./agents/documentation');
 // ── Discovery & Planning agents ───────────────────────────────────────────────
 const { createMobileTechAdvisorAgent }   = require('./agents/mobileTechAdvisor');
 const { createBusinessPlanningAgent }    = require('./agents/businessPlanningAgent');
+const { createWebTechAdvisorAgent }      = require('./agents/webTechAdvisorAgent');
+
+// ── Web Feature agents ────────────────────────────────────────────────────────
+const { createRenderingStrategyAgent }   = require('./agents/renderingStrategyAgent');
+const { createResponsiveDesignAgent }    = require('./agents/responsiveDesignAgent');
+const { createPwaAgent }                 = require('./agents/pwaAgent');
+const { createWebMonetizationAgent }     = require('./agents/webMonetizationAgent');
 
 // ── Mobile Feature agents ─────────────────────────────────────────────────────
 const { createNotificationsAgent }       = require('./agents/notificationsAgent');
@@ -47,6 +54,7 @@ const { createPerformanceAgent }         = require('./agents/performanceAgent');
 const { createAccessibilityAgent }       = require('./agents/accessibilityAgent');
 const { createLoadTestingAgent }         = require('./agents/loadTestingAgent');
 const { createDependencyManagementAgent } = require('./agents/dependencyManagementAgent');
+const { createWebPerformanceAgent }      = require('./agents/webPerformanceAgent');
 
 // ── PM Review agent ───────────────────────────────────────────────────────────
 const { createPmReviewerAgent }          = require('./agents/pmReviewer');
@@ -58,6 +66,7 @@ const { createPrivacyEthicsAgent }       = require('./agents/privacyEthicsAgent'
 const { createAppStorePublisherAgent }   = require('./agents/appStorePublisher');
 const { createUserTestingAgent }         = require('./agents/userTestingAgent');
 const { createASOMarketingAgent }        = require('./agents/asoMarketingAgent');
+const { createSeoAgent }                 = require('./agents/seoAgent');
 
 // ── Registry ──────────────────────────────────────────────────────────────────
 const AGENT_REGISTRY = {
@@ -79,6 +88,12 @@ const AGENT_REGISTRY = {
   // Discovery & Planning
   mobileTechAdvisor:        createMobileTechAdvisorAgent,
   businessPlanningAgent:    createBusinessPlanningAgent,
+  webTechAdvisor:           createWebTechAdvisorAgent,
+  // Web Features
+  renderingStrategyAgent:   createRenderingStrategyAgent,
+  responsiveDesignAgent:    createResponsiveDesignAgent,
+  pwaAgent:                 createPwaAgent,
+  webMonetizationAgent:     createWebMonetizationAgent,
   // Mobile Features
   notificationsAgent:       createNotificationsAgent,
   deepLinksAgent:           createDeepLinksAgent,
@@ -96,6 +111,7 @@ const AGENT_REGISTRY = {
   accessibilityAgent:       createAccessibilityAgent,
   loadTestingAgent:         createLoadTestingAgent,
   dependencyManagementAgent: createDependencyManagementAgent,
+  webPerformanceAgent:      createWebPerformanceAgent,
   // PM Review
   pmReviewer:               createPmReviewerAgent,
   // Operations
@@ -105,6 +121,7 @@ const AGENT_REGISTRY = {
   appStorePublisher:        createAppStorePublisherAgent,
   userTestingAgent:         createUserTestingAgent,
   asoMarketingAgent:        createASOMarketingAgent,
+  seoAgent:                 createSeoAgent,
 };
 
 // ── Layer definitions ─────────────────────────────────────────────────────────
@@ -114,13 +131,13 @@ const LAYER_DEFINITIONS = [
     id: 1,
     name: 'Discovery',
     parallel: false,
-    agents: ['requirementsAnalyst', 'systemArchitect', 'mobileTechAdvisor', 'businessPlanningAgent'],
+    agents: ['requirementsAnalyst', 'systemArchitect', 'mobileTechAdvisor', 'businessPlanningAgent', 'webTechAdvisor'],
   },
   {
     id: 2,
     name: 'Design',
     parallel: true,
-    agents: ['dataArchitect', 'apiDesigner', 'frontendArchitect'],
+    agents: ['dataArchitect', 'apiDesigner', 'frontendArchitect', 'renderingStrategyAgent'],
   },
   {
     id: 3,
@@ -139,10 +156,18 @@ const LAYER_DEFINITIONS = [
     ],
   },
   {
+    id: '3c',
+    name: 'Web Features',
+    parallel: true,
+    agents: [
+      'responsiveDesignAgent', 'pwaAgent', 'webMonetizationAgent',
+    ],
+  },
+  {
     id: 4,
     name: 'Quality',
     parallel: true,
-    agents: ['tester', 'security', 'reviewer', 'performanceAgent', 'accessibilityAgent', 'loadTestingAgent', 'dependencyManagementAgent'],
+    agents: ['tester', 'security', 'reviewer', 'performanceAgent', 'accessibilityAgent', 'loadTestingAgent', 'dependencyManagementAgent', 'webPerformanceAgent'],
   },
   {
     id: 5,
@@ -152,6 +177,7 @@ const LAYER_DEFINITIONS = [
     agents: [
       'devops', 'documentation', 'analyticsMonitoring', 'localizationAgent',
       'privacyEthicsAgent', 'appStorePublisher', 'userTestingAgent', 'asoMarketingAgent',
+      'seoAgent',
     ],
   },
 ];
@@ -195,35 +221,46 @@ const OPTIONAL_AGENTS_GUIDE = `
 ## Optional Agents — select in the "optionalAgents" array only those needed for THIS project:
 
 ### Discovery & Planning (Layer 1):
-- mobileTechAdvisor   : Include when technology choice is unclear, or requirements mention mobile (React Native/Expo/Flutter)
+- mobileTechAdvisor    : Include when technology choice is unclear, or requirements mention mobile (React Native/Expo/Flutter)
+- webTechAdvisor       : Include for web projects — framework selection (Next.js/Nuxt/Remix/Vite), TypeScript setup, monorepo, ESLint/Prettier/Husky
 - businessPlanningAgent: Include when requirements mention cost estimate, MVP scope, or business model
 
+### Web Design (Layer 2) — ONLY for web projects:
+- renderingStrategyAgent: Include for Next.js/Nuxt/Remix projects — CSR/SSR/SSG/ISR per-page decisions, App Router structure, React Query setup, protected routes, loading/error states
+
+### Web Features (Layer 3c) — ONLY for web (React/Next.js/Nuxt/Vite) frontends:
+- responsiveDesignAgent : Mobile-first CSS, breakpoints, fluid typography, responsive images, container queries, touch vs hover states
+- pwaAgent              : Progressive Web App — Service Worker, Web App Manifest, offline support, push notifications from browser, installability
+- webMonetizationAgent  : Stripe Billing + SaaS pricing — checkout, customer portal, webhook handler, feature gating, usage-based billing
+
 ### Mobile Features (Layer 3b) — ONLY for React Native / Expo / Flutter frontends:
-- notificationsAgent  : Push notifications, local reminders, FCM/APNs
-- deepLinksAgent      : Deep links, Universal Links, QR codes, social sharing URLs
-- offlineFirstAgent   : Offline support, sync without internet, WatermelonDB/TanStack persistence
-- realtimeAgent       : Real-time features, chat, live updates, WebSockets, Socket.io
-- animationsAgent     : Custom animations, Lottie, shared transitions, micro-interactions
-- onboardingAgent     : First-run experience, splash screen, permission rationale, empty states
-- monetizationAgent   : In-app purchases, subscriptions (RevenueCat), ads (AdMob)
-- mlMobileAgent       : On-device ML, OCR, face detection, translation, classification (ML Kit / TFLite)
-- arVrAgent           : Augmented reality (ARKit/ARCore), 3D object placement
+- notificationsAgent   : Push notifications, local reminders, FCM/APNs
+- deepLinksAgent       : Deep links, Universal Links, QR codes, social sharing URLs
+- offlineFirstAgent    : Offline support, sync without internet, WatermelonDB/TanStack persistence
+- realtimeAgent        : Real-time features, chat, live updates, WebSockets, Socket.io
+- animationsAgent      : Custom animations, Lottie, shared transitions, micro-interactions
+- onboardingAgent      : First-run experience, splash screen, permission rationale, empty states
+- monetizationAgent    : In-app purchases, subscriptions (RevenueCat), ads (AdMob)
+- mlMobileAgent        : On-device ML, OCR, face detection, translation, classification (ML Kit / TFLite)
+- arVrAgent            : Augmented reality (ARKit/ARCore), 3D object placement
 - widgetsExtensionsAgent: Home screen widgets, Apple Watch, Android widgets, Share extensions
-- otaUpdatesAgent     : Over-the-air updates (Expo EAS Update / CodePush) without App Store review
+- otaUpdatesAgent      : Over-the-air updates (Expo EAS Update / CodePush) without App Store review
 
 ### Quality (Layer 4):
-- performanceAgent    : App startup optimization, memory leaks, 60fps animations, profiling
-- accessibilityAgent  : VoiceOver/TalkBack, WCAG 2.1, dynamic type, color contrast
-- loadTestingAgent    : k6 load/stress/soak scripts for backend scalability testing
+- performanceAgent     : Mobile app startup optimization, memory leaks, 60fps animations, profiling
+- webPerformanceAgent  : Web Core Web Vitals (LCP/CLS/INP), bundle analysis, code splitting, image optimization, Lighthouse CI
+- accessibilityAgent   : VoiceOver/TalkBack/NVDA, WCAG 2.1, keyboard navigation, ARIA, color contrast
+- loadTestingAgent     : k6 load/stress/soak scripts for backend scalability testing
 - dependencyManagementAgent: npm audit, license compliance, outdated packages
 
 ### Operations (Layer 5):
-- analyticsMonitoring : Crash reporting (Sentry/Crashlytics), Firebase Analytics, feature flags
-- localizationAgent   : Multi-language (i18n), RTL support (Hebrew/Arabic), date/currency formatting
-- privacyEthicsAgent  : GDPR/CCPA compliance, Apple Privacy Labels, data export/deletion endpoints
-- appStorePublisher   : App Store Connect + Google Play setup, Fastlane, code signing, release checklist
-- userTestingAgent    : TestFlight beta, Firebase App Distribution, A/B testing, usability testing
-- asoMarketingAgent   : App Store Optimization — keywords, store listing copy, screenshot strategy`;
+- analyticsMonitoring  : Crash reporting (Sentry), Google Analytics 4 / Plausible, RUM, feature flags
+- localizationAgent    : Multi-language (i18n), RTL support (Hebrew/Arabic), date/currency formatting, hreflang
+- privacyEthicsAgent   : GDPR/CCPA compliance, cookie consent, data export/deletion endpoints
+- seoAgent             : Technical SEO — meta tags, Open Graph, JSON-LD structured data, sitemap.xml, robots.txt, canonical URLs
+- appStorePublisher    : App Store Connect + Google Play setup, Fastlane, code signing, release checklist
+- userTestingAgent     : TestFlight beta, Firebase App Distribution / Vercel previews, A/B testing
+- asoMarketingAgent    : App Store Optimization — keywords, store listing copy, screenshot strategy`;
 
 // ── PM Plan creation ──────────────────────────────────────────────────────────
 async function createPlan(requirements, projectName) {
@@ -335,8 +372,8 @@ function formatPlan(plan) {
     `    Deployment: ${plan.techStack.deployment}`,
     '',
     '🤖  Layers:',
-    `    Layer 1  — Discovery      : requirementsAnalyst, systemArchitect${optional.includes('mobileTechAdvisor') ? ', mobileTechAdvisor' : ''}${optional.includes('businessPlanningAgent') ? ', businessPlanningAgent' : ''}`,
-    `    Layer 2  — Design         : dataArchitect, apiDesigner${l3.includeFrontend !== false ? ', frontendArchitect' : ''}`,
+    `    Layer 1  — Discovery      : requirementsAnalyst, systemArchitect${optional.includes('mobileTechAdvisor') ? ', mobileTechAdvisor' : ''}${optional.includes('webTechAdvisor') ? ', webTechAdvisor' : ''}${optional.includes('businessPlanningAgent') ? ', businessPlanningAgent' : ''}`,
+    `    Layer 2  — Design         : dataArchitect, apiDesigner${l3.includeFrontend !== false ? ', frontendArchitect' : ''}${optional.includes('renderingStrategyAgent') ? ', renderingStrategyAgent' : ''}`,
     `    Layer 3  — Implementation : backendDev, authAgent${l3.includeFrontend !== false ? ', frontendDev' : ''}${l3.includeIntegration ? ', integrationAgent' : ''}`,
   ];
 
@@ -348,10 +385,17 @@ function formatPlan(plan) {
     lines.push(`    Layer 3b — Mobile Features : ${mobileFeatures.join(', ')}`);
   }
 
-  const extraQuality = optional.filter(a => ['performanceAgent','accessibilityAgent','loadTestingAgent','dependencyManagementAgent'].includes(a));
+  const webFeatures = optional.filter(a =>
+    ['responsiveDesignAgent','pwaAgent','webMonetizationAgent'].includes(a)
+  );
+  if (webFeatures.length > 0) {
+    lines.push(`    Layer 3c — Web Features    : ${webFeatures.join(', ')}`);
+  }
+
+  const extraQuality = optional.filter(a => ['performanceAgent','webPerformanceAgent','accessibilityAgent','loadTestingAgent','dependencyManagementAgent'].includes(a));
   lines.push(`    Layer 4  — Quality        : tester, security, reviewer${extraQuality.length > 0 ? ', ' + extraQuality.join(', ') : ''}`);
 
-  const extraOps = optional.filter(a => ['analyticsMonitoring','localizationAgent','privacyEthicsAgent','appStorePublisher','userTestingAgent','asoMarketingAgent'].includes(a));
+  const extraOps = optional.filter(a => ['analyticsMonitoring','localizationAgent','privacyEthicsAgent','seoAgent','appStorePublisher','userTestingAgent','asoMarketingAgent'].includes(a));
   lines.push(`    Layer 5  — Operations     : devops, documentation${extraOps.length > 0 ? ', ' + extraOps.join(', ') : ''}`);
 
   lines.push(
