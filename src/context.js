@@ -2,6 +2,9 @@
 
 const { DEPENDENCY_MAP } = require('./agentDependencies');
 
+// Agents that receive quality feedback during fix rounds
+const FIX_ROUND_AGENTS = new Set(['backendDev', 'frontendDev', 'authAgent']);
+
 class ProjectContext {
   constructor(requirements, plan, outputDir) {
     this.requirements = requirements;
@@ -9,11 +12,17 @@ class ProjectContext {
     this.outputDir = outputDir;
     this.agentOutputs = {};
     this.allFilesCreated = [];
+    this.feedbackNotes = null; // Quality findings injected during fix rounds
   }
 
   addAgentOutput(agentName, summary, files) {
     this.agentOutputs[agentName] = { summary, files };
     this.allFilesCreated.push(...files);
+  }
+
+  // Called before a fix round to inject quality findings into dev agent context
+  setFeedbackNotes(notes) {
+    this.feedbackNotes = notes;
   }
 
   buildScopedContext(agentName) {
@@ -47,6 +56,18 @@ class ProjectContext {
           '',
         );
       }
+    }
+
+    // Inject quality findings for development agents during a fix round
+    if (this.feedbackNotes && FIX_ROUND_AGENTS.has(agentName)) {
+      lines.push(
+        '# ⚠️  Quality Findings — Fix Round',
+        'The Quality layer (tester, reviewer, security, performance, accessibility) identified the following issues.',
+        'Read the relevant existing files using read_file and fix ALL issues listed below before writing updated files:',
+        '',
+        this.feedbackNotes,
+        '',
+      );
     }
 
     lines.push(
