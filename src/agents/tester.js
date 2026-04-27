@@ -50,9 +50,36 @@ run_command: "npx jest --coverage --json --outputFile=jest-results.json 2>&1 || 
 
 The \`|| true\` ensures the agent continues even if tests fail. Always run all applicable commands.
 
-## Step 1 — Write docs/quality-findings/test-results.md
+## Step 1 — Diagnose and fix failing tests
 
-Immediately after running all tests, write the results report:
+For every failing test, use read_file to read the test file and the relevant source file, then determine WHY it fails:
+
+### Case A — The TEST is broken (outdated, wrong assumption, bad setup)
+Fix the test file directly using write_file. A test is broken when:
+- It imports a function/route that was renamed or moved
+- It asserts a response shape that the API changed (e.g., expects data.user but API now returns data.profile)
+- The test setup (beforeAll, mocks) references something that no longer exists
+- A hardcoded value (URL, ID, constant) changed in the source code
+- The test was written for an old version of a library (different API signatures)
+
+**Fix it:** read the test file + the relevant source file, then rewrite only the test file to match the current implementation.
+
+### Case B — The SOURCE CODE is broken (the test is correct)
+Do NOT touch the source file. Instead, document it clearly in the findings report with this format:
+  "### ❌ [test name] — BUG IN SOURCE CODE
+   File: backend/src/routes/auth.js:45
+   The test correctly expects a 401 response, but the route returns 200 even with an invalid token.
+   → Fix required in source code (for backendDev fix round)"
+
+### How to tell the difference
+- If the test was recently written (same codebase generation) and the source code looks correct → the test is probably wrong
+- If the test asserts a clear business rule (auth check, validation) and the source code violates it → source code is broken
+- If the error is "Cannot find module", "undefined is not a function", "property does not exist" → the test is outdated
+- If the error is "expected 401 received 200", "expected value is null" → likely a source code bug
+
+## Step 2 — Write docs/quality-findings/test-results.md
+
+After running and fixing all tests, write the results report:
 
 \`\`\`
 # תוצאות הרצת בדיקות אוטומטיות
@@ -61,33 +88,27 @@ Immediately after running all tests, write the results report:
 **סטטוס:** ✅ עבר / ❌ נכשל / ⚠️ שגיאת הרצה
 **עבר:** X   **נכשל:** Y   **דולג:** Z   **כיסוי:** N%
 
-### בדיקות שנכשלו:
-- [שם הבדיקה]: [שגיאה מלאה]
-- ...
+### בדיקות שתוקנו (טסט היה שגוי):
+- [שם הבדיקה]: [מה שונה בטסט ולמה]
+
+### בדיקות שנכשלו בגלל באג בקוד (לא נגענו בהן):
+- [שם הבדיקה]: [הסבר הבאג + הקובץ הרלוונטי]
 
 ### כיסוי לפי קובץ:
 | קובץ | כיסוי שורות | כיסוי ענפים |
 |------|-------------|-------------|
 | routes/auth.js | 87% | 72% |
-| ...  |
 
-## Frontend Tests
-[אותו פורמט]
-
-## E2E Tests
-[אותו פורמט]
-
-## Mobile Tests
+## Frontend Tests / E2E Tests / Mobile Tests
 [אותו פורמט]
 
 ## סיכום
-- סה"כ בדיקות שעברו: N
-- סה"כ בדיקות שנכשלו: N
+- בדיקות שעברו: N | נכשלו (קוד שבור): N | תוקנו (טסט שבור): N
 - כיסוי ממוצע: N%
 - קבצים עם כיסוי < 60%: [רשימה]
 \`\`\`
 
-## Step 2 — Read the codebase to find uncovered areas
+## Step 3 — Read the codebase to find uncovered areas
 
 Only after running tests and documenting results:
 1. list_files on the project root
@@ -95,7 +116,7 @@ Only after running tests and documenting results:
 3. Read all frontend pages, components, hooks
 4. Cross-reference with coverage report — find what's not covered
 
-## Step 3 — Write new tests for uncovered areas
+## Step 4 — Write new tests for uncovered areas
 
 Write new test files ONLY for code that is:
 - Not covered by existing tests (based on coverage report)
@@ -128,10 +149,12 @@ Write new test files ONLY for code that is:
 
 ## Rules
 - Step 0 is MANDATORY — always run existing tests before writing anything
-- Write the results report immediately after running — don't wait until the end
-- Write ONLY new test files (__tests__/, e2e/) — NEVER modify existing src/ files
+- Step 1 is MANDATORY — diagnose every failing test before writing the report
+- MAY modify existing test files (__tests__/, e2e/, *.test.*, *.spec.*) to fix broken tests
+- NEVER modify existing source files (src/, routes/, controllers/, components/, hooks/)
+- When in doubt whether source or test is wrong — document both possibilities in the report
 - New tests must be based on code you actually read — never invent routes or behaviors
-- If a test suite fails to run (missing config, broken imports), document the error in the report and attempt to fix only the test configuration files
+- If a test suite fails to run entirely (missing config), fix the config file only
 - Write every output file using write_file tool`;
 
 function createTesterAgent({ tools, handlers }) {
