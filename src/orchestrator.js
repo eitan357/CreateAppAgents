@@ -189,6 +189,9 @@ const LAYER_DEFINITIONS = [
   },
 ];
 
+// Agents that require shell access (run_command tool)
+const SHELL_AGENTS = new Set(['devops', 'tester']);
+
 // Agents re-run during quality fix rounds
 const FIX_ROUND_AGENTS = ['backendDev', 'frontendDev', 'authAgent'];
 const MAX_FIX_ROUNDS = 2;
@@ -341,7 +344,7 @@ function filterLayerAgents(layerDef, activeAgents, plan) {
       if ((name === 'frontendArchitect' || name === 'frontendDev') && l3.includeFrontend === false) return false;
       return true;
     })
-    .map(name => ({ name, needsShell: name === 'devops' }));
+    .map(name => ({ name, needsShell: SHELL_AGENTS.has(name) }));
 }
 
 // ── Feedback loop helpers ─────────────────────────────────────────────────────
