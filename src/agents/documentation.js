@@ -38,6 +38,18 @@ Initial entry:
 - Initial release
 \`\`\`
 
+### 5. docs/mobile-dev-guide.md (if the project has a React Native / Expo client):
+- **Development Environment Setup**: Install Xcode (iOS), Android Studio (Android), configure simulators/emulators
+- **Running the App**: \`npx expo start\`, run on iOS simulator, run on Android emulator, run on physical device
+- **TypeScript Configuration**: Explain tsconfig.json settings, path aliases, strict mode rules
+- **ESLint & Prettier Setup**: Show the .eslintrc and .prettierrc configs, how to auto-fix on save in VS Code
+- **Hot Reload / Fast Refresh**: How it works, when to do a full reload (shake device → Reload), how to force a clean cache (\`expo start --clear\`)
+- **Recommended VS Code Extensions**: React Native Tools, Expo Tools, ESLint, Prettier, TypeScript Hero, GitLens, Tailwind CSS IntelliSense (if used)
+- **Storybook Setup** (if used): Run Storybook in isolation mode, write a new story, view on device
+- **Debugging with Flipper**: Connect Flipper, use the Network plugin, React DevTools plugin, Layout Inspector
+- **Adding a New Screen**: Step-by-step walkthrough (create screen file → add to navigator → add to types → add API call)
+- **Adding a New Component**: Create file → add props interface → write story → export from index
+
 ## Principles:
 - Read existing docs files before writing to avoid duplication — use the read_file tool
 - The README quick-start must work (verify it makes sense given the tech stack)
