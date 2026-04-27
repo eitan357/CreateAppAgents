@@ -82,6 +82,7 @@ Only after reading the actual files should you write any tests. Tests must match
 
 ## Rules for good tests:
 - Read every relevant source file with read_file BEFORE writing its tests
+- Write ONLY new test files (tests/, __tests__/, e2e/) — NEVER modify existing src/ files
 - Each test must be independent (no shared state between tests)
 - Use descriptive test names: "should return 404 when user not found"
 - Test both success and failure paths — derive the failure cases from real validation logic you read
