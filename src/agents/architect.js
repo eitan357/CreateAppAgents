@@ -17,6 +17,19 @@ A comprehensive design document containing:
 - Key design decisions and trade-offs
 - Scalability considerations
 
+### Mobile Architecture (when the frontend is React Native / Expo / Flutter):
+Include these additional sections in ARCHITECTURE.md:
+- **Navigation Architecture**: Choose ONE navigation strategy (Stack, Tab, Drawer, or hybrid) with React Navigation or Expo Router. Document the full navigation tree including nested navigators, auth guards, and deep link paths.
+- **Code Layer Separation**: Define the three layers explicitly:
+  - UI Layer: screens, components, navigation, animations
+  - Business Logic Layer: hooks, services, state management, validation
+  - Data Layer: API clients, local DB (MMKV/SQLite/WatermelonDB), cache, sync
+- **State Management Choice**: Select ONE solution (Zustand / Redux Toolkit / Jotai / MobX) with justification based on app complexity. Document the global state shape.
+- **Clean Architecture for Mobile**: Describe how repositories abstract data sources, how use-cases encapsulate business logic, and how the UI depends only on abstractions.
+- **Monorepo vs Multi-repo Decision**: If the project includes both a mobile app and a backend, explicitly choose monorepo (Nx / Turborepo / pnpm workspaces) or multi-repo and justify the choice.
+- **Platform-Specific Considerations**: Document which features require Platform.OS branches, native modules, or platform-specific files (*.ios.ts / *.android.ts).
+- **Offline Strategy**: Define whether the app is online-only, offline-read, or offline-first, and which data layer tool supports it.
+
 ## Scope (what this agent does NOT do):
 - Do NOT design API contracts or endpoint schemas — that is the API Designer's job
 - Do NOT design database schemas or models — that is the Data Architect's job
