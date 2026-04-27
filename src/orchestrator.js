@@ -148,7 +148,7 @@ const LAYER_DEFINITIONS = [
     id: 2,
     name: 'Design',
     parallel: true,
-    agents: ['dataArchitect', 'apiDesigner', 'frontendArchitect', 'renderingStrategyAgent', 'uxDesignerAgent', 'designSystemAgent'],
+    agents: ['dataArchitect', 'apiDesigner', 'frontendArchitect', 'renderingStrategyAgent', 'uxDesignerAgent', 'designSystemAgent', 'localizationAgent'],
   },
   {
     id: 3,
@@ -178,7 +178,7 @@ const LAYER_DEFINITIONS = [
     id: 4,
     name: 'Quality',
     parallel: true,
-    agents: ['testWriter', 'security', 'reviewer', 'performanceAgent', 'accessibilityAgent', 'loadTestingAgent', 'dependencyManagementAgent', 'webPerformanceAgent'],
+    agents: ['testWriter', 'security', 'reviewer', 'performanceAgent', 'accessibilityAgent', 'loadTestingAgent', 'dependencyManagementAgent', 'webPerformanceAgent', 'userTestingAgent', 'privacyEthicsAgent'],
   },
   {
     id: '4b',
@@ -198,9 +198,8 @@ const LAYER_DEFINITIONS = [
     parallel: true,
     skipApprovalGate: true,
     agents: [
-      'devops', 'documentation', 'analyticsMonitoring', 'localizationAgent',
-      'privacyEthicsAgent', 'appStorePublisher', 'userTestingAgent', 'asoMarketingAgent',
-      'seoAgent',
+      'devops', 'documentation', 'analyticsMonitoring',
+      'appStorePublisher', 'asoMarketingAgent', 'seoAgent',
     ],
   },
 ];
@@ -254,6 +253,7 @@ const OPTIONAL_AGENTS_GUIDE = `
 ### UX & Design (Layer 2) — Include whenever project has a frontend (web or mobile):
 - uxDesignerAgent      : Include for ANY project with a UI — defines user flows, text wireframes for every screen, empty/error/loading states, form UX patterns, microcopy. Essential for consistent UX.
 - designSystemAgent    : Include when project needs a consistent visual language — design tokens (colors/typography/spacing), base components (Button/Input/Modal/Toast/Skeleton), dark mode, Storybook stories. Depends on uxDesignerAgent.
+- localizationAgent    : Include when app needs multiple languages OR Hebrew/Arabic (RTL). Runs in Layer 2 so frontendDev builds components with i18n hooks from the start — avoids retroactive refactor.
 
 ### Web Design (Layer 2) — ONLY for web projects:
 - renderingStrategyAgent: Include for Next.js/Nuxt/Remix projects — CSR/SSR/SSG/ISR per-page decisions, App Router structure, React Query setup, protected routes, loading/error states
@@ -282,14 +282,13 @@ const OPTIONAL_AGENTS_GUIDE = `
 - accessibilityAgent   : VoiceOver/TalkBack/NVDA, WCAG 2.1, keyboard navigation, ARIA, color contrast
 - loadTestingAgent     : k6 load/stress/soak scripts for backend scalability testing
 - dependencyManagementAgent: npm audit, license compliance, outdated packages
+- userTestingAgent     : TestFlight beta, Firebase App Distribution / Vercel previews, A/B testing, usability scripts
+- privacyEthicsAgent   : GDPR/CCPA compliance, cookie consent, data export/deletion endpoints — compliance gate like security
 
 ### Operations (Layer 5):
 - analyticsMonitoring  : Crash reporting (Sentry), Google Analytics 4 / Plausible, RUM, feature flags
-- localizationAgent    : Multi-language (i18n), RTL support (Hebrew/Arabic), date/currency formatting, hreflang
-- privacyEthicsAgent   : GDPR/CCPA compliance, cookie consent, data export/deletion endpoints
 - seoAgent             : Technical SEO — meta tags, Open Graph, JSON-LD structured data, sitemap.xml, robots.txt, canonical URLs
 - appStorePublisher    : App Store Connect + Google Play setup, Fastlane, code signing, release checklist
-- userTestingAgent     : TestFlight beta, Firebase App Distribution / Vercel previews, A/B testing
 - asoMarketingAgent    : App Store Optimization — keywords, store listing copy, screenshot strategy`;
 
 // ── PM Plan creation ──────────────────────────────────────────────────────────
@@ -403,7 +402,7 @@ function formatPlan(plan) {
     '',
     '🤖  Layers:',
     `    Layer 1  — Discovery      : requirementsAnalyst, systemArchitect${optional.includes('mobileTechAdvisor') ? ', mobileTechAdvisor' : ''}${optional.includes('webTechAdvisor') ? ', webTechAdvisor' : ''}${optional.includes('businessPlanningAgent') ? ', businessPlanningAgent' : ''}`,
-    `    Layer 2  — Design         : dataArchitect, apiDesigner${l3.includeFrontend !== false ? ', frontendArchitect' : ''}${optional.includes('uxDesignerAgent') ? ', uxDesignerAgent' : ''}${optional.includes('designSystemAgent') ? ', designSystemAgent' : ''}${optional.includes('renderingStrategyAgent') ? ', renderingStrategyAgent' : ''}`,
+    `    Layer 2  — Design         : dataArchitect, apiDesigner${l3.includeFrontend !== false ? ', frontendArchitect' : ''}${optional.includes('uxDesignerAgent') ? ', uxDesignerAgent' : ''}${optional.includes('designSystemAgent') ? ', designSystemAgent' : ''}${optional.includes('renderingStrategyAgent') ? ', renderingStrategyAgent' : ''}${optional.includes('localizationAgent') ? ', localizationAgent' : ''}`,
     `    Layer 3  — Implementation : backendDev, authAgent${l3.includeFrontend !== false ? ', frontendDev' : ''}${l3.includeIntegration ? ', integrationAgent' : ''}`,
   ];
 
@@ -422,12 +421,12 @@ function formatPlan(plan) {
     lines.push(`    Layer 3c — Web Features    : ${webFeatures.join(', ')}`);
   }
 
-  const extraQuality = optional.filter(a => ['performanceAgent','webPerformanceAgent','accessibilityAgent','loadTestingAgent','dependencyManagementAgent'].includes(a));
+  const extraQuality = optional.filter(a => ['performanceAgent','webPerformanceAgent','accessibilityAgent','loadTestingAgent','dependencyManagementAgent','userTestingAgent','privacyEthicsAgent'].includes(a));
   lines.push(`    Layer 4  — Quality        : testWriter, security, reviewer${extraQuality.length > 0 ? ', ' + extraQuality.join(', ') : ''}`);
   lines.push(`    Layer 4b — Test Run       : testRunner`);
   lines.push(`    Layer 4c — Test Fix       : testFixer`);
 
-  const extraOps = optional.filter(a => ['analyticsMonitoring','localizationAgent','privacyEthicsAgent','seoAgent','appStorePublisher','userTestingAgent','asoMarketingAgent'].includes(a));
+  const extraOps = optional.filter(a => ['analyticsMonitoring','seoAgent','appStorePublisher','asoMarketingAgent'].includes(a));
   lines.push(`    Layer 5  — Operations     : devops, documentation${extraOps.length > 0 ? ', ' + extraOps.join(', ') : ''}`);
 
   lines.push(

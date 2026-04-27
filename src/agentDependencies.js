@@ -17,10 +17,11 @@ const DEPENDENCY_MAP = {
   renderingStrategyAgent: ['requirementsAnalyst', 'systemArchitect', 'frontendArchitect'],
   uxDesignerAgent:        ['requirementsAnalyst', 'systemArchitect'],
   designSystemAgent:      ['requirementsAnalyst', 'frontendArchitect', 'uxDesignerAgent'],
+  localizationAgent:      ['requirementsAnalyst', 'frontendArchitect'],
 
   // ── Core Implementation ───────────────────────────────────────────────────
   backendDev:             ['systemArchitect', 'dataArchitect', 'apiDesigner'],
-  frontendDev:            ['systemArchitect', 'frontendArchitect', 'apiDesigner', 'uxDesignerAgent', 'designSystemAgent'],
+  frontendDev:            ['systemArchitect', 'frontendArchitect', 'apiDesigner', 'uxDesignerAgent', 'designSystemAgent', 'localizationAgent'],
   authAgent:              ['systemArchitect', 'apiDesigner', 'dataArchitect'],
   integrationAgent:       ['systemArchitect', 'apiDesigner'],
 
@@ -54,11 +55,10 @@ const DEPENDENCY_MAP = {
 
   // ── Monetization & Distribution ───────────────────────────────────────────
   monetizationAgent:      ['frontendDev', 'backendDev', 'integrationAgent'],
-  userTestingAgent:       ['frontendDev', 'devops'],
+  userTestingAgent:       ['frontendDev', 'backendDev'],
   appStorePublisher:      ['systemArchitect', 'frontendDev', 'devops'],
 
   // ── Compliance & Maintenance ──────────────────────────────────────────────
-  localizationAgent:      ['frontendDev', 'frontendArchitect'],
   analyticsMonitoring:    ['frontendDev', 'backendDev'],
   privacyEthicsAgent:     ['backendDev', 'frontendDev', 'analyticsMonitoring'],
   dependencyManagementAgent: ['frontendDev', 'backendDev'],
