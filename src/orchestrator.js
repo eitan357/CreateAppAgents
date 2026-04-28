@@ -7,7 +7,7 @@ const { ProjectContext } = require('./context');
 const { approveStep, approveLayer } = require('./approval');
 const { createFileSystemTools } = require('./tools/fileSystem');
 const { createShellTools } = require('./tools/shell');
-const { runLayerInParallel, runLayerSequential } = require('./layerRunner');
+const { runLayerInParallel, runLayerSequential, getFailedAgents } = require('./layerRunner');
 
 // ── Core agents ───────────────────────────────────────────────────────────────
 const { createRequirementsAnalystAgent } = require('./agents/requirementsAnalyst');
@@ -207,6 +207,13 @@ const LAYER_DEFINITIONS = [
 // Agents that require shell access (run_command tool)
 const SHELL_AGENTS = new Set(['devops', 'testRunner']);
 
+// Agents whose failure should trigger a user decision (abort vs continue)
+const CRITICAL_AGENTS = new Set([
+  'requirementsAnalyst', 'systemArchitect',
+  'dataArchitect', 'apiDesigner',
+  'backendDev', 'frontendDev', 'authAgent',
+]);
+
 // Agents re-run during quality fix rounds
 const FIX_ROUND_AGENTS = ['backendDev', 'frontendDev', 'authAgent'];
 const MAX_FIX_ROUNDS = 2;
@@ -297,7 +304,7 @@ async function createPlan(requirements, projectName) {
 
   const response = await client.messages.create({
     model: 'claude-sonnet-4-6',
-    max_tokens: 1500,
+    max_tokens: 2500,
     system: [
       {
         type: 'text',
@@ -538,6 +545,35 @@ async function orchestrate(requirements, projectName, outputDir, checkpoint = nu
     // Accumulate quality results from layers 4, 4b, 4c
     if (layerDef.id === 4 || layerDef.id === '4b' || layerDef.id === '4c') {
       Object.assign(allQualityResults, layerResults);
+    }
+
+    // ── Failure handling ──────────────────────────────────────────────────────
+    const failed = getFailedAgents(layerResults);
+    if (failed.length > 0) {
+      const criticalFailed = failed.filter(f => CRITICAL_AGENTS.has(f.name));
+      const nonCriticalFailed = failed.filter(f => !CRITICAL_AGENTS.has(f.name));
+
+      if (nonCriticalFailed.length > 0) {
+        console.log(chalk.yellow(`\n⚠️   agents שנכשלו (לא קריטיים): ${nonCriticalFailed.map(f => f.name).join(', ')}`));
+      }
+
+      if (criticalFailed.length > 0) {
+        console.log(chalk.bold.red(`\n🚨  agents קריטיים נכשלו: ${criticalFailed.map(f => f.name).join(', ')}`));
+        criticalFailed.forEach(f => console.log(chalk.red(`    ${f.name}: ${f.error}`)));
+
+        const proceed = await approveStep(
+          '⚠️  כשלון קריטי',
+          'agent קריטי נכשל לאחר 2 ניסיונות. המשך עלול לייצר קוד חסר או שגוי.',
+          `נכשלו: ${criticalFailed.map(f => `${f.name} — ${f.error}`).join('\n')}`,
+        );
+        if (!proceed) {
+          console.log(chalk.yellow('\n⏹️   הופסק על ידי המשתמש.'));
+          console.log(chalk.gray('💾  התקדמות נשמרה — ניתן להמשיך מנקודה זו בהרצה הבאה.'));
+          context.saveCheckpoint();
+          return;
+        }
+        console.log(chalk.gray('  ממשיך למרות הכשלון...'));
+      }
     }
 
     if (!layerDef.skipApprovalGate) {
