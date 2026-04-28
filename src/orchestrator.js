@@ -41,6 +41,7 @@ const { createRenderingStrategyAgent }   = require('./agents/renderingStrategyAg
 const { createResponsiveDesignAgent }    = require('./agents/responsiveDesignAgent');
 const { createPwaAgent }                 = require('./agents/pwaAgent');
 const { createWebMonetizationAgent }     = require('./agents/webMonetizationAgent');
+const { createCmsAgent }                 = require('./agents/cmsAgent');
 
 // ── Mobile Feature agents ─────────────────────────────────────────────────────
 const { createNotificationsAgent }       = require('./agents/notificationsAgent');
@@ -105,6 +106,7 @@ const AGENT_REGISTRY = {
   responsiveDesignAgent:    createResponsiveDesignAgent,
   pwaAgent:                 createPwaAgent,
   webMonetizationAgent:     createWebMonetizationAgent,
+  cmsAgent:                 createCmsAgent,
   // Mobile Features
   notificationsAgent:       createNotificationsAgent,
   deepLinksAgent:           createDeepLinksAgent,
@@ -163,7 +165,7 @@ const LAYER_DEFINITIONS = [
     agents: [
       'notificationsAgent', 'deepLinksAgent', 'offlineFirstAgent', 'realtimeAgent',
       'animationsAgent', 'onboardingAgent', 'monetizationAgent', 'mlMobileAgent',
-      'arVrAgent', 'widgetsExtensionsAgent', 'otaUpdatesAgent',
+      'arVrAgent', 'widgetsExtensionsAgent', 'otaUpdatesAgent', 'cmsAgent',
     ],
   },
   {
@@ -171,7 +173,7 @@ const LAYER_DEFINITIONS = [
     name: 'Web Features',
     parallel: true,
     agents: [
-      'responsiveDesignAgent', 'pwaAgent', 'webMonetizationAgent',
+      'responsiveDesignAgent', 'pwaAgent', 'webMonetizationAgent', 'cmsAgent',
     ],
   },
   {
@@ -269,8 +271,10 @@ const OPTIONAL_AGENTS_GUIDE = `
 - responsiveDesignAgent : Mobile-first CSS, breakpoints, fluid typography, responsive images, container queries, touch vs hover states
 - pwaAgent              : Progressive Web App — Service Worker, Web App Manifest, offline support, push notifications from browser, installability
 - webMonetizationAgent  : Stripe Billing + SaaS pricing — checkout, customer portal, webhook handler, feature gating, usage-based billing
+- cmsAgent              : Content Management System — lets non-technical users edit all UI text without code. Uses Payload CMS (Next.js) or Strapi (other). Includes admin panel, content service, useContent() hook, seed data for all strings, and a Hebrew guide for editors.
 
 ### Mobile Features (Layer 3b) — ONLY for React Native / Expo / Flutter frontends:
+- cmsAgent             : Content Management System — lets non-technical users edit all UI text without code. Uses Strapi with offline cache via AsyncStorage. Includes content service, useContent() hook, seed data, and a Hebrew guide for editors.
 - notificationsAgent   : Push notifications, local reminders, FCM/APNs
 - deepLinksAgent       : Deep links, Universal Links, QR codes, social sharing URLs
 - offlineFirstAgent    : Offline support, sync without internet, WatermelonDB/TanStack persistence
@@ -415,14 +419,14 @@ function formatPlan(plan) {
 
   const mobileFeatures = optional.filter(a =>
     ['notificationsAgent','deepLinksAgent','offlineFirstAgent','realtimeAgent','animationsAgent',
-     'onboardingAgent','monetizationAgent','mlMobileAgent','arVrAgent','widgetsExtensionsAgent','otaUpdatesAgent'].includes(a)
+     'onboardingAgent','monetizationAgent','mlMobileAgent','arVrAgent','widgetsExtensionsAgent','otaUpdatesAgent','cmsAgent'].includes(a)
   );
   if (mobileFeatures.length > 0) {
     lines.push(`    Layer 3b — Mobile Features : ${mobileFeatures.join(', ')}`);
   }
 
   const webFeatures = optional.filter(a =>
-    ['responsiveDesignAgent','pwaAgent','webMonetizationAgent'].includes(a)
+    ['responsiveDesignAgent','pwaAgent','webMonetizationAgent','cmsAgent'].includes(a)
   );
   if (webFeatures.length > 0) {
     lines.push(`    Layer 3c — Web Features    : ${webFeatures.join(', ')}`);

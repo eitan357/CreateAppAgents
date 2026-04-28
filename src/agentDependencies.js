@@ -41,6 +41,7 @@ const DEPENDENCY_MAP = {
   responsiveDesignAgent:  ['frontendArchitect', 'frontendDev'],
   pwaAgent:               ['frontendDev', 'frontendArchitect'],
   webMonetizationAgent:   ['backendDev', 'frontendDev', 'dataArchitect', 'apiDesigner'],
+  cmsAgent:               ['frontendDev', 'backendDev', 'systemArchitect'],
 
   // ── Quality & Hardening ───────────────────────────────────────────────────
   security:               ['backendDev', 'authAgent', 'apiDesigner'],
