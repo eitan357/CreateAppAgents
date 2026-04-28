@@ -1,5 +1,8 @@
 'use strict';
 
+const fs = require('fs');
+const path = require('path');
+
 const { DEPENDENCY_MAP } = require('./agentDependencies');
 
 // Agents that receive quality feedback during fix rounds
@@ -12,8 +15,9 @@ class ProjectContext {
     this.outputDir = outputDir;
     this.agentOutputs = {};
     this.allFilesCreated = [];
-    this.feedbackNotes = null;   // Quality findings injected during quality fix rounds
-    this.pmFeedbackNotes = null; // PM review findings injected during PM fix rounds
+    this.feedbackNotes = null;
+    this.pmFeedbackNotes = null;
+    this.completedLayers = new Set();
   }
 
   addAgentOutput(agentName, summary, files) {
@@ -21,14 +25,50 @@ class ProjectContext {
     this.allFilesCreated.push(...files);
   }
 
-  // Called before a quality fix round
   setFeedbackNotes(notes) {
     this.feedbackNotes = notes;
   }
 
-  // Called before a PM fix round
   setPmFeedbackNotes(notes) {
     this.pmFeedbackNotes = notes;
+  }
+
+  markLayerComplete(layerId) {
+    this.completedLayers.add(String(layerId));
+  }
+
+  isLayerComplete(layerId) {
+    return this.completedLayers.has(String(layerId));
+  }
+
+  saveCheckpoint() {
+    const checkpointPath = path.join(this.outputDir, '.build-checkpoint.json');
+    fs.mkdirSync(this.outputDir, { recursive: true });
+    fs.writeFileSync(checkpointPath, JSON.stringify({
+      requirements: this.requirements,
+      plan: this.plan,
+      agentOutputs: this.agentOutputs,
+      allFilesCreated: this.allFilesCreated,
+      completedLayers: [...this.completedLayers],
+    }, null, 2), 'utf8');
+  }
+
+  static loadCheckpoint(outputDir) {
+    const checkpointPath = path.join(outputDir, '.build-checkpoint.json');
+    if (!fs.existsSync(checkpointPath)) return null;
+    try {
+      return JSON.parse(fs.readFileSync(checkpointPath, 'utf8'));
+    } catch {
+      return null;
+    }
+  }
+
+  static fromCheckpoint(checkpoint) {
+    const ctx = new ProjectContext(checkpoint.requirements, checkpoint.plan, checkpoint.outputDir || '');
+    ctx.agentOutputs = checkpoint.agentOutputs || {};
+    ctx.allFilesCreated = checkpoint.allFilesCreated || [];
+    ctx.completedLayers = new Set(checkpoint.completedLayers || []);
+    return ctx;
   }
 
   buildScopedContext(agentName) {
@@ -69,7 +109,6 @@ class ProjectContext {
       }
     }
 
-    // Inject quality findings for development agents during a quality fix round
     if (this.feedbackNotes && FIX_ROUND_AGENTS.has(agentName)) {
       lines.push(
         '# ⚠️  Quality Findings — Fix Round',
@@ -81,7 +120,6 @@ class ProjectContext {
       );
     }
 
-    // Inject PM review findings for development agents during a PM fix round
     if (this.pmFeedbackNotes && FIX_ROUND_AGENTS.has(agentName)) {
       lines.push(
         '# 🔴  PM Acceptance Review — Fix Round',
@@ -104,7 +142,6 @@ class ProjectContext {
     return lines.join('\n');
   }
 
-  // Alias kept for backward compatibility
   buildContextMessage(agentName) {
     return this.buildScopedContext(agentName);
   }

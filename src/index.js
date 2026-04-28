@@ -9,6 +9,7 @@ const { orchestrate } = require('./orchestrator');
 const { runPlanningSession } = require('./planner');
 const { runDesignPicker } = require('./designPicker');
 const { setModelConfig } = require('./agents/base');
+const { ProjectContext } = require('./context');
 
 const TIERS = {
   '1': {
@@ -45,6 +46,51 @@ async function main() {
     process.exit(1);
   }
 
+  const projectName = (await ask(chalk.yellow('\n📦  שם הפרויקט: '))).trim();
+  if (!projectName) {
+    console.log(chalk.red('❌  שם הפרויקט הוא שדה חובה.'));
+    process.exit(1);
+  }
+
+  const outputDir = path.resolve(process.cwd(), 'output', projectName.replace(/\s+/g, '-').toLowerCase());
+
+  // ── Check for existing checkpoint ──────────────────────────────────────────
+  const checkpoint = ProjectContext.loadCheckpoint(outputDir);
+  if (checkpoint) {
+    const completedList = (checkpoint.completedLayers || []).join(', ');
+    console.log(chalk.bold.yellow(`\n♻️   נמצאה בנייה חצויה עבור "${projectName}"`));
+    console.log(chalk.gray(`    Layers שהושלמו: ${completedList || 'אין'}`));
+    const resume = (await ask(chalk.bold.green('▶  האם להמשיך מנקודת העצירה? (y/n): '))).trim().toLowerCase();
+
+    if (resume === 'y' || resume === 'yes' || resume === '') {
+      // Tier selection still needed for resumed build
+      console.log(chalk.bold.cyan('\n━━━  רמת איכות / עלות  ━━━'));
+      console.log(chalk.gray('בחר רמה לשלבים הנותרים:\n'));
+      Object.entries(TIERS).forEach(([key, tier]) => {
+        console.log(chalk.white(`  ${key}️⃣   ${tier.label}  (max ${tier.max_tokens.toLocaleString()} tokens)`));
+      });
+      let tier = '';
+      while (!Object.keys(TIERS).includes(tier)) {
+        tier = (await ask(chalk.bold.green('▶  בחר רמה (1, 2 או 3) [ברירת מחדל: 2]: '))).trim() || '2';
+      }
+      const selectedTier = TIERS[tier];
+      setModelConfig({ thinking: selectedTier.thinking, max_tokens: selectedTier.max_tokens });
+      console.log(chalk.green(`\n✅  נבחרה רמה: ${selectedTier.label}\n`));
+
+      rl.close();
+      try {
+        await orchestrate(checkpoint.requirements, projectName, outputDir, checkpoint);
+      } catch (err) {
+        console.error(chalk.red('\n❌  שגיאה קריטית:'), err.message);
+        if (process.env.DEBUG) console.error(err.stack);
+        process.exit(1);
+      }
+      return;
+    }
+
+    console.log(chalk.gray('מתחיל בנייה חדשה...\n'));
+  }
+
   // ── Mode selection ──────────────────────────────────────────────────────────
   console.log(chalk.bold.yellow('איך תרצה להתחיל?\n'));
   console.log(chalk.white('  1️⃣   תכנון עם AI  — שיחה אינטראקטיבית עם יועץ מוצר שישאל אותך שאלות'));
@@ -53,12 +99,6 @@ async function main() {
   let mode = '';
   while (!['1', '2'].includes(mode)) {
     mode = (await ask(chalk.bold.green('▶  בחר מצב (1 או 2): '))).trim();
-  }
-
-  const projectName = (await ask(chalk.yellow('\n📦  שם הפרויקט: '))).trim();
-  if (!projectName) {
-    console.log(chalk.red('❌  שם הפרויקט הוא שדה חובה.'));
-    process.exit(1);
   }
 
   let requirements = '';
@@ -128,8 +168,6 @@ async function main() {
       console.log(chalk.green('\n✅  מפרט העיצוב נוסף לדרישות הפרויקט.\n'));
     }
   }
-
-  const outputDir = path.resolve(process.cwd(), 'output', projectName.replace(/\s+/g, '-').toLowerCase());
 
   rl.close();
 

@@ -471,26 +471,33 @@ async function runPmReview(context, toolSets) {
 }
 
 // ── Main orchestration ────────────────────────────────────────────────────────
-async function orchestrate(requirements, projectName, outputDir) {
+async function orchestrate(requirements, projectName, outputDir, checkpoint = null) {
   console.log(chalk.bold.cyan('\n🚀  App Builder Agents — Multi-Layer Edition\n'));
 
-  // 1. Generate plan
-  console.log(chalk.yellow('⏳  Generating project plan...'));
-  const plan = await createPlan(requirements, projectName);
+  let context;
 
-  // 2. Show plan → user approval
-  const planApproved = await approveStep(
-    'תוכנית הפרויקט',
-    'בדוק את התוכנית לפני שנתחיל לבנות:',
-    formatPlan(plan),
-  );
-  if (!planApproved) {
-    console.log(chalk.red('\n❌  הופסק על ידי המשתמש.'));
-    return;
+  if (checkpoint) {
+    // ── Resume from checkpoint ──────────────────────────────────────────────
+    console.log(chalk.bold.green('♻️   ממשיך מנקודת עצירה קודמת...'));
+    console.log(chalk.gray(`    Layers שהושלמו: ${[...new Set(checkpoint.completedLayers)].join(', ')}`));
+    context = ProjectContext.fromCheckpoint({ ...checkpoint, outputDir });
+  } else {
+    // ── Fresh build ─────────────────────────────────────────────────────────
+    console.log(chalk.yellow('⏳  Generating project plan...'));
+    const plan = await createPlan(requirements, projectName);
+
+    const planApproved = await approveStep(
+      'תוכנית הפרויקט',
+      'בדוק את התוכנית לפני שנתחיל לבנות:',
+      formatPlan(plan),
+    );
+    if (!planApproved) {
+      console.log(chalk.red('\n❌  הופסק על ידי המשתמש.'));
+      return;
+    }
+
+    context = new ProjectContext(requirements, plan, outputDir);
   }
-
-  // 3. Setup shared state
-  const context = new ProjectContext(requirements, plan, outputDir);
   const fsTools = createFileSystemTools(outputDir);
   const shellTools = createShellTools(outputDir);
   const toolSets = {
@@ -504,6 +511,12 @@ async function orchestrate(requirements, projectName, outputDir) {
   const allQualityResults = {};  // accumulates results from layers 4, 4b, 4c
 
   for (const layerDef of LAYER_DEFINITIONS) {
+    // Skip layers already completed in a previous run (checkpoint resume)
+    if (context.isLayerComplete(layerDef.id)) {
+      console.log(chalk.gray(`\nLayer ${layerDef.id} (${layerDef.name}): skipped (already completed in previous run)`));
+      continue;
+    }
+
     const agentConfigs = filterLayerAgents(layerDef, activeAgents, plan);
 
     if (agentConfigs.length === 0) {
@@ -531,9 +544,16 @@ async function orchestrate(requirements, projectName, outputDir) {
       const proceed = await approveLayer(`Layer ${layerDef.id} — ${layerDef.name}`, layerResults);
       if (!proceed) {
         console.log(chalk.yellow('\n⏹️   הופסק על ידי המשתמש.'));
+        console.log(chalk.gray(`💾  התקדמות נשמרה — ניתן להמשיך מנקודה זו בהרצה הבאה.`));
+        context.markLayerComplete(layerDef.id);
+        context.saveCheckpoint();
         return;
       }
     }
+
+    // Mark layer complete and save checkpoint after every layer
+    context.markLayerComplete(layerDef.id);
+    context.saveCheckpoint();
 
     // ── Feedback loop: run after Layer 4c (all quality agents done) ───────────
     if (layerDef.id === '4c') {
