@@ -42,6 +42,7 @@ const { createResponsiveDesignAgent }    = require('./agents/responsiveDesignAge
 const { createPwaAgent }                 = require('./agents/pwaAgent');
 const { createWebMonetizationAgent }     = require('./agents/webMonetizationAgent');
 const { createCmsAgent }                 = require('./agents/cmsAgent');
+const { createCmsIntegratorAgent }       = require('./agents/cmsIntegratorAgent');
 
 // ── Mobile Feature agents ─────────────────────────────────────────────────────
 const { createNotificationsAgent }       = require('./agents/notificationsAgent');
@@ -107,6 +108,7 @@ const AGENT_REGISTRY = {
   pwaAgent:                 createPwaAgent,
   webMonetizationAgent:     createWebMonetizationAgent,
   cmsAgent:                 createCmsAgent,
+  cmsIntegratorAgent:       createCmsIntegratorAgent,
   // Mobile Features
   notificationsAgent:       createNotificationsAgent,
   deepLinksAgent:           createDeepLinksAgent,
@@ -175,6 +177,12 @@ const LAYER_DEFINITIONS = [
     agents: [
       'responsiveDesignAgent', 'pwaAgent', 'webMonetizationAgent', 'cmsAgent',
     ],
+  },
+  {
+    id: '3d',
+    name: 'CMS Integration',
+    parallel: false,
+    agents: ['cmsIntegratorAgent'],
   },
   {
     id: 4,
@@ -271,10 +279,12 @@ const OPTIONAL_AGENTS_GUIDE = `
 - responsiveDesignAgent : Mobile-first CSS, breakpoints, fluid typography, responsive images, container queries, touch vs hover states
 - pwaAgent              : Progressive Web App — Service Worker, Web App Manifest, offline support, push notifications from browser, installability
 - webMonetizationAgent  : Stripe Billing + SaaS pricing — checkout, customer portal, webhook handler, feature gating, usage-based billing
-- cmsAgent              : Content Management System — lets non-technical users edit all UI text without code. Uses Payload CMS (Next.js) or Strapi (other). Includes admin panel, content service, useContent() hook, seed data for all strings, and a Hebrew guide for editors.
+- cmsAgent              : Content Management System — discovers all hardcoded text, sets up CMS (Payload CMS for Next.js, Strapi for others), creates contentService + useContent() hook, seed data, and cms-migration.md plan. Pair with cmsIntegratorAgent to apply the migration automatically.
+- cmsIntegratorAgent    : Applies the CMS migration — reads cms-migration.md and replaces every hardcoded string in components with t('key', 'fallback') calls. Requires cmsAgent to have run first.
 
 ### Mobile Features (Layer 3b) — ONLY for React Native / Expo / Flutter frontends:
-- cmsAgent             : Content Management System — lets non-technical users edit all UI text without code. Uses Strapi with offline cache via AsyncStorage. Includes content service, useContent() hook, seed data, and a Hebrew guide for editors.
+- cmsAgent             : Content Management System — discovers all hardcoded text, sets up Strapi CMS with offline AsyncStorage cache, creates contentService + useContent() hook, seed data, and cms-migration.md plan. Pair with cmsIntegratorAgent.
+- cmsIntegratorAgent   : Applies the CMS migration — replaces every hardcoded string in screens/components with t('key', 'fallback') calls. Requires cmsAgent.
 - notificationsAgent   : Push notifications, local reminders, FCM/APNs
 - deepLinksAgent       : Deep links, Universal Links, QR codes, social sharing URLs
 - offlineFirstAgent    : Offline support, sync without internet, WatermelonDB/TanStack persistence
@@ -430,6 +440,10 @@ function formatPlan(plan) {
   );
   if (webFeatures.length > 0) {
     lines.push(`    Layer 3c — Web Features    : ${webFeatures.join(', ')}`);
+  }
+
+  if (optional.includes('cmsIntegratorAgent')) {
+    lines.push(`    Layer 3d — CMS Integration : cmsIntegratorAgent`);
   }
 
   const extraQuality = optional.filter(a => ['performanceAgent','webPerformanceAgent','accessibilityAgent','loadTestingAgent','dependencyManagementAgent','userTestingAgent','privacyEthicsAgent'].includes(a));
