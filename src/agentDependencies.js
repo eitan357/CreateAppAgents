@@ -45,7 +45,9 @@ const DEPENDENCY_MAP = {
   cmsIntegratorAgent:     ['cmsAgent', 'frontendDev'],
 
   // ── Quality & Hardening ───────────────────────────────────────────────────
-  errorHandlingAgent:     ['backendDev', 'frontendDev', 'authAgent'],
+  errorHandlingAgent:        ['backendDev', 'frontendDev', 'authAgent'],
+  codeDeduplicationAgent:    ['backendDev', 'frontendDev', 'authAgent', 'errorHandlingAgent'],
+  codeCleanupAgent:          ['codeDeduplicationAgent'],
   security:               ['backendDev', 'authAgent', 'apiDesigner'],
   testWriter:             ['backendDev', 'frontendDev', 'authAgent', 'dataArchitect'],
   testRunner:             ['testWriter', 'backendDev', 'frontendDev', 'authAgent'],
@@ -74,7 +76,7 @@ const DEPENDENCY_MAP = {
   seoAgent:               ['frontendDev', 'renderingStrategyAgent', 'frontendArchitect'],
 
   // ── PM Acceptance Review ──────────────────────────────────────────────────
-  pmReviewer:             ['requirementsAnalyst', 'systemArchitect', 'backendDev', 'frontendDev', 'authAgent', 'testFixer', 'reviewer', 'security', 'errorHandlingAgent'],
+  pmReviewer:             ['requirementsAnalyst', 'systemArchitect', 'backendDev', 'frontendDev', 'authAgent', 'testFixer', 'reviewer', 'security', 'errorHandlingAgent', 'codeCleanupAgent'],
 };
 
 module.exports = { DEPENDENCY_MAP };

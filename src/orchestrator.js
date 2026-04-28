@@ -59,6 +59,8 @@ const { createOTAUpdatesAgent }          = require('./agents/otaUpdatesAgent');
 
 // ── Quality agents ────────────────────────────────────────────────────────────
 const { createErrorHandlingAgent }       = require('./agents/errorHandlingAgent');
+const { createCodeDeduplicationAgent }   = require('./agents/codeDeduplicationAgent');
+const { createCodeCleanupAgent }         = require('./agents/codeCleanupAgent');
 const { createPerformanceAgent }         = require('./agents/performanceAgent');
 const { createAccessibilityAgent }       = require('./agents/accessibilityAgent');
 const { createLoadTestingAgent }         = require('./agents/loadTestingAgent');
@@ -124,6 +126,8 @@ const AGENT_REGISTRY = {
   otaUpdatesAgent:          createOTAUpdatesAgent,
   // Quality
   errorHandlingAgent:       createErrorHandlingAgent,
+  codeDeduplicationAgent:   createCodeDeduplicationAgent,
+  codeCleanupAgent:         createCodeCleanupAgent,
   performanceAgent:         createPerformanceAgent,
   accessibilityAgent:       createAccessibilityAgent,
   loadTestingAgent:         createLoadTestingAgent,
@@ -191,6 +195,12 @@ const LAYER_DEFINITIONS = [
     name: 'Error Handling',
     parallel: false,
     agents: ['errorHandlingAgent'],
+  },
+  {
+    id: '3f',
+    name: 'Code Refinement',
+    parallel: false,
+    agents: ['codeDeduplicationAgent', 'codeCleanupAgent'],
   },
   {
     id: 4,
@@ -379,6 +389,8 @@ function getActiveAgents(plan) {
 
   // Always-included implementation agents (run after core implementation)
   names.add('errorHandlingAgent');
+  names.add('codeDeduplicationAgent');
+  names.add('codeCleanupAgent');
 
   return names;
 }
@@ -458,6 +470,7 @@ function formatPlan(plan) {
   }
 
   lines.push(`    Layer 3e — Error Handling  : errorHandlingAgent`);
+  lines.push(`    Layer 3f — Code Refinement : codeDeduplicationAgent → codeCleanupAgent`);
 
   const extraQuality = optional.filter(a => ['performanceAgent','webPerformanceAgent','accessibilityAgent','loadTestingAgent','dependencyManagementAgent','userTestingAgent','privacyEthicsAgent'].includes(a));
   lines.push(`    Layer 4  — Quality        : testWriter, security, reviewer${extraQuality.length > 0 ? ', ' + extraQuality.join(', ') : ''}`);
