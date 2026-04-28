@@ -438,6 +438,38 @@ function formatPlan(plan) {
   return lines.join('\n');
 }
 
+// ── Quality re-run helper ─────────────────────────────────────────────────────
+async function runQualityLayers(activeAgents, context, toolSets, plan) {
+  const results = {};
+  for (const id of [4, '4b', '4c']) {
+    const layerDef = LAYER_DEFINITIONS.find(l => l.id === id);
+    if (!layerDef) continue;
+    const agentConfigs = filterLayerAgents(layerDef, activeAgents, plan);
+    if (agentConfigs.length === 0) continue;
+    console.log(chalk.bold.cyan(`\n━━━  Quality Re-check — Layer ${layerDef.id}: ${layerDef.name}  ━━━`));
+    console.log(chalk.gray(`Agents: ${agentConfigs.map(a => a.name).join(', ')}`));
+    const layerResults = layerDef.parallel
+      ? await runLayerInParallel(agentConfigs, context, toolSets, AGENT_REGISTRY)
+      : await runLayerSequential(agentConfigs, context, toolSets, AGENT_REGISTRY);
+    Object.assign(results, layerResults);
+  }
+  return results;
+}
+
+// ── PM review helper ──────────────────────────────────────────────────────────
+async function runPmReview(context, toolSets) {
+  const agent = createPmReviewerAgent(toolSets.fs);
+  try {
+    const result = await agent.run(context.buildScopedContext('pmReviewer'));
+    context.addAgentOutput('pmReviewer', result.summary, result.filesCreated);
+    console.log(chalk.green(`  PM Review done — ${result.filesCreated.length} file(s) written`));
+    return result;
+  } catch (err) {
+    console.log(chalk.red(`  PM Review FAILED: ${err.message}`));
+    return null;
+  }
+}
+
 // ── Main orchestration ────────────────────────────────────────────────────────
 async function orchestrate(requirements, projectName, outputDir) {
   console.log(chalk.bold.cyan('\n🚀  App Builder Agents — Multi-Layer Edition\n'));
@@ -505,35 +537,52 @@ async function orchestrate(requirements, projectName, outputDir) {
 
     // ── Feedback loop: run after Layer 4c (all quality agents done) ───────────
     if (layerDef.id === '4c') {
-      const qualityFeedback = buildQualityFeedback(allQualityResults);
+      let currentQualityFeedback = buildQualityFeedback(allQualityResults);
 
-      if (qualityFeedback) {
-        for (let round = 1; round <= MAX_FIX_ROUNDS; round++) {
-          const runFix = await approveStep(
-            `🔄  Fix Round ${round} / ${MAX_FIX_ROUNDS}`,
-            'ה-Quality agents סיימו. agents הפיתוח יקראו את הממצאים ויתקנו בעיות. להריץ סבב תיקונים?',
-            qualityFeedback.slice(0, 1200) + (qualityFeedback.length > 1200 ? '\n...(truncated)' : ''),
-          );
+      for (let round = 1; round <= MAX_FIX_ROUNDS; round++) {
+        if (!currentQualityFeedback) {
+          console.log(chalk.green('  ✅  No quality issues found — skipping fix rounds.'));
+          break;
+        }
 
-          if (!runFix) {
-            console.log(chalk.gray('  Fix round skipped — continuing to Layer 5.'));
-            break;
-          }
+        const runFix = await approveStep(
+          `🔄  Fix Round ${round} / ${MAX_FIX_ROUNDS}`,
+          'ה-Quality agents סיימו. agents הפיתוח יקראו את הממצאים ויתקנו בעיות. להריץ סבב תיקונים?',
+          currentQualityFeedback.slice(0, 1200) + (currentQualityFeedback.length > 1200 ? '\n...(truncated)' : ''),
+        );
 
-          console.log(chalk.bold.cyan(`\n━━━  Fix Round ${round}: backendDev + frontendDev + authAgent  ━━━`));
-          context.setFeedbackNotes(qualityFeedback);
+        if (!runFix) {
+          console.log(chalk.gray('  Fix round skipped — continuing to Layer 5.'));
+          break;
+        }
 
-          const fixConfigs = FIX_ROUND_AGENTS
-            .filter(name => activeAgents.has(name))
-            .map(name => ({ name, needsShell: false }));
+        console.log(chalk.bold.cyan(`\n━━━  Fix Round ${round}: backendDev + frontendDev + authAgent  ━━━`));
+        context.setFeedbackNotes(currentQualityFeedback);
 
-          await runLayerInParallel(fixConfigs, context, toolSets, AGENT_REGISTRY);
-          context.setFeedbackNotes(null);
+        const fixConfigs = FIX_ROUND_AGENTS
+          .filter(name => activeAgents.has(name))
+          .map(name => ({ name, needsShell: false }));
 
-          console.log(chalk.green(`  ✅  Fix Round ${round} complete.`));
-          if (round >= MAX_FIX_ROUNDS) {
-            console.log(chalk.gray(`  Max fix rounds (${MAX_FIX_ROUNDS}) reached — continuing to Layer 5.`));
-          }
+        await runLayerInParallel(fixConfigs, context, toolSets, AGENT_REGISTRY);
+        context.setFeedbackNotes(null);
+
+        console.log(chalk.green(`  ✅  Fix Round ${round} complete — re-running Quality to verify...`));
+        const rerunResults = await runQualityLayers(activeAgents, context, toolSets, plan);
+
+        const proceed = await approveLayer(`Quality Re-check — after Fix Round ${round}`, rerunResults);
+        if (!proceed) {
+          console.log(chalk.yellow('\n⏹️   הופסק על ידי המשתמש.'));
+          return;
+        }
+
+        currentQualityFeedback = buildQualityFeedback(rerunResults);
+
+        if (!currentQualityFeedback) {
+          console.log(chalk.bold.green(`  ✅  All quality checks passed after Fix Round ${round}!`));
+          break;
+        }
+        if (round >= MAX_FIX_ROUNDS) {
+          console.log(chalk.gray(`  Max fix rounds (${MAX_FIX_ROUNDS}) reached — continuing to Layer 5.`));
         }
       }
     }
@@ -543,54 +592,51 @@ async function orchestrate(requirements, projectName, outputDir) {
   console.log(chalk.bold.cyan('\n━━━  PM Acceptance Review  ━━━'));
   console.log(chalk.gray('Running PM reviewer to verify requirements coverage...'));
 
-  const pmReviewerAgent = createPmReviewerAgent(toolSets.fs);
-  const pmContextMessage = context.buildScopedContext('pmReviewer');
+  let pmReviewResult = await runPmReview(context, toolSets);
+  let pmFeedback = pmReviewResult ? buildPmFeedback(pmReviewResult) : null;
 
-  let pmReviewResult = null;
-  try {
-    pmReviewResult = await pmReviewerAgent.run(pmContextMessage);
-    context.addAgentOutput('pmReviewer', pmReviewResult.summary, pmReviewResult.filesCreated);
-    console.log(chalk.green(`  PM Review done — ${pmReviewResult.filesCreated.length} file(s) written`));
-  } catch (err) {
-    console.log(chalk.red(`  PM Review FAILED: ${err.message}`));
-  }
+  if (pmFeedback) {
+    console.log(chalk.yellow('\n⚠️  PM found gaps — triggering PM fix rounds'));
 
-  if (pmReviewResult) {
-    const pmFeedback = buildPmFeedback(pmReviewResult);
+    for (let round = 1; round <= MAX_PM_FIX_ROUNDS; round++) {
+      const runFix = await approveStep(
+        `🔴  PM Fix Round ${round} / ${MAX_PM_FIX_ROUNDS}`,
+        'מנהל המוצר מצא פערים בין הדרישות לבין המימוש. agents הפיתוח יקראו את הממצאים וישלימו את החסר. להריץ סבב תיקוני PM?',
+        pmFeedback.slice(0, 1400) + (pmFeedback.length > 1400 ? '\n...(truncated)' : ''),
+      );
 
-    if (pmFeedback) {
-      console.log(chalk.yellow('\n⚠️  PM found gaps — triggering PM fix rounds'));
-
-      for (let round = 1; round <= MAX_PM_FIX_ROUNDS; round++) {
-        const runFix = await approveStep(
-          `🔴  PM Fix Round ${round} / ${MAX_PM_FIX_ROUNDS}`,
-          'מנהל המוצר מצא פערים בין הדרישות לבין המימוש. agents הפיתוח יקראו את הממצאים וישלימו את החסר. להריץ סבב תיקוני PM?',
-          pmFeedback.slice(0, 1400) + (pmFeedback.length > 1400 ? '\n...(truncated)' : ''),
-        );
-
-        if (!runFix) {
-          console.log(chalk.gray('  PM fix round skipped.'));
-          break;
-        }
-
-        console.log(chalk.bold.cyan(`\n━━━  PM Fix Round ${round}: backendDev + frontendDev + authAgent  ━━━`));
-        context.setPmFeedbackNotes(pmFeedback);
-
-        const pmFixConfigs = PM_FIX_ROUND_AGENTS
-          .filter(name => activeAgents.has(name))
-          .map(name => ({ name, needsShell: false }));
-
-        await runLayerInParallel(pmFixConfigs, context, toolSets, AGENT_REGISTRY);
-        context.setPmFeedbackNotes(null);
-
-        console.log(chalk.green(`  ✅  PM Fix Round ${round} complete.`));
-        if (round >= MAX_PM_FIX_ROUNDS) {
-          console.log(chalk.gray(`  Max PM fix rounds (${MAX_PM_FIX_ROUNDS}) reached.`));
-        }
+      if (!runFix) {
+        console.log(chalk.gray('  PM fix round skipped.'));
+        break;
       }
-    } else {
-      console.log(chalk.bold.green('  ✅  PM Verdict: ACCEPTED — all requirements satisfied!'));
+
+      console.log(chalk.bold.cyan(`\n━━━  PM Fix Round ${round}: backendDev + frontendDev + authAgent  ━━━`));
+      context.setPmFeedbackNotes(pmFeedback);
+
+      const pmFixConfigs = PM_FIX_ROUND_AGENTS
+        .filter(name => activeAgents.has(name))
+        .map(name => ({ name, needsShell: false }));
+
+      await runLayerInParallel(pmFixConfigs, context, toolSets, AGENT_REGISTRY);
+      context.setPmFeedbackNotes(null);
+
+      console.log(chalk.green(`  ✅  PM Fix Round ${round} complete — re-running Quality to verify...`));
+      await runQualityLayers(activeAgents, context, toolSets, plan);
+
+      console.log(chalk.bold.cyan(`\n━━━  PM Re-check after Fix Round ${round}  ━━━`));
+      pmReviewResult = await runPmReview(context, toolSets);
+      pmFeedback = pmReviewResult ? buildPmFeedback(pmReviewResult) : null;
+
+      if (!pmFeedback) {
+        console.log(chalk.bold.green(`  ✅  PM Verdict: ACCEPTED after Fix Round ${round}!`));
+        break;
+      }
+      if (round >= MAX_PM_FIX_ROUNDS) {
+        console.log(chalk.gray(`  Max PM fix rounds (${MAX_PM_FIX_ROUNDS}) reached.`));
+      }
     }
+  } else {
+    console.log(chalk.bold.green('  ✅  PM Verdict: ACCEPTED — all requirements satisfied!'));
   }
 
   // 6. Done
