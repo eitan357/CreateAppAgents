@@ -8,6 +8,25 @@ const chalk = require('chalk');
 const { orchestrate } = require('./orchestrator');
 const { runPlanningSession } = require('./planner');
 const { runDesignPicker } = require('./designPicker');
+const { setModelConfig } = require('./agents/base');
+
+const TIERS = {
+  '1': {
+    label: 'חסכוני  — ללא חשיבה עמוקה, מהיר וזול יותר',
+    thinking: null,
+    max_tokens: 4000,
+  },
+  '2': {
+    label: 'מאוזן   — חשיבה עמוקה אדפטיבית (Claude מחליט מתי לחשוב)',
+    thinking: { type: 'adaptive' },
+    max_tokens: 6000,
+  },
+  '3': {
+    label: 'מקסימלי — חשיבה עמוקה מלאה, איכות גבוהה ביותר',
+    thinking: { type: 'adaptive' },
+    max_tokens: 8096,
+  },
+};
 
 const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
 
@@ -78,6 +97,23 @@ async function main() {
       process.exit(1);
     }
   }
+
+  // ── Tier selection ────────────────────────────────────────────────────────
+  console.log(chalk.bold.cyan('\n━━━  רמת איכות / עלות  ━━━'));
+  console.log(chalk.gray('בחר את רמת השימוש בחשיבה עמוקה (Extended Thinking) ו-tokens:\n'));
+  Object.entries(TIERS).forEach(([key, tier]) => {
+    const tokens = tier.max_tokens.toLocaleString();
+    console.log(chalk.white(`  ${key}️⃣   ${tier.label}  (max ${tokens} tokens)`));
+  });
+  console.log('');
+
+  let tier = '';
+  while (!Object.keys(TIERS).includes(tier)) {
+    tier = (await ask(chalk.bold.green('▶  בחר רמה (1, 2 או 3) [ברירת מחדל: 2]: '))).trim() || '2';
+  }
+  const selectedTier = TIERS[tier];
+  setModelConfig({ thinking: selectedTier.thinking, max_tokens: selectedTier.max_tokens });
+  console.log(chalk.green(`\n✅  נבחרה רמה: ${selectedTier.label}\n`));
 
   // ── Design Picker ─────────────────────────────────────────────────────────
   console.log(chalk.bold.cyan('\n━━━  שלב עיצוב  ━━━'));

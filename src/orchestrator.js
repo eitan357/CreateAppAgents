@@ -296,8 +296,8 @@ async function createPlan(requirements, projectName) {
   const client = new Anthropic();
 
   const response = await client.messages.create({
-    model: 'claude-opus-4-7',
-    max_tokens: 3000,
+    model: 'claude-sonnet-4-6',
+    max_tokens: 1500,
     system: [
       {
         type: 'text',

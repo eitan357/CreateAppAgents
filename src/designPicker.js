@@ -140,8 +140,8 @@ async function generateConcepts(client, requirements, refinementHistory) {
         `צור 3 הצעות עיצוב שונות לאפליקציה הבאה.\n\nדרישות:\n${requirements}\n\nסכמת JSON:\n${CONCEPT_SCHEMA}` }];
 
   const response = await client.messages.create({
-    model: 'claude-opus-4-7',
-    max_tokens: 3000,
+    model: 'claude-sonnet-4-6',
+    max_tokens: 2000,
     system: [{ type: 'text', text: isRefinement ? REFINER_SYSTEM : GENERATOR_SYSTEM, cache_control: { type: 'ephemeral' } }],
     messages,
   });

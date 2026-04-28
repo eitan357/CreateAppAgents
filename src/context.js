@@ -32,6 +32,8 @@ class ProjectContext {
   }
 
   buildScopedContext(agentName) {
+    const isFixRound = !!(this.feedbackNotes || this.pmFeedbackNotes) && FIX_ROUND_AGENTS.has(agentName);
+
     const lines = [
       '# Project Requirements',
       this.requirements,
@@ -44,23 +46,26 @@ class ProjectContext {
       '',
     ];
 
-    const deps = DEPENDENCY_MAP[agentName] || [];
-
-    if (deps.length > 0) {
-      lines.push('# Context From Dependencies', '');
-      for (const depName of deps) {
-        const output = this.agentOutputs[depName];
-        if (!output) {
-          lines.push(`## ${depName} Agent`, '(not run — optional agent skipped)', '');
-          continue;
+    // During fix rounds skip dependency re-injection — agents already have the code,
+    // they only need to know what to fix. Saves 5-15K tokens per fix round call.
+    if (!isFixRound) {
+      const deps = DEPENDENCY_MAP[agentName] || [];
+      if (deps.length > 0) {
+        lines.push('# Context From Dependencies', '');
+        for (const depName of deps) {
+          const output = this.agentOutputs[depName];
+          if (!output) {
+            lines.push(`## ${depName} Agent`, '(not run — optional agent skipped)', '');
+            continue;
+          }
+          lines.push(
+            `## ${depName} Agent Output`,
+            output.summary,
+            '',
+            `Files created: ${output.files.join(', ')}`,
+            '',
+          );
         }
-        lines.push(
-          `## ${depName} Agent Output`,
-          output.summary,
-          '',
-          `Files created: ${output.files.join(', ')}`,
-          '',
-        );
       }
     }
 

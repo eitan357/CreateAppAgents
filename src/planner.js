@@ -120,7 +120,7 @@ async function callClaude(client, history, overrideUserMessage) {
     : history;
 
   const response = await client.messages.create({
-    model: 'claude-opus-4-7',
+    model: 'claude-sonnet-4-6',
     max_tokens: 2048,
     system: [{ type: 'text', text: SYSTEM_PROMPT, cache_control: { type: 'ephemeral' } }],
     messages,
