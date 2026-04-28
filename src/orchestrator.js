@@ -187,10 +187,16 @@ const LAYER_DEFINITIONS = [
     agents: ['cmsIntegratorAgent'],
   },
   {
+    id: '3e',
+    name: 'Error Handling',
+    parallel: false,
+    agents: ['errorHandlingAgent'],
+  },
+  {
     id: 4,
     name: 'Quality',
     parallel: true,
-    agents: ['errorHandlingAgent', 'testWriter', 'security', 'reviewer', 'performanceAgent', 'accessibilityAgent', 'loadTestingAgent', 'dependencyManagementAgent', 'webPerformanceAgent', 'userTestingAgent', 'privacyEthicsAgent'],
+    agents: ['testWriter', 'security', 'reviewer', 'performanceAgent', 'accessibilityAgent', 'loadTestingAgent', 'dependencyManagementAgent', 'webPerformanceAgent', 'userTestingAgent', 'privacyEthicsAgent'],
   },
   {
     id: '4b',
@@ -371,6 +377,9 @@ function getActiveAgents(plan) {
   // Optional agents selected by PM
   (plan.optionalAgents || []).forEach(n => names.add(n));
 
+  // Always-included implementation agents (run after core implementation)
+  names.add('errorHandlingAgent');
+
   return names;
 }
 
@@ -387,7 +396,7 @@ function filterLayerAgents(layerDef, activeAgents, plan) {
 
 // ── Feedback loop helpers ─────────────────────────────────────────────────────
 function buildQualityFeedback(layerResults) {
-  const qualityAgents = ['errorHandlingAgent', 'testWriter', 'testRunner', 'testFixer', 'reviewer', 'security', 'performanceAgent', 'accessibilityAgent', 'dependencyManagementAgent'];
+  const qualityAgents = ['testWriter', 'testRunner', 'testFixer', 'reviewer', 'security', 'performanceAgent', 'accessibilityAgent', 'dependencyManagementAgent'];
   const sections = [];
 
   for (const agentName of qualityAgents) {
@@ -448,8 +457,10 @@ function formatPlan(plan) {
     lines.push(`    Layer 3d — CMS Integration : cmsIntegratorAgent`);
   }
 
+  lines.push(`    Layer 3e — Error Handling  : errorHandlingAgent`);
+
   const extraQuality = optional.filter(a => ['performanceAgent','webPerformanceAgent','accessibilityAgent','loadTestingAgent','dependencyManagementAgent','userTestingAgent','privacyEthicsAgent'].includes(a));
-  lines.push(`    Layer 4  — Quality        : errorHandlingAgent, testWriter, security, reviewer${extraQuality.length > 0 ? ', ' + extraQuality.join(', ') : ''}`);
+  lines.push(`    Layer 4  — Quality        : testWriter, security, reviewer${extraQuality.length > 0 ? ', ' + extraQuality.join(', ') : ''}`);
   lines.push(`    Layer 4b — Test Run       : testRunner`);
   lines.push(`    Layer 4c — Test Fix       : testFixer`);
 
