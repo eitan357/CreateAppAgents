@@ -58,6 +58,7 @@ const { createWidgetsExtensionsAgent }   = require('./agents/widgetsExtensionsAg
 const { createOTAUpdatesAgent }          = require('./agents/otaUpdatesAgent');
 
 // ── Quality agents ────────────────────────────────────────────────────────────
+const { createErrorHandlingAgent }       = require('./agents/errorHandlingAgent');
 const { createPerformanceAgent }         = require('./agents/performanceAgent');
 const { createAccessibilityAgent }       = require('./agents/accessibilityAgent');
 const { createLoadTestingAgent }         = require('./agents/loadTestingAgent');
@@ -122,6 +123,7 @@ const AGENT_REGISTRY = {
   widgetsExtensionsAgent:   createWidgetsExtensionsAgent,
   otaUpdatesAgent:          createOTAUpdatesAgent,
   // Quality
+  errorHandlingAgent:       createErrorHandlingAgent,
   performanceAgent:         createPerformanceAgent,
   accessibilityAgent:       createAccessibilityAgent,
   loadTestingAgent:         createLoadTestingAgent,
@@ -188,7 +190,7 @@ const LAYER_DEFINITIONS = [
     id: 4,
     name: 'Quality',
     parallel: true,
-    agents: ['testWriter', 'security', 'reviewer', 'performanceAgent', 'accessibilityAgent', 'loadTestingAgent', 'dependencyManagementAgent', 'webPerformanceAgent', 'userTestingAgent', 'privacyEthicsAgent'],
+    agents: ['errorHandlingAgent', 'testWriter', 'security', 'reviewer', 'performanceAgent', 'accessibilityAgent', 'loadTestingAgent', 'dependencyManagementAgent', 'webPerformanceAgent', 'userTestingAgent', 'privacyEthicsAgent'],
   },
   {
     id: '4b',
@@ -385,7 +387,7 @@ function filterLayerAgents(layerDef, activeAgents, plan) {
 
 // ── Feedback loop helpers ─────────────────────────────────────────────────────
 function buildQualityFeedback(layerResults) {
-  const qualityAgents = ['testWriter', 'testRunner', 'testFixer', 'reviewer', 'security', 'performanceAgent', 'accessibilityAgent', 'dependencyManagementAgent'];
+  const qualityAgents = ['errorHandlingAgent', 'testWriter', 'testRunner', 'testFixer', 'reviewer', 'security', 'performanceAgent', 'accessibilityAgent', 'dependencyManagementAgent'];
   const sections = [];
 
   for (const agentName of qualityAgents) {
@@ -447,7 +449,7 @@ function formatPlan(plan) {
   }
 
   const extraQuality = optional.filter(a => ['performanceAgent','webPerformanceAgent','accessibilityAgent','loadTestingAgent','dependencyManagementAgent','userTestingAgent','privacyEthicsAgent'].includes(a));
-  lines.push(`    Layer 4  — Quality        : testWriter, security, reviewer${extraQuality.length > 0 ? ', ' + extraQuality.join(', ') : ''}`);
+  lines.push(`    Layer 4  — Quality        : errorHandlingAgent, testWriter, security, reviewer${extraQuality.length > 0 ? ', ' + extraQuality.join(', ') : ''}`);
   lines.push(`    Layer 4b — Test Run       : testRunner`);
   lines.push(`    Layer 4c — Test Fix       : testFixer`);
 
