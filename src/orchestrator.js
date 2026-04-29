@@ -8,7 +8,7 @@ const { approveStep, approveLayer } = require('./approval');
 const { createFileSystemTools } = require('./tools/fileSystem');
 const { createShellTools } = require('./tools/shell');
 const { runLayerInParallel, runLayerSequential, getFailedAgents } = require('./layerRunner');
-const { pushToGithub } = require('./github');
+const { pushCheckpoint, pushToGithub } = require('./github');
 
 // ── Core agents ───────────────────────────────────────────────────────────────
 const { createRequirementsAnalystAgent } = require('./agents/requirementsAnalyst');
@@ -557,7 +557,19 @@ async function orchestrate(requirements, projectName, outputDir, checkpoint = nu
     all: { tools: [...fsTools.tools, ...shellTools.tools], handlers: { ...fsTools.handlers, ...shellTools.handlers } },
   };
 
-  const activeAgents = getActiveAgents(plan);
+  const activeAgents = getActiveAgents(context.plan);
+
+  // ── Checkpoint helper — saves locally + pushes to GitHub ─────────────────────
+  function saveCheckpoint(layerLabel) {
+    context.saveCheckpoint();
+    if (!githubRepo) return;
+    const result = pushCheckpoint(outputDir, githubRepo.owner, githubRepo.repo, githubRepo.token, layerLabel);
+    if (result.success) {
+      console.log(chalk.gray(`  ☁️   checkpoint נשמר ב-GitHub (${layerLabel})`));
+    } else {
+      console.log(chalk.yellow(`  ⚠️   push ל-GitHub נכשל (${layerLabel}): ${result.error}`));
+    }
+  }
 
   // 4. Execute layers
   const allQualityResults = {};  // accumulates results from layers 4, 4b, 4c
@@ -614,7 +626,7 @@ async function orchestrate(requirements, projectName, outputDir, checkpoint = nu
         if (!proceed) {
           console.log(chalk.yellow('\n⏹️   הופסק על ידי המשתמש.'));
           console.log(chalk.gray('💾  התקדמות נשמרה — ניתן להמשיך מנקודה זו בהרצה הבאה.'));
-          context.saveCheckpoint();
+          saveCheckpoint(`Layer ${layerDef.id} — ${layerDef.name} (aborted)`);
           return;
         }
         console.log(chalk.gray('  ממשיך למרות הכשלון...'));
@@ -627,14 +639,14 @@ async function orchestrate(requirements, projectName, outputDir, checkpoint = nu
         console.log(chalk.yellow('\n⏹️   הופסק על ידי המשתמש.'));
         console.log(chalk.gray(`💾  התקדמות נשמרה — ניתן להמשיך מנקודה זו בהרצה הבאה.`));
         context.markLayerComplete(layerDef.id);
-        context.saveCheckpoint();
+        saveCheckpoint(`Layer ${layerDef.id} — ${layerDef.name}`);
         return;
       }
     }
 
     // Mark layer complete and save checkpoint after every layer
     context.markLayerComplete(layerDef.id);
-    context.saveCheckpoint();
+    saveCheckpoint(`Layer ${layerDef.id} — ${layerDef.name}`);
 
     // ── Feedback loop: run after Layer 4c (all quality agents done) ───────────
     if (layerDef.id === '4c') {
