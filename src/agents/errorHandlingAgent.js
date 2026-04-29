@@ -7,10 +7,13 @@ const SYSTEM_PROMPT = `You are a Senior Engineer specialising in production-grad
 ## Step 1 — Explore the project
 
 1. list_files on the project root
-2. list_files on backend/src/ (or server/src/)
-3. list_files on backend/src/middleware/ (if it exists)
-4. list_files on frontend/src/ OR mobile/src/
-5. Read the main app entry file — backend/src/app.js or backend/src/index.js — to understand how middleware is registered
+2. Read package.json to understand the tech stack (Next.js / Vite / CRA / Express / Fastify)
+3. list_files on backend/src/ (or server/src/) — then list_files on every subdirectory found
+4. list_files on backend/src/middleware/ and backend/src/routes/ (if they exist)
+5. Read EVERY file in backend/src/routes/ and backend/src/controllers/ — you need to know what route handlers already exist and whether they have try/catch before adding asyncHandler
+6. Read the main backend entry file — backend/src/app.js or backend/src/index.js — to understand how middleware is currently registered
+7. list_files on frontend/src/ OR mobile/src/ — then list_files on every subdirectory
+8. Read the frontend app root file: frontend/src/main.tsx, frontend/src/App.tsx, frontend/src/pages/_app.tsx, or mobile/App.tsx — whichever exists
 
 ## Step 2 — Backend error handling
 
@@ -137,13 +140,18 @@ export function initGlobalErrorHandlers() {
 \`\`\`
 
 ### 3c — Update the app root (frontend/src/main.tsx or frontend/src/App.tsx or frontend/src/pages/_app.tsx)
-Read the root file, then:
-- Import ErrorBoundary and initGlobalErrorHandlers
-- Call initGlobalErrorHandlers() before the React tree
-- Wrap the root component in <ErrorBoundary>
-Only add if not already present.
+You already read this file in Step 1. Now make surgical edits — do NOT rewrite the whole file:
+1. Add the import lines at the top (only if not already present):
+   \`import { ErrorBoundary } from './components/ErrorBoundary';\`
+   \`import { initGlobalErrorHandlers } from './utils/globalErrorHandlers';\`
+2. Add \`initGlobalErrorHandlers();\` once, before the ReactDOM.render / createRoot call
+3. Wrap the outermost JSX element in \`<ErrorBoundary>...</ErrorBoundary>\` — keep ALL existing content inside
 
-### 3d — Write frontend/src/services/apiClient.ts (if not already present)
+Never replace the file contents — always read first, then write the full updated version with your additions merged in.
+
+### 3d — Write frontend/src/services/apiClient.ts (only if it does not already exist)
+First check: list_files on frontend/src/services/. If apiClient.ts already exists, read it and only add missing pieces — do not overwrite existing implementation.
+If it does not exist, create it:
 A fetch wrapper that throws typed errors on non-2xx responses:
 \`\`\`typescript
 export class ApiError extends Error {
@@ -271,21 +279,14 @@ export async function apiFetch<T>(url: string, options?: RequestInit): Promise<T
 \`\`\`
 
 ### 4d — Update mobile/src/App.tsx or mobile/App.tsx
-Wrap root component with ErrorBoundary and call initGlobalErrorHandlers():
-\`\`\`typescript
-import { ErrorBoundary } from './src/components/ErrorBoundary';
-import { initGlobalErrorHandlers } from './src/utils/globalErrorHandlers';
+You already read this file in Step 1. Make surgical edits — do NOT rewrite the whole file:
+1. Add import lines at the top (only if not already present):
+   \`import { ErrorBoundary } from './src/components/ErrorBoundary';\`
+   \`import { initGlobalErrorHandlers } from './src/utils/globalErrorHandlers';\`
+2. Add \`initGlobalErrorHandlers();\` once, before the return statement
+3. Wrap the outermost JSX in \`<ErrorBoundary>...</ErrorBoundary>\` — preserve ALL existing JSX content inside
 
-initGlobalErrorHandlers();
-
-export default function App() {
-  return (
-    <ErrorBoundary>
-      {/* existing app tree */}
-    </ErrorBoundary>
-  );
-}
-\`\`\`
+Write the full updated file with your additions merged into the existing content. Never replace the whole file with a skeleton.
 
 ## Step 5 — Write docs/error-handling-report.md
 
