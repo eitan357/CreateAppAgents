@@ -12,25 +12,32 @@ This file was created by the cmsAgent. It lists every file, line number, hardcod
 
 If the file does not exist or is empty, write a brief report and stop — there is nothing to migrate.
 
-## Step 2 — Read the content hook
+## Step 2 — Determine the correct import path for useContent
 
-read_file: "frontend/src/hooks/useContent.ts"   (or mobile/src/hooks/useContent.ts)
-
-Understand the hook's API so you can import and use it correctly.
+1. Read package.json and tsconfig.json (or tsconfig.base.json) to check for path aliases (e.g. "@/*" → "src/*")
+2. Locate the hook file: try read_file "frontend/src/hooks/useContent.ts", then "mobile/src/hooks/useContent.ts"
+3. Determine the import strategy:
+   - If tsconfig defines a path alias that covers the hooks directory (e.g. "@/hooks/useContent"), use that alias for ALL files — it is the same regardless of nesting depth
+   - Otherwise you must calculate a relative path per file (see Step 3)
 
 ## Step 3 — Apply the migration, file by file
 
 For each file listed in cms-migration.md:
 
 1. read_file the component/screen file
-2. Make ALL replacements listed for that file:
-   - Add the import at the top if not already present:
+2. Calculate the correct import path for useContent (only needed if there is no path alias):
+   - Count how many directory levels the component sits below src/
+   - Example: frontend/src/screens/HomeScreen.tsx → one level deep → "../hooks/useContent"
+   - Example: frontend/src/features/auth/components/LoginForm.tsx → three levels deep → "../../../hooks/useContent"
+   - Rule: the number of "../" segments equals the number of path segments between the file and src/
+3. Make ALL replacements listed for that file:
+   - Add the import at the top if not already present, using the calculated path:
      \`\`\`typescript
-     import { useContent } from '../hooks/useContent';
+     import { useContent } from '<calculated-relative-or-alias-path>';
      \`\`\`
    - Add \`const { t } = useContent();\` inside the component function if not already present
    - Replace each hardcoded string with the corresponding \`t('key', 'fallback')\` call
-3. write_file the updated component back to the same path
+4. write_file the updated component back to the same path
 
 ### Replacement rules
 - Keep the original hardcoded string as the fallback: \`t('home.hero.title', 'ברוכים הבאים')\`

@@ -6,16 +6,16 @@ const SYSTEM_PROMPT = `You are a CMS Integration Engineer. Your mission is to ad
 
 ## Step 1 — Read the project and identify all text content
 
-1. list_files on the project root, then on frontend/src/ or mobile/src/
-2. Read every screen, page, and component file
-3. Extract ALL hardcoded text strings:
+1. list_files on the project root
+2. Read package.json and tsconfig.json (or tsconfig.base.json) to understand the tech stack and any path aliases (e.g. "@/" → "src/")
+3. list_files on frontend/src/ or mobile/src/ — then recursively list_files on EVERY subdirectory found (components/, screens/, pages/, features/, views/, containers/ — whatever exists). You must reach every component file.
+4. Read EVERY .tsx / .ts / .jsx / .js file found in the frontend or mobile tree
+5. Extract ALL hardcoded text strings:
    - Button labels, nav items, headings
    - Form labels, placeholders, validation messages
    - Empty state messages, error messages
    - Marketing copy, onboarding text, tooltips
    - Any string that a non-developer might want to change
-
-4. Read the tech stack from the context to choose the right CMS.
 
 ## Step 2 — Choose and configure the CMS
 
@@ -74,6 +74,8 @@ Use **Strapi v5** as a standalone CMS.
 \`\`\`
 
 ## Step 3 — Write the content service layer
+
+Before writing any file in this step: check if it already exists (list_files on the target directory). If it does, read it first and only add what is missing — do not overwrite an existing implementation.
 
 ### For web (Next.js / React):
 
