@@ -8,6 +8,7 @@ const { approveStep, approveLayer } = require('./approval');
 const { createFileSystemTools } = require('./tools/fileSystem');
 const { createShellTools } = require('./tools/shell');
 const { runLayerInParallel, runLayerSequential, getFailedAgents } = require('./layerRunner');
+const { pushToGithub } = require('./github');
 
 // ── Core agents ───────────────────────────────────────────────────────────────
 const { createRequirementsAnalystAgent } = require('./agents/requirementsAnalyst');
@@ -522,7 +523,7 @@ async function runPmReview(context, toolSets) {
 }
 
 // ── Main orchestration ────────────────────────────────────────────────────────
-async function orchestrate(requirements, projectName, outputDir, checkpoint = null) {
+async function orchestrate(requirements, projectName, outputDir, checkpoint = null, githubRepo = null) {
   console.log(chalk.bold.cyan('\n🚀  App Builder Agents — Multi-Layer Edition\n'));
 
   let context;
@@ -739,9 +740,23 @@ async function orchestrate(requirements, projectName, outputDir, checkpoint = nu
     console.log(chalk.bold.green('  ✅  PM Verdict: ACCEPTED — all requirements satisfied!'));
   }
 
-  // 6. Done
+  // 6. Push to GitHub
+  if (githubRepo) {
+    console.log(chalk.bold.cyan(`\n━━━  מעלה קוד ל-GitHub: ${githubRepo.full}  ━━━`));
+    try {
+      pushToGithub(outputDir, githubRepo.owner, githubRepo.repo, githubRepo.token);
+      console.log(chalk.bold.green(`✅  הקוד הועלה בהצלחה → https://github.com/${githubRepo.full}`));
+    } catch (err) {
+      console.log(chalk.red(`❌  העלאה ל-GitHub נכשלה: ${err.message}`));
+      console.log(chalk.gray('    הקוד שמור מקומית ב: ' + outputDir));
+      console.log(chalk.gray('    לניסיון ידני: cd ' + outputDir + ' && git push -u origin main'));
+    }
+  }
+
+  // 7. Done
   console.log(chalk.bold.green('\n✅  הבנייה הושלמה!'));
   console.log(chalk.white(`📂  קבצים ב: ${outputDir}`));
+  if (githubRepo) console.log(chalk.white(`🐙  GitHub: https://github.com/${githubRepo.full}`));
   console.log(chalk.white(`📊  סה"כ קבצים: ${context.allFilesCreated.length}`));
   context.allFilesCreated.forEach(f => console.log(chalk.green(`   ✓ ${f}`)));
 }

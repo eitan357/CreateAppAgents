@@ -10,6 +10,7 @@ const { runPlanningSession } = require('./planner');
 const { runDesignPicker } = require('./designPicker');
 const { setModelConfig } = require('./agents/base');
 const { ProjectContext } = require('./context');
+const { parseGithubRepo, checkGithubAccess, createGithubRepo } = require('./github');
 
 const TIERS = {
   '1': {
@@ -35,6 +36,91 @@ function ask(question) {
   return new Promise(resolve => rl.question(question, resolve));
 }
 
+// Returns { owner, repo, full } after validating token + access.
+// Loops until the user provides a valid repo or exits.
+async function askForGithubRepo() {
+  console.log(chalk.bold.cyan('\n━━━  GitHub Repository  ━━━'));
+  console.log(chalk.gray('הקוד שייוצר יישמר ב-repository הזה בסוף הבנייה.\n'));
+
+  // Check token
+  let token = process.env.GITHUB_TOKEN || process.env.GH_TOKEN || '';
+  if (!token) {
+    console.log(chalk.yellow('⚠️   לא נמצא GITHUB_TOKEN בסביבה.'));
+    console.log(chalk.gray('    הוסף GITHUB_TOKEN=<personal access token> לקובץ .env'));
+    console.log(chalk.gray('    הטוקן צריך הרשאות: repo (read + write)\n'));
+    console.log(chalk.gray('    ליצירת טוקן: https://github.com/settings/tokens/new'));
+    console.log(chalk.gray('    בחר: repo → Full control of private repositories\n'));
+    token = (await ask(chalk.bold.green('▶  הדבק את ה-GitHub token כאן (או Enter לדלג): '))).trim();
+    if (!token) {
+      console.log(chalk.yellow('⚠️  דילוג על GitHub — הקוד ייוצר מקומית בלבד.\n'));
+      return null;
+    }
+    // Save to process.env for this session
+    process.env.GITHUB_TOKEN = token;
+  }
+
+  while (true) {
+    const input = (await ask(chalk.bold.green('▶  GitHub repository (owner/repo): '))).trim();
+    if (!input) {
+      console.log(chalk.yellow('⚠️  דילוג על GitHub — הקוד ייוצר מקומית בלבד.\n'));
+      return null;
+    }
+
+    const parsed = parseGithubRepo(input);
+    if (!parsed) {
+      console.log(chalk.red('❌  פורמט לא תקין. דוגמאות: myuser/my-app  או  https://github.com/myuser/my-app\n'));
+      continue;
+    }
+
+    console.log(chalk.gray(`\n🔍  בודק גישה ל-${parsed.full}...`));
+    const access = await checkGithubAccess(parsed.owner, parsed.repo, token);
+
+    if (access.networkError) {
+      console.log(chalk.red(`❌  שגיאת רשת: ${access.networkError}`));
+      console.log(chalk.gray('    בדוק חיבור לאינטרנט ונסה שוב.\n'));
+      continue;
+    }
+
+    if (access.authError) {
+      console.log(chalk.red('❌  שגיאת אימות — הטוקן לא תקין או פג תוקף.'));
+      console.log(chalk.gray('    צור טוקן חדש ב: https://github.com/settings/tokens/new'));
+      console.log(chalk.gray('    הרשאות נדרשות: repo → Full control\n'));
+      token = (await ask(chalk.bold.green('▶  הדבק טוקן חדש: '))).trim();
+      if (!token) return null;
+      process.env.GITHUB_TOKEN = token;
+      continue;
+    }
+
+    if (!access.exists) {
+      console.log(chalk.yellow(`⚠️   Repository "${parsed.full}" לא קיים.`));
+      const create = (await ask(chalk.bold.green('▶  ליצור אותו עכשיו? (y/n) [ברירת מחדל: y]: '))).trim().toLowerCase();
+      if (create === 'n') continue;
+
+      const isPrivate = (await ask(chalk.bold.green('▶  Repository פרטי? (y/n) [ברירת מחדל: y]: '))).trim().toLowerCase();
+      try {
+        await createGithubRepo(parsed.repo, token, isPrivate !== 'n');
+        console.log(chalk.green(`✅  Repository "${parsed.full}" נוצר בהצלחה.\n`));
+        return { ...parsed, token };
+      } catch (err) {
+        console.log(chalk.red(`❌  יצירת repository נכשלה: ${err.message}`));
+        console.log(chalk.gray('    ייתכן שהשם תפוס או שאין הרשאות ליצירה. נסה שם אחר.\n'));
+        continue;
+      }
+    }
+
+    if (!access.canPush) {
+      console.log(chalk.red(`❌  אין הרשאת כתיבה ל-${parsed.full}.`));
+      console.log(chalk.gray('    ודא שהטוקן שייך למשתמש שיש לו הרשאת write/push ל-repository.'));
+      console.log(chalk.gray('    אם זה repository של ארגון — ודא שהטוקן כולל גישה לארגון.\n'));
+      continue;
+    }
+
+    const visibility = access.private ? 'פרטי' : 'ציבורי';
+    console.log(chalk.green(`✅  גישה אושרה — ${parsed.full} (${visibility})\n`));
+    return { ...parsed, token };
+  }
+}
+
 async function main() {
   console.log(chalk.bold.cyan('\n╔══════════════════════════════════════════╗'));
   console.log(chalk.bold.cyan('║       App Builder — Multi-Agent System    ║'));
@@ -53,6 +139,9 @@ async function main() {
   }
 
   const outputDir = path.resolve(process.cwd(), 'output', projectName.replace(/\s+/g, '-').toLowerCase());
+
+  // ── GitHub repository ───────────────────────────────────────────────────────
+  const githubRepo = await askForGithubRepo();
 
   // ── Check for existing checkpoint ──────────────────────────────────────────
   const checkpoint = ProjectContext.loadCheckpoint(outputDir);
@@ -79,7 +168,7 @@ async function main() {
 
       rl.close();
       try {
-        await orchestrate(checkpoint.requirements, projectName, outputDir, checkpoint);
+        await orchestrate(checkpoint.requirements, projectName, outputDir, checkpoint, githubRepo);
       } catch (err) {
         console.error(chalk.red('\n❌  שגיאה קריטית:'), err.message);
         if (process.env.DEBUG) console.error(err.stack);
@@ -172,7 +261,7 @@ async function main() {
   rl.close();
 
   try {
-    await orchestrate(requirements, projectName, outputDir);
+    await orchestrate(requirements, projectName, outputDir, null, githubRepo);
   } catch (err) {
     console.error(chalk.red('\n❌  שגיאה קריטית:'), err.message);
     if (process.env.DEBUG) console.error(err.stack);
