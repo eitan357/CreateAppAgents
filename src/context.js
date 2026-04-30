@@ -8,6 +8,52 @@ const { DEPENDENCY_MAP } = require('./agentDependencies');
 // Agents that receive quality feedback during fix rounds
 const FIX_ROUND_AGENTS = new Set(['backendDev', 'frontendDev', 'authAgent']);
 
+// Platform agents that squads must import from instead of creating their own
+const PLATFORM_AGENTS = ['uiPrimitivesAgent', 'uiCompositeAgent', 'apiClientAgent'];
+
+function _injectPlatformRules(lines, agentOutputs) {
+  const hasUi  = agentOutputs['uiPrimitivesAgent'] || agentOutputs['uiCompositeAgent'];
+  const hasApi = agentOutputs['apiClientAgent'];
+  if (!hasUi && !hasApi) return;
+
+  lines.push(
+    '# ⚠️  Platform Shared Code — MANDATORY',
+    'The platform team has created shared modules. You MUST use them — do NOT create duplicates.',
+    '',
+  );
+
+  if (hasUi) {
+    lines.push(
+      '## UI Components',
+      "Primitive components : shared/components/primitives/  (Button, Input, Select, Typography, Icon, Badge, Avatar, Spinner, Tooltip, ...)",
+      "Composite components : shared/components/composite/   (Card, Modal, Drawer, Toast, Table, Carousel, EmptyState, ErrorState, LoadingState, ...)",
+      '',
+      "Import example (adjust relative depth or use @shared alias if tsconfig has paths):",
+      "  import { Button, Input, Typography } from '../../shared/components/primitives';",
+      "  import { Card, Modal, EmptyState }   from '../../shared/components/composite';",
+      '',
+      'DO NOT create your own Button, Input, Card, Modal or any other base component.',
+      'If you need a new variant, note it in a comment — do not implement it in squad code.',
+      '',
+    );
+  }
+
+  if (hasApi) {
+    lines.push(
+      '## API Client',
+      'All HTTP calls go through the shared client. All API types are defined in shared/api/types.',
+      '',
+      "Import example (adjust relative depth or use @shared alias):",
+      "  import { api }           from '../../shared/api';",
+      "  import type { User, ... } from '../../shared/api/types';",
+      '',
+      'DO NOT use fetch() or axios directly.',
+      'DO NOT define your own API response interfaces — import them from shared/api/types.',
+      '',
+    );
+  }
+}
+
 class ProjectContext {
   constructor(requirements, plan, outputDir) {
     this.requirements = requirements;
@@ -21,6 +67,15 @@ class ProjectContext {
     this.squadPlan = null;
     this.squadSpecs = {};   // squadId → spec markdown content
     this.squadGaps  = {};   // squadId → gaps markdown content (cleared after fix)
+    this.platformUpdateNotes = {}; // agentName → change description (set during update mode)
+  }
+
+  setPlatformUpdateNote(agentName, note) {
+    if (note === null) {
+      delete this.platformUpdateNotes[agentName];
+    } else {
+      this.platformUpdateNotes[agentName] = note;
+    }
   }
 
   addAgentOutput(agentName, summary, files) {
@@ -165,6 +220,18 @@ class ProjectContext {
         'Read the relevant existing files using read_file, then implement or fix ALL items listed below:',
         '',
         this.pmFeedbackNotes,
+        '',
+      );
+    }
+
+    if (this.platformUpdateNotes[agentName]) {
+      lines.push(
+        '# ⚠️  UPDATE MODE',
+        'Read existing files in your shared/ directory first, then apply ONLY these specific changes:',
+        '',
+        this.platformUpdateNotes[agentName],
+        '',
+        'Do NOT remove existing components or endpoints — only add or modify what is listed above.',
         '',
       );
     }
@@ -314,6 +381,8 @@ class ProjectContext {
       }
     }
 
+    _injectPlatformRules(lines, this.agentOutputs);
+
     lines.push(
       `# Your Task — ${agentName} (${squad.name})`,
       `Implement ONLY the ${squad.name} domain using the context above.`,
@@ -409,6 +478,8 @@ class ProjectContext {
         lines.push(`## ${depName}`, output.summary, '', `Files: ${output.files.join(', ')}`, '');
       }
     }
+
+    _injectPlatformRules(lines, this.agentOutputs);
 
     lines.push(
       `# Your Task — ${agentName} (${squad.name}) UPDATE`,

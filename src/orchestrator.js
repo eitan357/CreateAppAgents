@@ -61,6 +61,11 @@ const { createARVRAgent }                = require('./agents/arVrAgent');
 const { createWidgetsExtensionsAgent }   = require('./agents/widgetsExtensionsAgent');
 const { createOTAUpdatesAgent }          = require('./agents/otaUpdatesAgent');
 
+// ── Platform Build agents ─────────────────────────────────────────────────────
+const { createUiPrimitivesAgent }        = require('./agents/uiPrimitivesAgent');
+const { createUiCompositeAgent }         = require('./agents/uiCompositeAgent');
+const { createApiClientAgent }           = require('./agents/apiClientAgent');
+
 // ── Quality agents ────────────────────────────────────────────────────────────
 const { createErrorHandlingAgent }       = require('./agents/errorHandlingAgent');
 const { createCodeDeduplicationAgent }   = require('./agents/codeDeduplicationAgent');
@@ -102,6 +107,10 @@ const AGENT_REGISTRY = {
   reviewer:                 createReviewerAgent,
   devops:                   createDevOpsAgent,
   documentation:            createDocumentationAgent,
+  // Platform Build
+  uiPrimitivesAgent:        createUiPrimitivesAgent,
+  uiCompositeAgent:         createUiCompositeAgent,
+  apiClientAgent:           createApiClientAgent,
   // Discovery & Planning
   mobileTechAdvisor:        createMobileTechAdvisorAgent,
   businessPlanningAgent:    createBusinessPlanningAgent,
@@ -163,6 +172,12 @@ const LAYER_DEFINITIONS = [
     name: 'Design',
     parallel: true,
     agents: ['dataArchitect', 'apiDesigner', 'frontendArchitect', 'renderingStrategyAgent', 'uxDesignerAgent', 'designSystemAgent', 'localizationAgent'],
+  },
+  {
+    id: '2b',
+    name: 'Platform Build',
+    parallel: false,
+    agents: ['uiPrimitivesAgent', 'uiCompositeAgent', 'apiClientAgent'],
   },
   {
     id: 3,
@@ -390,6 +405,13 @@ function getActiveAgents(plan) {
 
   // Optional agents selected by PM
   (plan.optionalAgents || []).forEach(n => names.add(n));
+
+  // Platform Build agents — always run when project has frontend
+  if (l3.includeFrontend !== false) {
+    names.add('uiPrimitivesAgent');
+    names.add('uiCompositeAgent');
+    names.add('apiClientAgent');
+  }
 
   // Always-included implementation agents (run after core implementation)
   names.add('errorHandlingAgent');
@@ -855,6 +877,28 @@ async function orchestrateUpdate(changeRequest, checkpointData, outputDir, githu
     const result = pushCheckpoint(outputDir, githubRepo.owner, githubRepo.repo, githubRepo.token, label);
     if (!result.success) console.log(chalk.yellow(`  ⚠️   push ל-GitHub נכשל (${label}): ${result.error}`));
     else console.log(chalk.gray(`  ☁️   checkpoint נשמר ב-GitHub (${label})`));
+  }
+
+  // Run platform agents that need updating (before squads so they can import new components)
+  const { platformUpdates } = updatePlan;
+  if (platformUpdates) {
+    const platformMap = {
+      uiPrimitives: 'uiPrimitivesAgent',
+      uiComposite:  'uiCompositeAgent',
+      apiClient:    'apiClientAgent',
+    };
+    for (const [key, agentName] of Object.entries(platformMap)) {
+      if (!platformUpdates[key] || !activeAgents.has(agentName)) continue;
+      console.log(chalk.bold.cyan(`\n━━━  Platform Update — ${agentName}  ━━━`));
+      context.setPlatformUpdateNote(agentName, platformUpdates[key]);
+      try {
+        const agentConfig = [{ name: agentName, needsShell: false }];
+        await runLayerSequential(agentConfig, context, toolSets, AGENT_REGISTRY);
+      } finally {
+        context.setPlatformUpdateNote(agentName, null);
+      }
+    }
+    saveCheckpoint('Update — Platform');
   }
 
   // Run squads

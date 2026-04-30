@@ -19,11 +19,16 @@ const DEPENDENCY_MAP = {
   designSystemAgent:      ['requirementsAnalyst', 'frontendArchitect', 'uxDesignerAgent'],
   localizationAgent:      ['requirementsAnalyst', 'frontendArchitect'],
 
+  // ── Platform Build ────────────────────────────────────────────────────────
+  uiPrimitivesAgent:      ['designSystemAgent', 'uxDesignerAgent', 'frontendArchitect'],
+  uiCompositeAgent:       ['uiPrimitivesAgent', 'uxDesignerAgent', 'frontendArchitect'],
+  apiClientAgent:         ['apiDesigner', 'systemArchitect'],
+
   // ── Core Implementation ───────────────────────────────────────────────────
-  backendDev:             ['systemArchitect', 'dataArchitect', 'apiDesigner'],
-  frontendDev:            ['systemArchitect', 'frontendArchitect', 'apiDesigner', 'uxDesignerAgent', 'designSystemAgent', 'localizationAgent'],
-  authAgent:              ['systemArchitect', 'apiDesigner', 'dataArchitect'],
-  integrationAgent:       ['systemArchitect', 'apiDesigner'],
+  backendDev:             ['systemArchitect', 'dataArchitect', 'apiDesigner', 'apiClientAgent'],
+  frontendDev:            ['systemArchitect', 'frontendArchitect', 'apiDesigner', 'uxDesignerAgent', 'designSystemAgent', 'localizationAgent', 'uiPrimitivesAgent', 'uiCompositeAgent', 'apiClientAgent'],
+  authAgent:              ['systemArchitect', 'apiDesigner', 'dataArchitect', 'apiClientAgent'],
+  integrationAgent:       ['systemArchitect', 'apiDesigner', 'apiClientAgent'],
 
   // ── Mobile-Specific Features ──────────────────────────────────────────────
   notificationsAgent:     ['frontendDev', 'backendDev', 'integrationAgent'],
@@ -76,7 +81,7 @@ const DEPENDENCY_MAP = {
   seoAgent:               ['frontendDev', 'renderingStrategyAgent', 'frontendArchitect'],
 
   // ── PM Acceptance Review ──────────────────────────────────────────────────
-  pmReviewer:             ['requirementsAnalyst', 'systemArchitect', 'backendDev', 'frontendDev', 'authAgent', 'testFixer', 'reviewer', 'security', 'errorHandlingAgent', 'codeCleanupAgent'],
+  pmReviewer:             ['requirementsAnalyst', 'systemArchitect', 'backendDev', 'frontendDev', 'authAgent', 'testFixer', 'reviewer', 'security', 'errorHandlingAgent', 'codeCleanupAgent', 'uiPrimitivesAgent', 'uiCompositeAgent', 'apiClientAgent'],
 };
 
 module.exports = { DEPENDENCY_MAP };

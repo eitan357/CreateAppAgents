@@ -7,7 +7,7 @@ const UPDATE_SCHEMA = `{
   "affectedSquads": [
     {
       "id": "listings",
-      "changeDescription": "Add price negotiation: POST /api/listings/:id/negotiate endpoint, NegotiateButton component on listing detail screen, negotiation history in user profile"
+      "changeDescription": "Add price negotiation: POST /api/listings/:id/negotiate endpoint, NegotiateButton on listing detail screen"
     }
   ],
   "newSquads": [
@@ -21,7 +21,12 @@ const UPDATE_SCHEMA = `{
       "keyFeatures": ["checkout", "payment-history", "refunds"],
       "agents": ["backendDev", "frontendDev", "integrationAgent"]
     }
-  ]
+  ],
+  "platformUpdates": {
+    "uiPrimitives": null,
+    "uiComposite": "Add Carousel component for listings gallery; update Card to support image header",
+    "apiClient": "Add GET /notifications and POST /notifications/:id/read with NotificationDto and Notification types"
+  }
 }`;
 
 async function analyzeUpdate(changeRequest, existingSquadPlan) {
@@ -36,14 +41,21 @@ async function analyzeUpdate(changeRequest, existingSquadPlan) {
     max_tokens: 2000,
     system: `You are a technical project manager analyzing a change request for an existing application.
 
-Decide which existing squads need to be updated and whether any new squads must be created.
+Decide which existing squads need updating, whether new squads are needed, and whether the shared platform layer needs changes.
 
-Rules:
-- A squad is "affected" if the change requires adding or modifying files in its domain
+Rules for affectedSquads / newSquads:
+- A squad is "affected" if the change requires adding or modifying files in its feature domain
 - Create a new squad ONLY when the change introduces an entirely new domain that no existing squad owns
-- changeDescription must be concrete and actionable: specific endpoints, components, or screens to add/modify
+- changeDescription must be concrete and actionable: specific endpoints, components, or screens
 - If one change touches multiple existing squads, list all of them
 - affectedSquads and newSquads may each be empty arrays if not applicable
+
+Rules for platformUpdates (shared/components and shared/api):
+- uiPrimitives: non-null if the change needs a NEW primitive component (Button variant, new Input type, etc.) or modifies an existing one's behavior/style
+- uiComposite : non-null if the change needs a NEW composite component (Carousel, new Modal variant, etc.) or modifies an existing composite
+- apiClient   : non-null if the change adds NEW API endpoints or entities that need new types in shared/api/types + new methods in shared/api/endpoints
+- Set to null if no changes are needed for that platform layer
+- Be specific: describe exactly which component to add/change or which endpoints/types to add
 
 Return ONLY valid JSON matching this schema exactly:
 ${UPDATE_SCHEMA}`,
@@ -76,6 +88,19 @@ function formatUpdatePlan(updatePlan) {
       lines.push(`    • ${s.name}: ${s.userFacingArea}`);
       lines.push(`      פיצ'רים: ${s.keyFeatures.join(', ')}`);
     });
+    lines.push('');
+  }
+
+  const p = updatePlan.platformUpdates || {};
+  const platformChanges = [
+    p.uiPrimitives && `    • uiPrimitives: ${p.uiPrimitives}`,
+    p.uiComposite  && `    • uiComposite : ${p.uiComposite}`,
+    p.apiClient    && `    • apiClient   : ${p.apiClient}`,
+  ].filter(Boolean);
+
+  if (platformChanges.length > 0) {
+    lines.push('🏗️   Platform Layer שישתנה:');
+    platformChanges.forEach(l => lines.push(l));
   }
 
   return lines.join('\n');
