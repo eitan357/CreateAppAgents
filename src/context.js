@@ -18,6 +18,7 @@ class ProjectContext {
     this.feedbackNotes = null;
     this.pmFeedbackNotes = null;
     this.completedLayers = new Set();
+    this.squadPlan = null;
   }
 
   addAgentOutput(agentName, summary, files) {
@@ -31,6 +32,10 @@ class ProjectContext {
 
   setPmFeedbackNotes(notes) {
     this.pmFeedbackNotes = notes;
+  }
+
+  setSquadPlan(squadPlan) {
+    this.squadPlan = squadPlan;
   }
 
   markLayerComplete(layerId) {
@@ -47,6 +52,7 @@ class ProjectContext {
     fs.writeFileSync(checkpointPath, JSON.stringify({
       requirements: this.requirements,
       plan: this.plan,
+      squadPlan: this.squadPlan,
       agentOutputs: this.agentOutputs,
       allFilesCreated: this.allFilesCreated,
       completedLayers: [...this.completedLayers],
@@ -68,6 +74,7 @@ class ProjectContext {
     ctx.agentOutputs = checkpoint.agentOutputs || {};
     ctx.allFilesCreated = checkpoint.allFilesCreated || [];
     ctx.completedLayers = new Set(checkpoint.completedLayers || []);
+    ctx.squadPlan = checkpoint.squadPlan || null;
     return ctx;
   }
 
@@ -85,6 +92,23 @@ class ProjectContext {
       this.outputDir,
       '',
     ];
+
+    if (this.squadPlan) {
+      lines.push('# Squad Structure');
+      lines.push('The application is divided into feature squads. Structure your code under the module paths below.');
+      lines.push('');
+      this.squadPlan.squads.forEach(squad => {
+        lines.push(`## ${squad.name}`);
+        lines.push(`Domain   : ${squad.userFacingArea}`);
+        lines.push(`Scope    : ${squad.description}`);
+        lines.push(`Backend  : backend/src/modules/${squad.backendModule}/`);
+        lines.push(`Frontend : frontend/src/${squad.frontendModule}/ (or mobile/src/${squad.frontendModule}/)`);
+        lines.push(`Features : ${squad.keyFeatures.join(', ')}`);
+        lines.push('');
+      });
+      lines.push(`Platform Team (cross-squad): ${this.squadPlan.platformNotes}`);
+      lines.push('');
+    }
 
     // During fix rounds skip dependency re-injection — agents already have the code,
     // they only need to know what to fix. Saves 5-15K tokens per fix round call.

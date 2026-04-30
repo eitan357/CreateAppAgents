@@ -5,6 +5,7 @@ const chalk = require('chalk');
 
 const { ProjectContext } = require('./context');
 const { approveStep, approveLayer } = require('./approval');
+const { createSquadPlan, formatSquadPlan } = require('./squadPlanner');
 const { createFileSystemTools } = require('./tools/fileSystem');
 const { createShellTools } = require('./tools/shell');
 const { runLayerInParallel, runLayerSequential, getFailedAgents } = require('./layerRunner');
@@ -549,6 +550,25 @@ async function orchestrate(requirements, projectName, outputDir, checkpoint = nu
     }
 
     context = new ProjectContext(requirements, plan, outputDir);
+
+    // ── Squad planning ────────────────────────────────────────────────────────
+    console.log(chalk.yellow('⏳  Generating squad breakdown...'));
+    try {
+      const squadPlan = await createSquadPlan(requirements, plan);
+      const squadApproved = await approveStep(
+        '🏢  חלוקה לצוותים',
+        'המערכת זיהתה את הדומיינים הבאים — כל צוות agents יהיה אחראי על תחום אחד:',
+        formatSquadPlan(squadPlan),
+      );
+      if (squadApproved) {
+        context.setSquadPlan(squadPlan);
+        console.log(chalk.green(`✅  Squad plan אושר — ${squadPlan.squads.length} צוותים\n`));
+      } else {
+        console.log(chalk.gray('  Squad plan דולג — agents יבנו את האפליקציה ללא חלוקה לצוותים.\n'));
+      }
+    } catch (err) {
+      console.log(chalk.yellow(`  ⚠️  Squad planning נכשל: ${err.message} — ממשיך ללא חלוקה לצוותים.\n`));
+    }
   }
   const fsTools = createFileSystemTools(outputDir);
   const shellTools = createShellTools(outputDir);
