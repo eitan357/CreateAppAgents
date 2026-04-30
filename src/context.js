@@ -325,6 +325,101 @@ class ProjectContext {
     return lines.join('\n');
   }
 
+  buildSquadPmUpdateSpecContext(squad, changeDescription) {
+    return [
+      '# Output Directory',
+      this.outputDir,
+      '',
+      `# Your Squad: ${squad.name}`,
+      `Squad ID       : ${squad.id}`,
+      `Backend module : backend/src/modules/${squad.backendModule}/`,
+      `Frontend module: frontend/src/${squad.frontendModule}/  (or mobile/src/${squad.frontendModule}/)`,
+      '',
+      '# What to change',
+      changeDescription,
+      '',
+      '# Your Task',
+      `1. read_file "docs/squads/${squad.id}-spec.md"`,
+      `2. list_files + read relevant files in backend/src/modules/${squad.backendModule}/ and frontend/src/${squad.frontendModule}/`,
+      '3. Update the spec — DO NOT remove existing items, only add new ones marked with "(NEW)"',
+      `4. Write updated spec to: docs/squads/${squad.id}-spec.md`,
+      'Write ALL output using the write_file tool.',
+      '',
+    ].join('\n');
+  }
+
+  buildSquadUpdateContext(agentName, squad, changeDescription) {
+    const lines = [
+      '# Project Requirements',
+      this.requirements,
+      '',
+      '# Tech Stack Decisions',
+      JSON.stringify(this.plan.techStack, null, 2),
+      '',
+      '# Output Directory',
+      this.outputDir,
+      '',
+      `# Your Squad: ${squad.name}`,
+      `You are the **${agentName}** agent working in the **${squad.name}**.`,
+      '',
+      '# ⚠️  UPDATE MODE — Read existing files first',
+      'This squad already has existing code. Your task is to ADD or MODIFY — not rebuild from scratch.',
+      '',
+      '## What to change',
+      changeDescription,
+      '',
+      'Steps:',
+      `1. list_files on backend/src/modules/${squad.backendModule}/`,
+      `2. list_files on frontend/src/${squad.frontendModule}/ (or mobile/src/${squad.frontendModule}/)`,
+      '3. Read all relevant existing files',
+      '4. Apply ONLY the changes described in "What to change" above',
+      '5. Write updated files using write_file',
+      '',
+    ];
+
+    const spec = this.squadSpecs[squad.id];
+    if (spec) {
+      lines.push('# Updated Squad Feature Spec (implement items marked "(NEW)")', spec, '');
+    }
+
+    const gaps = this.squadGaps[squad.id];
+    if (gaps) {
+      lines.push(
+        '# ⚠️  Squad PM Review — Fix Round',
+        'Your Squad PM found gaps. Fix ALL items listed below:',
+        '',
+        gaps,
+        '',
+      );
+    }
+
+    const otherSquads = this.squadPlan ? this.squadPlan.squads.filter(s => s.id !== squad.id) : [];
+    if (otherSquads.length > 0) {
+      lines.push('# Other Squads (do NOT touch their files)');
+      otherSquads.forEach(s => lines.push(`- ${s.name}: ${s.userFacingArea}`));
+      lines.push('');
+    }
+
+    const deps = DEPENDENCY_MAP[agentName] || [];
+    const availableDeps = deps.filter(dep => this.agentOutputs[dep]);
+    if (availableDeps.length > 0) {
+      lines.push('# Platform Context', '');
+      for (const depName of availableDeps) {
+        const output = this.agentOutputs[depName];
+        lines.push(`## ${depName}`, output.summary, '', `Files: ${output.files.join(', ')}`, '');
+      }
+    }
+
+    lines.push(
+      `# Your Task — ${agentName} (${squad.name}) UPDATE`,
+      'Read existing files first. Then apply only the changes listed in "What to change" above.',
+      'Write ALL modified/new files using the write_file tool.',
+      '',
+    );
+
+    return lines.join('\n');
+  }
+
   buildContextMessage(agentName) {
     return this.buildScopedContext(agentName);
   }

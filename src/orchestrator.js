@@ -9,7 +9,8 @@ const { createSquadPlan, formatSquadPlan } = require('./squadPlanner');
 const { createFileSystemTools } = require('./tools/fileSystem');
 const { createShellTools } = require('./tools/shell');
 const { runLayerInParallel, runLayerSequential, getFailedAgents } = require('./layerRunner');
-const { runAllSquads } = require('./squadRunner');
+const { runAllSquads, runAllSquadsUpdate } = require('./squadRunner');
+const { analyzeUpdate, formatUpdatePlan } = require('./updatePlanner');
 const { pushCheckpoint, pushToGithub } = require('./github');
 
 // ── Core agents ───────────────────────────────────────────────────────────────
@@ -799,4 +800,118 @@ async function orchestrate(requirements, projectName, outputDir, checkpoint = nu
   context.allFilesCreated.forEach(f => console.log(chalk.green(`   ✓ ${f}`)));
 }
 
-module.exports = { orchestrate };
+// ── Update Mode orchestration ─────────────────────────────────────────────────
+async function orchestrateUpdate(changeRequest, checkpointData, outputDir, githubRepo = null) {
+  console.log(chalk.bold.cyan('\n🔄  App Builder Agents — Update Mode\n'));
+
+  const context = ProjectContext.fromCheckpoint({ ...checkpointData, outputDir });
+
+  if (!context.squadPlan) {
+    console.log(chalk.red('❌  לא נמצאה תוכנית צוותים. מצב עדכון דורש פרויקט שנבנה עם squad plan.'));
+    return;
+  }
+
+  // Analyze the change request
+  console.log(chalk.yellow('⏳  מנתח את בקשת השינוי...'));
+  let updatePlan;
+  try {
+    updatePlan = await analyzeUpdate(changeRequest, context.squadPlan);
+  } catch (err) {
+    console.log(chalk.red(`❌  ניתוח הבקשה נכשל: ${err.message}`));
+    return;
+  }
+
+  if (updatePlan.affectedSquads.length === 0 && updatePlan.newSquads.length === 0) {
+    console.log(chalk.yellow('⚠️  לא זוהו צוותים מושפעים. נסה לנסח את הבקשה בצורה יותר ספציפית.'));
+    return;
+  }
+
+  const approved = await approveStep(
+    '🔄  תוכנית עדכון',
+    'ניתוח הבקשה — זה מה שישתנה:',
+    formatUpdatePlan(updatePlan),
+  );
+  if (!approved) return;
+
+  // Add new squads to the squad plan
+  if (updatePlan.newSquads.length > 0) {
+    context.setSquadPlan({
+      ...context.squadPlan,
+      squads: [...context.squadPlan.squads, ...updatePlan.newSquads],
+    });
+  }
+
+  const fsTools = createFileSystemTools(outputDir);
+  const shellTools = createShellTools(outputDir);
+  const toolSets = {
+    fs:  fsTools,
+    all: { tools: [...fsTools.tools, ...shellTools.tools], handlers: { ...fsTools.handlers, ...shellTools.handlers } },
+  };
+  const activeAgents = getActiveAgents(context.plan);
+
+  function saveCheckpoint(label) {
+    context.saveCheckpoint();
+    if (!githubRepo) return;
+    const result = pushCheckpoint(outputDir, githubRepo.owner, githubRepo.repo, githubRepo.token, label);
+    if (!result.success) console.log(chalk.yellow(`  ⚠️   push ל-GitHub נכשל (${label}): ${result.error}`));
+    else console.log(chalk.gray(`  ☁️   checkpoint נשמר ב-GitHub (${label})`));
+  }
+
+  // Run squads
+  console.log(chalk.bold.cyan('\n━━━  עדכון צוותים  ━━━'));
+  await runAllSquadsUpdate(updatePlan, context, toolSets, AGENT_REGISTRY, activeAgents);
+  saveCheckpoint('Update — Squads');
+
+  // Quality re-run
+  console.log(chalk.bold.cyan('\n━━━  Quality Re-check  ━━━'));
+  const qualityResults = await runQualityLayers(activeAgents, context, toolSets, context.plan);
+
+  const proceed = await approveLayer('Quality after Update', qualityResults);
+  if (!proceed) {
+    saveCheckpoint('Update — Quality');
+    return;
+  }
+
+  // PM review
+  console.log(chalk.bold.cyan('\n━━━  PM Acceptance Review  ━━━'));
+  const pmResult = await runPmReview(context, toolSets);
+  const pmFeedback = pmResult ? buildPmFeedback(pmResult) : null;
+
+  if (pmFeedback) {
+    const runFix = await approveStep(
+      '🔴  PM Fix Round',
+      'PM מצא פערים בין הדרישות למימוש. להריץ סבב תיקונים?',
+      pmFeedback.slice(0, 1400) + (pmFeedback.length > 1400 ? '\n...(truncated)' : ''),
+    );
+    if (runFix) {
+      context.setPmFeedbackNotes(pmFeedback);
+      const fixConfigs = PM_FIX_ROUND_AGENTS
+        .filter(name => activeAgents.has(name))
+        .map(name => ({ name, needsShell: false }));
+      await runLayerInParallel(fixConfigs, context, toolSets, AGENT_REGISTRY);
+      context.setPmFeedbackNotes(null);
+      await runQualityLayers(activeAgents, context, toolSets, context.plan);
+      await runPmReview(context, toolSets);
+    }
+  } else {
+    console.log(chalk.bold.green('  ✅  PM Verdict: ACCEPTED'));
+  }
+
+  saveCheckpoint('Update — Complete');
+
+  if (githubRepo) {
+    console.log(chalk.bold.cyan(`\n━━━  מעלה קוד ל-GitHub  ━━━`));
+    try {
+      pushToGithub(outputDir, githubRepo.owner, githubRepo.repo, githubRepo.token);
+      console.log(chalk.bold.green(`✅  הקוד הועלה → https://github.com/${githubRepo.full}`));
+    } catch (err) {
+      console.log(chalk.red(`❌  העלאה נכשלה: ${err.message}`));
+    }
+  }
+
+  console.log(chalk.bold.green('\n✅  העדכון הושלם!'));
+  console.log(chalk.white(`📂  קבצים ב: ${outputDir}`));
+  if (githubRepo) console.log(chalk.white(`🐙  GitHub: https://github.com/${githubRepo.full}`));
+}
+
+module.exports = { orchestrate, orchestrateUpdate };
