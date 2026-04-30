@@ -364,7 +364,7 @@ ${OPTIONAL_AGENTS_GUIDE}`,
       },
     ],
     messages: [{ role: 'user', content: `Project Name: ${projectName}\n\nRequirements:\n${requirements}` }],
-  });
+  }, { timeout: 10 * 60 * 1000 });
 
   const text = response.content.find(b => b.type === 'text')?.text || '';
   const jsonMatch = text.match(/\{[\s\S]*\}/);
@@ -539,6 +539,7 @@ async function orchestrate(requirements, projectName, outputDir, checkpoint = nu
     // ── Fresh build ─────────────────────────────────────────────────────────
     console.log(chalk.yellow('⏳  Generating project plan...'));
     const plan = await createPlan(requirements, projectName);
+    // plan is block-scoped to this else branch intentionally — context.plan is the source of truth
 
     const planApproved = await approveStep(
       'תוכנית הפרויקט',
@@ -602,7 +603,7 @@ async function orchestrate(requirements, projectName, outputDir, checkpoint = nu
       continue;
     }
 
-    const agentConfigs = filterLayerAgents(layerDef, activeAgents, plan);
+    const agentConfigs = filterLayerAgents(layerDef, activeAgents, context.plan);
 
     if (agentConfigs.length === 0) {
       console.log(chalk.gray(`\nLayer ${layerDef.id} (${layerDef.name}): all agents skipped — moving on`));
@@ -705,7 +706,7 @@ async function orchestrate(requirements, projectName, outputDir, checkpoint = nu
         context.setFeedbackNotes(null);
 
         console.log(chalk.green(`  ✅  Fix Round ${round} complete — re-running Quality to verify...`));
-        const rerunResults = await runQualityLayers(activeAgents, context, toolSets, plan);
+        const rerunResults = await runQualityLayers(activeAgents, context, toolSets, context.plan);
 
         const proceed = await approveLayer(`Quality Re-check — after Fix Round ${round}`, rerunResults);
         if (!proceed) {
@@ -759,7 +760,7 @@ async function orchestrate(requirements, projectName, outputDir, checkpoint = nu
       context.setPmFeedbackNotes(null);
 
       console.log(chalk.green(`  ✅  PM Fix Round ${round} complete — re-running Quality to verify...`));
-      await runQualityLayers(activeAgents, context, toolSets, plan);
+      await runQualityLayers(activeAgents, context, toolSets, context.plan);
 
       console.log(chalk.bold.cyan(`\n━━━  PM Re-check after Fix Round ${round}  ━━━`));
       pmReviewResult = await runPmReview(context, toolSets);

@@ -52,7 +52,7 @@ class BaseAgent {
         params.tools = this.tools;
       }
 
-      const response = await this.client.messages.create(params);
+      const response = await this.client.messages.create(params, { timeout: 20 * 60 * 1000 });
       messages.push({ role: 'assistant', content: response.content });
 
       if (response.stop_reason !== 'tool_use') {
