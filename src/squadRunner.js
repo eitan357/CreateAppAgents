@@ -1,47 +1,105 @@
 'use strict';
 
+const fs   = require('fs');
+const path = require('path');
 const chalk = require('chalk');
+const { createSquadPmSpecAgent, createSquadPmReviewAgent } = require('./agents/squadPmAgent');
 
 // Layer 3 agents eligible to run inside a squad
 const SQUAD_ELIGIBLE_AGENTS = new Set(['backendDev', 'frontendDev', 'authAgent', 'integrationAgent']);
 
-// Run one squad's agents sequentially (BE before FE so API contract is defined first)
+// Run one squad: PM spec → dev agents → PM review → (optional) fix round
 async function runSquad(squad, context, toolSets, agentRegistry, activeAgents) {
   const agents = (squad.agents || ['backendDev', 'frontendDev'])
     .filter(name => SQUAD_ELIGIBLE_AGENTS.has(name))
     .filter(name => agentRegistry[name])
     .filter(name => activeAgents.has(name));
 
-  const squadResults = {};
+  // ── Phase 1: Squad PM writes the feature spec ─────────────────────────────
+  console.log(chalk.bold.yellow(`    [${squad.name}] PM writing feature spec...`));
+  try {
+    const specAgent = createSquadPmSpecAgent(toolSets.fs);
+    await specAgent.run(context.buildSquadPmSpecContext(squad));
+    const specPath = path.join(context.outputDir, 'docs', 'squads', `${squad.id}-spec.md`);
+    if (fs.existsSync(specPath)) {
+      context.setSquadSpec(squad.id, fs.readFileSync(specPath, 'utf8'));
+      console.log(chalk.green(`    [${squad.name}] Spec written → docs/squads/${squad.id}-spec.md`));
+    }
+  } catch (err) {
+    console.log(chalk.yellow(`    [${squad.name}] Spec writing failed: ${err.message} — continuing without spec`));
+  }
 
+  // ── Phase 2: Dev agents implement ────────────────────────────────────────
+  const squadResults = await _runDevAgents(squad, agents, context, toolSets, agentRegistry);
+
+  // ── Phase 3: Squad PM reviews the output ─────────────────────────────────
+  console.log(chalk.bold.yellow(`    [${squad.name}] PM reviewing implementation...`));
+  const verdict = await _runPmReview(squad, context, toolSets);
+
+  // ── Phase 4: One fix round if PM found gaps ───────────────────────────────
+  if (verdict === 'GAPS') {
+    console.log(chalk.yellow(`    [${squad.name}] PM found gaps — running fix round...`));
+    await _runDevAgents(squad, agents, context, toolSets, agentRegistry);
+    context.setSquadGaps(squad.id, null);
+
+    console.log(chalk.bold.yellow(`    [${squad.name}] PM re-reviewing after fix...`));
+    await _runPmReview(squad, context, toolSets);
+  }
+
+  return squadResults;
+}
+
+// ── Dev agents (shared by initial run + fix round) ────────────────────────────
+async function _runDevAgents(squad, agents, context, toolSets, agentRegistry) {
+  const results = {};
   for (const agentName of agents) {
     console.log(chalk.cyan(`    [${squad.name}] Running ${agentName}...`));
-
     const createAgent = agentRegistry[agentName];
-    const toolSet = toolSets.fs; // squads never need shell access
-
     for (let attempt = 1; attempt <= 2; attempt++) {
       try {
-        const agent = createAgent(toolSet);
-        const contextMessage = context.buildSquadScopedContext(agentName, squad);
-        const result = await agent.run(contextMessage);
-
+        const agent = createAgent(toolSets.fs);
+        const result = await agent.run(context.buildSquadScopedContext(agentName, squad));
         context.addAgentOutput(`${squad.id}:${agentName}`, result.summary, result.filesCreated);
         console.log(chalk.green(`    [${squad.name}] ${agentName} done — ${result.filesCreated.length} file(s)`));
-        squadResults[agentName] = result;
+        results[agentName] = result;
         break;
       } catch (err) {
         if (attempt === 2) {
           console.log(chalk.red(`    [${squad.name}] ${agentName} failed: ${err.message}`));
-          squadResults[agentName] = { error: err.message, summary: `FAILED: ${err.message}`, filesCreated: [] };
+          results[agentName] = { error: err.message, summary: `FAILED: ${err.message}`, filesCreated: [] };
         } else {
           console.log(chalk.yellow(`    [${squad.name}] ${agentName} failed (attempt 1) — retrying...`));
         }
       }
     }
   }
+  return results;
+}
 
-  return squadResults;
+// ── PM review — returns 'ACCEPTED', 'GAPS', or 'UNKNOWN' ─────────────────────
+async function _runPmReview(squad, context, toolSets) {
+  try {
+    const reviewAgent = createSquadPmReviewAgent(toolSets.fs);
+    await reviewAgent.run(context.buildSquadPmReviewContext(squad));
+
+    const reviewPath = path.join(context.outputDir, 'docs', 'squads', `${squad.id}-review.md`);
+    if (!fs.existsSync(reviewPath)) return 'UNKNOWN';
+
+    const content = fs.readFileSync(reviewPath, 'utf8');
+    if (content.includes('VERDICT: ACCEPTED')) {
+      console.log(chalk.bold.green(`    [${squad.name}] PM verdict: ACCEPTED ✅`));
+      return 'ACCEPTED';
+    }
+    if (content.includes('VERDICT: GAPS')) {
+      console.log(chalk.yellow(`    [${squad.name}] PM verdict: GAPS — fix round triggered`));
+      context.setSquadGaps(squad.id, content);
+      return 'GAPS';
+    }
+    return 'UNKNOWN';
+  } catch (err) {
+    console.log(chalk.yellow(`    [${squad.name}] PM review failed: ${err.message}`));
+    return 'UNKNOWN';
+  }
 }
 
 // Run all squads in parallel, then merge their outputs so Layer 4 agents

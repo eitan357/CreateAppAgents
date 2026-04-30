@@ -19,6 +19,8 @@ class ProjectContext {
     this.pmFeedbackNotes = null;
     this.completedLayers = new Set();
     this.squadPlan = null;
+    this.squadSpecs = {};   // squadId → spec markdown content
+    this.squadGaps  = {};   // squadId → gaps markdown content (cleared after fix)
   }
 
   addAgentOutput(agentName, summary, files) {
@@ -36,6 +38,18 @@ class ProjectContext {
 
   setSquadPlan(squadPlan) {
     this.squadPlan = squadPlan;
+  }
+
+  setSquadSpec(squadId, content) {
+    this.squadSpecs[squadId] = content;
+  }
+
+  setSquadGaps(squadId, content) {
+    if (content === null) {
+      delete this.squadGaps[squadId];
+    } else {
+      this.squadGaps[squadId] = content;
+    }
   }
 
   markLayerComplete(layerId) {
@@ -166,6 +180,69 @@ class ProjectContext {
     return lines.join('\n');
   }
 
+  buildSquadPmSpecContext(squad) {
+    const lines = [
+      '# Project Requirements',
+      this.requirements,
+      '',
+      '# Tech Stack',
+      JSON.stringify(this.plan.techStack, null, 2),
+      '',
+      '# Output Directory',
+      this.outputDir,
+      '',
+      `# Your Squad: ${squad.name}`,
+      `Squad ID  : ${squad.id}`,
+      `Domain    : ${squad.userFacingArea}`,
+      `Description: ${squad.description}`,
+      `Key features: ${squad.keyFeatures.join(', ')}`,
+      `Backend module : backend/src/modules/${squad.backendModule}/`,
+      `Frontend module: frontend/src/${squad.frontendModule}/  (or mobile/src/${squad.frontendModule}/)`,
+      '',
+    ];
+
+    const otherSquads = this.squadPlan ? this.squadPlan.squads.filter(s => s.id !== squad.id) : [];
+    if (otherSquads.length > 0) {
+      lines.push('# Other Squads (do NOT spec their features)');
+      otherSquads.forEach(s => lines.push(`- ${s.name}: ${s.userFacingArea}`));
+      lines.push('');
+    }
+
+    // Platform context
+    ['systemArchitect', 'dataArchitect', 'apiDesigner'].forEach(dep => {
+      const out = this.agentOutputs[dep];
+      if (out) lines.push(`# ${dep} Output`, out.summary, '');
+    });
+
+    lines.push(
+      `# Your Task`,
+      `Write the feature spec for the ${squad.name}.`,
+      `Output file: docs/squads/${squad.id}-spec.md`,
+      'Write ALL output using the write_file tool.',
+      '',
+    );
+    return lines.join('\n');
+  }
+
+  buildSquadPmReviewContext(squad) {
+    return [
+      '# Output Directory',
+      this.outputDir,
+      '',
+      `# Your Squad: ${squad.name}`,
+      `Squad ID       : ${squad.id}`,
+      `Domain         : ${squad.userFacingArea}`,
+      `Backend module : backend/src/modules/${squad.backendModule}/`,
+      `Frontend module: frontend/src/${squad.frontendModule}/  (or mobile/src/${squad.frontendModule}/)`,
+      '',
+      '# Your Task',
+      `Read docs/squads/${squad.id}-spec.md, read all squad files, then write docs/squads/${squad.id}-review.md`,
+      'Verdict must be either "VERDICT: ACCEPTED" or "VERDICT: GAPS".',
+      'Write ALL output using the write_file tool.',
+      '',
+    ].join('\n');
+  }
+
   buildSquadScopedContext(agentName, squad) {
     const lines = [
       '# Project Requirements',
@@ -191,6 +268,24 @@ class ProjectContext {
       'Build ONLY the features listed above. Do not implement features that belong to other squads.',
       '',
     ];
+
+    // Squad PM spec — injected so devs implement exactly what was specified
+    const spec = this.squadSpecs[squad.id];
+    if (spec) {
+      lines.push('# Squad Feature Spec (written by your Squad PM — implement exactly this)', spec, '');
+    }
+
+    // Squad PM gaps — injected during fix rounds
+    const gaps = this.squadGaps[squad.id];
+    if (gaps) {
+      lines.push(
+        '# ⚠️  Squad PM Review — Fix Round',
+        'Your Squad PM reviewed your implementation and found gaps. Fix ALL items listed below:',
+        '',
+        gaps,
+        '',
+      );
+    }
 
     // Awareness of other squads so this agent doesn't duplicate their work
     const otherSquads = this.squadPlan ? this.squadPlan.squads.filter(s => s.id !== squad.id) : [];
