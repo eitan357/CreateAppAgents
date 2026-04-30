@@ -5,6 +5,7 @@ const DEPENDENCY_MAP = {
   pmAgent:                [],
   requirementsAnalyst:    [],
   mobileTechAdvisor:      ['requirementsAnalyst'],
+  webTechAdvisor:         ['requirementsAnalyst'],
   businessPlanningAgent:  ['requirementsAnalyst'],
   asoMarketingAgent:      ['requirementsAnalyst'],
 
@@ -13,10 +14,14 @@ const DEPENDENCY_MAP = {
   dataArchitect:          ['requirementsAnalyst', 'systemArchitect'],
   apiDesigner:            ['requirementsAnalyst', 'systemArchitect'],
   frontendArchitect:      ['requirementsAnalyst', 'systemArchitect'],
+  renderingStrategyAgent: ['requirementsAnalyst', 'systemArchitect', 'frontendArchitect'],
+  uxDesignerAgent:        ['requirementsAnalyst', 'systemArchitect'],
+  designSystemAgent:      ['requirementsAnalyst', 'frontendArchitect', 'uxDesignerAgent'],
+  localizationAgent:      ['requirementsAnalyst', 'frontendArchitect'],
 
   // ── Core Implementation ───────────────────────────────────────────────────
   backendDev:             ['systemArchitect', 'dataArchitect', 'apiDesigner'],
-  frontendDev:            ['systemArchitect', 'frontendArchitect', 'apiDesigner'],
+  frontendDev:            ['systemArchitect', 'frontendArchitect', 'apiDesigner', 'uxDesignerAgent', 'designSystemAgent', 'localizationAgent'],
   authAgent:              ['systemArchitect', 'apiDesigner', 'dataArchitect'],
   integrationAgent:       ['systemArchitect', 'apiDesigner'],
 
@@ -32,21 +37,33 @@ const DEPENDENCY_MAP = {
   mlMobileAgent:          ['frontendDev', 'systemArchitect'],
   arVrAgent:              ['frontendDev', 'systemArchitect'],
 
+  // ── Web-Specific Features ─────────────────────────────────────────────────
+  responsiveDesignAgent:  ['frontendArchitect', 'frontendDev'],
+  pwaAgent:               ['frontendDev', 'frontendArchitect'],
+  webMonetizationAgent:   ['backendDev', 'frontendDev', 'dataArchitect', 'apiDesigner'],
+  cmsAgent:               ['frontendDev', 'backendDev', 'systemArchitect'],
+  cmsIntegratorAgent:     ['cmsAgent', 'frontendDev'],
+
   // ── Quality & Hardening ───────────────────────────────────────────────────
+  errorHandlingAgent:        ['backendDev', 'frontendDev', 'authAgent'],
+  codeDeduplicationAgent:    ['backendDev', 'frontendDev', 'authAgent', 'errorHandlingAgent'],
+  codeCleanupAgent:          ['codeDeduplicationAgent'],
   security:               ['backendDev', 'authAgent', 'apiDesigner'],
-  tester:                 ['backendDev', 'frontendDev', 'authAgent', 'dataArchitect'],
+  testWriter:             ['backendDev', 'frontendDev', 'authAgent', 'dataArchitect'],
+  testRunner:             ['testWriter', 'backendDev', 'frontendDev', 'authAgent'],
+  testFixer:              ['testRunner'],
   performanceAgent:       ['frontendDev', 'frontendArchitect'],
+  webPerformanceAgent:    ['frontendDev', 'frontendArchitect', 'renderingStrategyAgent'],
   accessibilityAgent:     ['frontendDev'],
   loadTestingAgent:       ['backendDev', 'apiDesigner', 'devops'],
   reviewer:               ['backendDev', 'frontendDev', 'authAgent', 'integrationAgent'],
 
   // ── Monetization & Distribution ───────────────────────────────────────────
   monetizationAgent:      ['frontendDev', 'backendDev', 'integrationAgent'],
-  userTestingAgent:       ['frontendDev', 'devops'],
+  userTestingAgent:       ['frontendDev', 'backendDev'],
   appStorePublisher:      ['systemArchitect', 'frontendDev', 'devops'],
 
   // ── Compliance & Maintenance ──────────────────────────────────────────────
-  localizationAgent:      ['frontendDev', 'frontendArchitect'],
   analyticsMonitoring:    ['frontendDev', 'backendDev'],
   privacyEthicsAgent:     ['backendDev', 'frontendDev', 'analyticsMonitoring'],
   dependencyManagementAgent: ['frontendDev', 'backendDev'],
@@ -54,6 +71,12 @@ const DEPENDENCY_MAP = {
   // ── DevOps & Documentation ────────────────────────────────────────────────
   devops:                 ['systemArchitect', 'backendDev', 'frontendDev'],
   documentation:          ['requirementsAnalyst', 'apiDesigner', 'backendDev', 'frontendDev', 'devops'],
+
+  // ── Web Operations ────────────────────────────────────────────────────────
+  seoAgent:               ['frontendDev', 'renderingStrategyAgent', 'frontendArchitect'],
+
+  // ── PM Acceptance Review ──────────────────────────────────────────────────
+  pmReviewer:             ['requirementsAnalyst', 'systemArchitect', 'backendDev', 'frontendDev', 'authAgent', 'testFixer', 'reviewer', 'security', 'errorHandlingAgent', 'codeCleanupAgent'],
 };
 
 module.exports = { DEPENDENCY_MAP };

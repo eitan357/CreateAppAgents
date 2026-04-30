@@ -2,6 +2,20 @@
 
 const Anthropic = require('@anthropic-ai/sdk');
 
+// Global model config — set once before orchestrate() via setModelConfig()
+let _modelConfig = {
+  thinking: { type: 'adaptive' },
+  max_tokens: 8096,
+};
+
+function setModelConfig(config) {
+  _modelConfig = config;
+}
+
+function getModelConfig() {
+  return _modelConfig;
+}
+
 class BaseAgent {
   constructor(name, systemPrompt, tools, toolHandlers) {
     this.name = name;
@@ -19,8 +33,7 @@ class BaseAgent {
     while (true) {
       const params = {
         model: 'claude-opus-4-7',
-        max_tokens: 8096,
-        thinking: { type: 'adaptive' },
+        max_tokens: _modelConfig.max_tokens,
         system: [
           {
             type: 'text',
@@ -30,6 +43,10 @@ class BaseAgent {
         ],
         messages,
       };
+
+      if (_modelConfig.thinking) {
+        params.thinking = _modelConfig.thinking;
+      }
 
       if (this.tools.length > 0) {
         params.tools = this.tools;
@@ -74,4 +91,4 @@ class BaseAgent {
   }
 }
 
-module.exports = { BaseAgent };
+module.exports = { BaseAgent, setModelConfig, getModelConfig };
