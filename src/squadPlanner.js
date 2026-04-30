@@ -11,7 +11,8 @@ const SQUAD_SCHEMA = `{
       "userFacingArea": "The section of the app this squad is responsible for",
       "backendModule": "auth",
       "frontendModule": "auth",
-      "keyFeatures": ["login", "register", "password-reset"]
+      "keyFeatures": ["login", "register", "password-reset"],
+      "agents": ["backendDev", "frontendDev", "authAgent"]
     }
   ],
   "platformNotes": "One sentence describing what the platform team handles across all squads"
@@ -33,6 +34,10 @@ Rules:
 - Shared infrastructure (auth patterns, DB models, design system) belongs to the platform team — do NOT create a squad for it
 - Squad IDs: lowercase, hyphens only, no spaces
 - backendModule and frontendModule are folder names (e.g. "products", "real-estate", "user-profile")
+- agents: choose from ["backendDev", "frontendDev", "authAgent", "integrationAgent"]
+  · backendDev + frontendDev: always include both (unless API-only project, omit frontendDev)
+  · authAgent: include ONLY in the squad responsible for login/registration/JWT/sessions
+  · integrationAgent: include ONLY if the squad connects to external APIs (payments, maps, SMS, etc.)
 
 Return ONLY valid JSON matching this schema exactly:
 ${SQUAD_SCHEMA}`,

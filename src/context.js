@@ -166,6 +166,70 @@ class ProjectContext {
     return lines.join('\n');
   }
 
+  buildSquadScopedContext(agentName, squad) {
+    const lines = [
+      '# Project Requirements',
+      this.requirements,
+      '',
+      '# Tech Stack Decisions',
+      JSON.stringify(this.plan.techStack, null, 2),
+      '',
+      '# Output Directory',
+      this.outputDir,
+      '',
+      `# Your Squad: ${squad.name}`,
+      `You are the **${agentName}** agent working in the **${squad.name}**.`,
+      '',
+      `Domain      : ${squad.userFacingArea}`,
+      `Description : ${squad.description}`,
+      `Key features: ${squad.keyFeatures.join(', ')}`,
+      '',
+      'Write ALL your files under these paths (relative to output directory):',
+      `  Backend : backend/src/modules/${squad.backendModule}/`,
+      `  Frontend: frontend/src/${squad.frontendModule}/   (or mobile/src/${squad.frontendModule}/)`,
+      '',
+      'Build ONLY the features listed above. Do not implement features that belong to other squads.',
+      '',
+    ];
+
+    // Awareness of other squads so this agent doesn't duplicate their work
+    const otherSquads = this.squadPlan ? this.squadPlan.squads.filter(s => s.id !== squad.id) : [];
+    if (otherSquads.length > 0) {
+      lines.push('# Other Squads (do NOT implement their features)');
+      otherSquads.forEach(s => {
+        lines.push(`- ${s.name}: ${s.userFacingArea} (${s.keyFeatures.join(', ')})`);
+      });
+      lines.push('');
+    }
+
+    // Platform agent outputs (architecture, design) via DEPENDENCY_MAP
+    const deps = DEPENDENCY_MAP[agentName] || [];
+    const availableDeps = deps.filter(dep => this.agentOutputs[dep]);
+    if (availableDeps.length > 0) {
+      lines.push('# Platform Context (Architecture & Design)', '');
+      for (const depName of availableDeps) {
+        const output = this.agentOutputs[depName];
+        lines.push(
+          `## ${depName}`,
+          output.summary,
+          '',
+          `Files: ${output.files.join(', ')}`,
+          '',
+        );
+      }
+    }
+
+    lines.push(
+      `# Your Task — ${agentName} (${squad.name})`,
+      `Implement ONLY the ${squad.name} domain using the context above.`,
+      'Write ALL output files using the write_file tool.',
+      'Paths are relative to the output directory — do NOT include the output directory path itself.',
+      '',
+    );
+
+    return lines.join('\n');
+  }
+
   buildContextMessage(agentName) {
     return this.buildScopedContext(agentName);
   }

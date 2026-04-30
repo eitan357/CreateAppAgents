@@ -9,6 +9,7 @@ const { createSquadPlan, formatSquadPlan } = require('./squadPlanner');
 const { createFileSystemTools } = require('./tools/fileSystem');
 const { createShellTools } = require('./tools/shell');
 const { runLayerInParallel, runLayerSequential, getFailedAgents } = require('./layerRunner');
+const { runAllSquads } = require('./squadRunner');
 const { pushCheckpoint, pushToGithub } = require('./github');
 
 // ── Core agents ───────────────────────────────────────────────────────────────
@@ -613,7 +614,11 @@ async function orchestrate(requirements, projectName, outputDir, checkpoint = nu
     console.log(chalk.gray(`Mode  : ${layerDef.parallel ? 'parallel' : 'sequential'}`));
 
     let layerResults;
-    if (layerDef.parallel) {
+    if (layerDef.id === 3 && context.squadPlan) {
+      // ── Squad mode: run each squad's agents in parallel, sequential within squad
+      console.log(chalk.bold.cyan(`\n  Running ${context.squadPlan.squads.length} squads in parallel...`));
+      layerResults = await runAllSquads(context.squadPlan, context, toolSets, AGENT_REGISTRY, activeAgents);
+    } else if (layerDef.parallel) {
       layerResults = await runLayerInParallel(agentConfigs, context, toolSets, AGENT_REGISTRY);
     } else {
       layerResults = await runLayerSequential(agentConfigs, context, toolSets, AGENT_REGISTRY);
