@@ -65,6 +65,7 @@ const { createOTAUpdatesAgent }          = require('./agents/otaUpdatesAgent');
 const { createUiPrimitivesAgent }        = require('./agents/uiPrimitivesAgent');
 const { createUiCompositeAgent }         = require('./agents/uiCompositeAgent');
 const { createApiClientAgent }           = require('./agents/apiClientAgent');
+const { createDbSchemaAgent }            = require('./agents/dbSchemaAgent');
 
 // ── Quality agents ────────────────────────────────────────────────────────────
 const { createErrorHandlingAgent }       = require('./agents/errorHandlingAgent');
@@ -111,6 +112,7 @@ const AGENT_REGISTRY = {
   uiPrimitivesAgent:        createUiPrimitivesAgent,
   uiCompositeAgent:         createUiCompositeAgent,
   apiClientAgent:           createApiClientAgent,
+  dbSchemaAgent:            createDbSchemaAgent,
   // Discovery & Planning
   mobileTechAdvisor:        createMobileTechAdvisorAgent,
   businessPlanningAgent:    createBusinessPlanningAgent,
@@ -177,7 +179,7 @@ const LAYER_DEFINITIONS = [
     id: '2b',
     name: 'Platform Build',
     parallel: false,
-    agents: ['uiPrimitivesAgent', 'uiCompositeAgent', 'apiClientAgent'],
+    agents: ['uiPrimitivesAgent', 'uiCompositeAgent', 'apiClientAgent', 'dbSchemaAgent'],
   },
   {
     id: 3,
@@ -412,6 +414,9 @@ function getActiveAgents(plan) {
     names.add('uiCompositeAgent');
     names.add('apiClientAgent');
   }
+
+  // DB Schema agent — always run (every project has a backend + DB)
+  names.add('dbSchemaAgent');
 
   // Always-included implementation agents (run after core implementation)
   names.add('errorHandlingAgent');
@@ -886,6 +891,7 @@ async function orchestrateUpdate(changeRequest, checkpointData, outputDir, githu
       uiPrimitives: 'uiPrimitivesAgent',
       uiComposite:  'uiCompositeAgent',
       apiClient:    'apiClientAgent',
+      dbSchema:     'dbSchemaAgent',
     };
     for (const [key, agentName] of Object.entries(platformMap)) {
       if (!platformUpdates[key] || !activeAgents.has(agentName)) continue;

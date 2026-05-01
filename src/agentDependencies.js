@@ -23,11 +23,12 @@ const DEPENDENCY_MAP = {
   uiPrimitivesAgent:      ['designSystemAgent', 'uxDesignerAgent', 'frontendArchitect'],
   uiCompositeAgent:       ['uiPrimitivesAgent', 'uxDesignerAgent', 'frontendArchitect'],
   apiClientAgent:         ['apiDesigner', 'systemArchitect'],
+  dbSchemaAgent:          ['dataArchitect', 'systemArchitect'],
 
   // ── Core Implementation ───────────────────────────────────────────────────
-  backendDev:             ['systemArchitect', 'dataArchitect', 'apiDesigner', 'apiClientAgent'],
+  backendDev:             ['systemArchitect', 'dataArchitect', 'apiDesigner', 'apiClientAgent', 'dbSchemaAgent'],
   frontendDev:            ['systemArchitect', 'frontendArchitect', 'apiDesigner', 'uxDesignerAgent', 'designSystemAgent', 'localizationAgent', 'uiPrimitivesAgent', 'uiCompositeAgent', 'apiClientAgent'],
-  authAgent:              ['systemArchitect', 'apiDesigner', 'dataArchitect', 'apiClientAgent'],
+  authAgent:              ['systemArchitect', 'apiDesigner', 'dataArchitect', 'apiClientAgent', 'dbSchemaAgent'],
   integrationAgent:       ['systemArchitect', 'apiDesigner', 'apiClientAgent'],
 
   // ── Mobile-Specific Features ──────────────────────────────────────────────

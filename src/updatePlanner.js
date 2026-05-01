@@ -25,7 +25,8 @@ const UPDATE_SCHEMA = `{
   "platformUpdates": {
     "uiPrimitives": null,
     "uiComposite": "Add Carousel component for listings gallery; update Card to support image header",
-    "apiClient": "Add GET /notifications and POST /notifications/:id/read with NotificationDto and Notification types"
+    "apiClient": "Add GET /notifications and POST /notifications/:id/read with NotificationDto and Notification types",
+    "dbSchema": null
   }
 }`;
 
@@ -50,12 +51,13 @@ Rules for affectedSquads / newSquads:
 - If one change touches multiple existing squads, list all of them
 - affectedSquads and newSquads may each be empty arrays if not applicable
 
-Rules for platformUpdates (shared/components and shared/api):
+Rules for platformUpdates (shared/components, shared/api, and shared/db):
 - uiPrimitives: non-null if the change needs a NEW primitive component (Button variant, new Input type, etc.) or modifies an existing one's behavior/style
 - uiComposite : non-null if the change needs a NEW composite component (Carousel, new Modal variant, etc.) or modifies an existing composite
 - apiClient   : non-null if the change adds NEW API endpoints or entities that need new types in shared/api/types + new methods in shared/api/endpoints
+- dbSchema    : non-null if the change requires a NEW entity/model or adds fields/indexes to an existing model in shared/db/
 - Set to null if no changes are needed for that platform layer
-- Be specific: describe exactly which component to add/change or which endpoints/types to add
+- Be specific: describe exactly which component to add/change, which endpoints/types to add, or which entities/fields to add
 
 Return ONLY valid JSON matching this schema exactly:
 ${UPDATE_SCHEMA}`,

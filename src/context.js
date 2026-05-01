@@ -9,12 +9,13 @@ const { DEPENDENCY_MAP } = require('./agentDependencies');
 const FIX_ROUND_AGENTS = new Set(['backendDev', 'frontendDev', 'authAgent']);
 
 // Platform agents that squads must import from instead of creating their own
-const PLATFORM_AGENTS = ['uiPrimitivesAgent', 'uiCompositeAgent', 'apiClientAgent'];
+const PLATFORM_AGENTS = ['uiPrimitivesAgent', 'uiCompositeAgent', 'apiClientAgent', 'dbSchemaAgent'];
 
 function _injectPlatformRules(lines, agentOutputs) {
   const hasUi  = agentOutputs['uiPrimitivesAgent'] || agentOutputs['uiCompositeAgent'];
   const hasApi = agentOutputs['apiClientAgent'];
-  if (!hasUi && !hasApi) return;
+  const hasDb  = agentOutputs['dbSchemaAgent'];
+  if (!hasUi && !hasApi && !hasDb) return;
 
   lines.push(
     '# ⚠️  Platform Shared Code — MANDATORY',
@@ -49,6 +50,24 @@ function _injectPlatformRules(lines, agentOutputs) {
       '',
       'DO NOT use fetch() or axios directly.',
       'DO NOT define your own API response interfaces — import them from shared/api/types.',
+      '',
+    );
+  }
+
+  if (hasDb) {
+    lines.push(
+      '## Database Models / Entities',
+      'All database schemas, models, and the DB connection are owned by the platform team in shared/db/.',
+      '',
+      "Import example (adjust relative depth or use @shared alias):",
+      "  import { connect, mongoose } from '../../shared/db';          // Mongoose",
+      "  import { User, Listing }     from '../../shared/db';          // Models",
+      "  import { prisma }            from '../../shared/db';          // Prisma",
+      "  import { AppDataSource }     from '../../shared/db';          // TypeORM",
+      "  import { db }                from '../../shared/db';          // Drizzle",
+      '',
+      'DO NOT define your own Mongoose schemas, Prisma models, TypeORM entities, or Sequelize models.',
+      'DO NOT create a separate database connection — import the shared one.',
       '',
     );
   }
