@@ -39,6 +39,7 @@ const { createWebTechAdvisorAgent }      = require('./agents/webTechAdvisorAgent
 // ── UX & Design System agents ─────────────────────────────────────────────────
 const { createUxDesignerAgent }          = require('./agents/uxDesignerAgent');
 const { createDesignSystemAgent }        = require('./agents/designSystemAgent');
+const { createInputPolicyAgent }         = require('./agents/inputPolicyAgent');
 
 // ── Web Feature agents ────────────────────────────────────────────────────────
 const { createRenderingStrategyAgent }   = require('./agents/renderingStrategyAgent');
@@ -120,6 +121,7 @@ const AGENT_REGISTRY = {
   // UX & Design System
   uxDesignerAgent:          createUxDesignerAgent,
   designSystemAgent:        createDesignSystemAgent,
+  inputPolicyAgent:         createInputPolicyAgent,
   // Web Features
   renderingStrategyAgent:   createRenderingStrategyAgent,
   responsiveDesignAgent:    createResponsiveDesignAgent,
@@ -173,7 +175,7 @@ const LAYER_DEFINITIONS = [
     id: 2,
     name: 'Design',
     parallel: true,
-    agents: ['dataArchitect', 'apiDesigner', 'frontendArchitect', 'renderingStrategyAgent', 'uxDesignerAgent', 'designSystemAgent', 'localizationAgent'],
+    agents: ['dataArchitect', 'apiDesigner', 'frontendArchitect', 'renderingStrategyAgent', 'uxDesignerAgent', 'designSystemAgent', 'localizationAgent', 'inputPolicyAgent'],
   },
   {
     id: '2b',
@@ -408,8 +410,9 @@ function getActiveAgents(plan) {
   // Optional agents selected by PM
   (plan.optionalAgents || []).forEach(n => names.add(n));
 
-  // Platform Build agents — always run when project has frontend
+  // Design + Platform Build agents — always run when project has frontend
   if (l3.includeFrontend !== false) {
+    names.add('inputPolicyAgent');
     names.add('uiPrimitivesAgent');
     names.add('uiCompositeAgent');
     names.add('apiClientAgent');
@@ -477,7 +480,7 @@ function formatPlan(plan) {
     '',
     '🤖  Layers:',
     `    Layer 1  — Discovery      : requirementsAnalyst, systemArchitect${optional.includes('mobileTechAdvisor') ? ', mobileTechAdvisor' : ''}${optional.includes('webTechAdvisor') ? ', webTechAdvisor' : ''}${optional.includes('businessPlanningAgent') ? ', businessPlanningAgent' : ''}`,
-    `    Layer 2  — Design         : dataArchitect, apiDesigner${l3.includeFrontend !== false ? ', frontendArchitect' : ''}${optional.includes('uxDesignerAgent') ? ', uxDesignerAgent' : ''}${optional.includes('designSystemAgent') ? ', designSystemAgent' : ''}${optional.includes('renderingStrategyAgent') ? ', renderingStrategyAgent' : ''}${optional.includes('localizationAgent') ? ', localizationAgent' : ''}`,
+    `    Layer 2  — Design         : dataArchitect, apiDesigner${l3.includeFrontend !== false ? ', frontendArchitect' : ''}${optional.includes('uxDesignerAgent') ? ', uxDesignerAgent' : ''}${optional.includes('designSystemAgent') ? ', designSystemAgent' : ''}${optional.includes('renderingStrategyAgent') ? ', renderingStrategyAgent' : ''}${optional.includes('localizationAgent') ? ', localizationAgent' : ''}${l3.includeFrontend !== false ? ', inputPolicyAgent' : ''}`,
     `    Layer 3  — Implementation : backendDev, authAgent${l3.includeFrontend !== false ? ', frontendDev' : ''}${l3.includeIntegration ? ', integrationAgent' : ''}`,
   ];
 

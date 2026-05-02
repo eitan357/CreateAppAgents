@@ -18,17 +18,18 @@ const DEPENDENCY_MAP = {
   uxDesignerAgent:        ['requirementsAnalyst', 'systemArchitect'],
   designSystemAgent:      ['requirementsAnalyst', 'frontendArchitect', 'uxDesignerAgent'],
   localizationAgent:      ['requirementsAnalyst', 'frontendArchitect'],
+  inputPolicyAgent:       ['requirementsAnalyst', 'uxDesignerAgent'],
 
   // ── Platform Build ────────────────────────────────────────────────────────
-  uiPrimitivesAgent:      ['designSystemAgent', 'uxDesignerAgent', 'frontendArchitect'],
+  uiPrimitivesAgent:      ['designSystemAgent', 'uxDesignerAgent', 'frontendArchitect', 'inputPolicyAgent'],
   uiCompositeAgent:       ['uiPrimitivesAgent', 'uxDesignerAgent', 'frontendArchitect'],
   apiClientAgent:         ['apiDesigner', 'systemArchitect'],
   dbSchemaAgent:          ['dataArchitect', 'systemArchitect'],
 
   // ── Core Implementation ───────────────────────────────────────────────────
   backendDev:             ['systemArchitect', 'dataArchitect', 'apiDesigner', 'apiClientAgent', 'dbSchemaAgent'],
-  frontendDev:            ['systemArchitect', 'frontendArchitect', 'apiDesigner', 'uxDesignerAgent', 'designSystemAgent', 'localizationAgent', 'uiPrimitivesAgent', 'uiCompositeAgent', 'apiClientAgent'],
-  authAgent:              ['systemArchitect', 'apiDesigner', 'dataArchitect', 'apiClientAgent', 'dbSchemaAgent'],
+  frontendDev:            ['systemArchitect', 'frontendArchitect', 'apiDesigner', 'uxDesignerAgent', 'designSystemAgent', 'localizationAgent', 'uiPrimitivesAgent', 'uiCompositeAgent', 'apiClientAgent', 'inputPolicyAgent'],
+  authAgent:              ['systemArchitect', 'apiDesigner', 'dataArchitect', 'apiClientAgent', 'dbSchemaAgent', 'inputPolicyAgent'],
   integrationAgent:       ['systemArchitect', 'apiDesigner', 'apiClientAgent'],
 
   // ── Mobile-Specific Features ──────────────────────────────────────────────
