@@ -16,12 +16,22 @@ const DEPENDENCY_MAP = {
   frontendArchitect:      ['requirementsAnalyst', 'systemArchitect'],
   renderingStrategyAgent: ['requirementsAnalyst', 'systemArchitect', 'frontendArchitect'],
   uxDesignerAgent:        ['requirementsAnalyst', 'systemArchitect'],
-  designSystemAgent:      ['requirementsAnalyst', 'frontendArchitect', 'uxDesignerAgent'],
+  designLeadAgent:        ['requirementsAnalyst', 'frontendArchitect', 'uxDesignerAgent'],
   localizationAgent:      ['requirementsAnalyst', 'frontendArchitect'],
   inputPolicyAgent:       ['requirementsAnalyst', 'uxDesignerAgent'],
 
+  // ── Leaders Team ─────────────────────────────────────────────────────────
+  vpPmAgent:              ['requirementsAnalyst', 'systemArchitect', 'dataArchitect', 'apiDesigner'],
+  techLeadAgent:          ['systemArchitect', 'apiDesigner', 'dataArchitect', 'frontendArchitect'],
+  qaLeadAgent:            ['requirementsAnalyst', 'apiDesigner', 'systemArchitect'],
+  securityLeadAgent:      ['systemArchitect', 'apiDesigner', 'dataArchitect'],
+
+  // ── Platform Team ─────────────────────────────────────────────────────────
+  platformPmAgent:        ['vpPmAgent', 'designLeadAgent', 'apiDesigner', 'dataArchitect'],
+  platformQaAgent:        ['platformPmAgent', 'uiPrimitivesAgent', 'uiCompositeAgent', 'apiClientAgent', 'dbSchemaAgent'],
+
   // ── Platform Build ────────────────────────────────────────────────────────
-  uiPrimitivesAgent:      ['designSystemAgent', 'uxDesignerAgent', 'frontendArchitect', 'inputPolicyAgent'],
+  uiPrimitivesAgent:      ['designLeadAgent', 'uxDesignerAgent', 'frontendArchitect', 'inputPolicyAgent'],
   uiCompositeAgent:       ['uiPrimitivesAgent', 'uxDesignerAgent', 'frontendArchitect'],
   apiClientAgent:         ['apiDesigner', 'systemArchitect'],
   dbSchemaAgent:          ['dataArchitect', 'systemArchitect'],
@@ -82,8 +92,14 @@ const DEPENDENCY_MAP = {
   // ── Web Operations ────────────────────────────────────────────────────────
   seoAgent:               ['frontendDev', 'renderingStrategyAgent', 'frontendArchitect'],
 
+  // ── Per-squad specialist agents ───────────────────────────────────────────
+  squadDesignerAgent:     ['designLeadAgent', 'uxDesignerAgent', 'designLeadAgent'],
+  squadQaAgent:           ['qaLeadAgent', 'backendDev', 'frontendDev', 'authAgent'],
+  squadSecurityAgent:     ['securityLeadAgent', 'backendDev', 'frontendDev', 'authAgent'],
+  squadCleanupAgent:      ['techLeadAgent', 'backendDev', 'frontendDev', 'authAgent'],
+
   // ── PM Acceptance Review ──────────────────────────────────────────────────
-  pmReviewer:             ['requirementsAnalyst', 'systemArchitect', 'backendDev', 'frontendDev', 'authAgent', 'testFixer', 'reviewer', 'security', 'errorHandlingAgent', 'codeCleanupAgent', 'uiPrimitivesAgent', 'uiCompositeAgent', 'apiClientAgent'],
+  pmReviewer:             ['vpPmAgent', 'requirementsAnalyst', 'systemArchitect', 'backendDev', 'frontendDev', 'authAgent', 'squadQaAgent', 'squadSecurityAgent', 'squadCleanupAgent', 'uiPrimitivesAgent', 'uiCompositeAgent', 'apiClientAgent'],
 };
 
 module.exports = { DEPENDENCY_MAP };

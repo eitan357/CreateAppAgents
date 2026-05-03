@@ -38,8 +38,18 @@ const { createWebTechAdvisorAgent }      = require('./agents/webTechAdvisorAgent
 
 // ── UX & Design System agents ─────────────────────────────────────────────────
 const { createUxDesignerAgent }          = require('./agents/uxDesignerAgent');
-const { createDesignSystemAgent }        = require('./agents/designSystemAgent');
+const { createDesignLeadAgent }          = require('./agents/designLeadAgent');
 const { createInputPolicyAgent }         = require('./agents/inputPolicyAgent');
+
+// ── Leaders Team agents ───────────────────────────────────────────────────────
+const { createVpPmAgent }                = require('./agents/vpPmAgent');
+const { createTechLeadAgent }            = require('./agents/techLeadAgent');
+const { createQaLeadAgent }              = require('./agents/qaLeadAgent');
+const { createSecurityLeadAgent }        = require('./agents/securityLeadAgent');
+
+// ── Platform Team agents ──────────────────────────────────────────────────────
+const { createPlatformPmAgent }          = require('./agents/platformPmAgent');
+const { createPlatformQaAgent }          = require('./agents/platformQaAgent');
 
 // ── Web Feature agents ────────────────────────────────────────────────────────
 const { createRenderingStrategyAgent }   = require('./agents/renderingStrategyAgent');
@@ -118,10 +128,18 @@ const AGENT_REGISTRY = {
   mobileTechAdvisor:        createMobileTechAdvisorAgent,
   businessPlanningAgent:    createBusinessPlanningAgent,
   webTechAdvisor:           createWebTechAdvisorAgent,
-  // UX & Design System
+  // UX & Design
   uxDesignerAgent:          createUxDesignerAgent,
-  designSystemAgent:        createDesignSystemAgent,
+  designLeadAgent:          createDesignLeadAgent,
   inputPolicyAgent:         createInputPolicyAgent,
+  // Leaders Team
+  vpPmAgent:                createVpPmAgent,
+  techLeadAgent:            createTechLeadAgent,
+  qaLeadAgent:              createQaLeadAgent,
+  securityLeadAgent:        createSecurityLeadAgent,
+  // Platform Team
+  platformPmAgent:          createPlatformPmAgent,
+  platformQaAgent:          createPlatformQaAgent,
   // Web Features
   renderingStrategyAgent:   createRenderingStrategyAgent,
   responsiveDesignAgent:    createResponsiveDesignAgent,
@@ -175,13 +193,19 @@ const LAYER_DEFINITIONS = [
     id: 2,
     name: 'Design',
     parallel: true,
-    agents: ['dataArchitect', 'apiDesigner', 'frontendArchitect', 'renderingStrategyAgent', 'uxDesignerAgent', 'designSystemAgent', 'localizationAgent', 'inputPolicyAgent'],
+    agents: ['dataArchitect', 'apiDesigner', 'frontendArchitect', 'renderingStrategyAgent', 'uxDesignerAgent', 'designLeadAgent', 'localizationAgent', 'inputPolicyAgent'],
   },
   {
     id: '2b',
-    name: 'Platform Build',
+    name: 'Leaders Team',
     parallel: false,
-    agents: ['uiPrimitivesAgent', 'uiCompositeAgent', 'apiClientAgent', 'dbSchemaAgent'],
+    agents: ['vpPmAgent', 'techLeadAgent', 'qaLeadAgent', 'securityLeadAgent'],
+  },
+  {
+    id: '2c',
+    name: 'Platform Team',
+    parallel: false,
+    agents: ['platformPmAgent', 'uiPrimitivesAgent', 'uiCompositeAgent', 'apiClientAgent', 'dbSchemaAgent', 'platformQaAgent'],
   },
   {
     id: 3,
@@ -410,16 +434,25 @@ function getActiveAgents(plan) {
   // Optional agents selected by PM
   (plan.optionalAgents || []).forEach(n => names.add(n));
 
-  // Design + Platform Build agents — always run when project has frontend
+  // Leaders Team — always run
+  names.add('vpPmAgent');
+  names.add('techLeadAgent');
+  names.add('qaLeadAgent');
+  names.add('securityLeadAgent');
+
+  // Platform Team — PM and QA always run; dev agents conditional on frontend
+  names.add('platformPmAgent');
+  names.add('platformQaAgent');
+  names.add('dbSchemaAgent');
+
+  // Frontend-dependent platform agents
   if (l3.includeFrontend !== false) {
     names.add('inputPolicyAgent');
+    names.add('designLeadAgent');
     names.add('uiPrimitivesAgent');
     names.add('uiCompositeAgent');
     names.add('apiClientAgent');
   }
-
-  // DB Schema agent — always run (every project has a backend + DB)
-  names.add('dbSchemaAgent');
 
   // Always-included implementation agents (run after core implementation)
   names.add('errorHandlingAgent');
@@ -480,7 +513,9 @@ function formatPlan(plan) {
     '',
     '🤖  Layers:',
     `    Layer 1  — Discovery      : requirementsAnalyst, systemArchitect${optional.includes('mobileTechAdvisor') ? ', mobileTechAdvisor' : ''}${optional.includes('webTechAdvisor') ? ', webTechAdvisor' : ''}${optional.includes('businessPlanningAgent') ? ', businessPlanningAgent' : ''}`,
-    `    Layer 2  — Design         : dataArchitect, apiDesigner${l3.includeFrontend !== false ? ', frontendArchitect' : ''}${optional.includes('uxDesignerAgent') ? ', uxDesignerAgent' : ''}${optional.includes('designSystemAgent') ? ', designSystemAgent' : ''}${optional.includes('renderingStrategyAgent') ? ', renderingStrategyAgent' : ''}${optional.includes('localizationAgent') ? ', localizationAgent' : ''}${l3.includeFrontend !== false ? ', inputPolicyAgent' : ''}`,
+    `    Layer 2  — Design         : dataArchitect, apiDesigner${l3.includeFrontend !== false ? ', frontendArchitect' : ''}${optional.includes('uxDesignerAgent') ? ', uxDesignerAgent' : ''}${l3.includeFrontend !== false ? ', designLeadAgent' : ''}${optional.includes('renderingStrategyAgent') ? ', renderingStrategyAgent' : ''}${optional.includes('localizationAgent') ? ', localizationAgent' : ''}${l3.includeFrontend !== false ? ', inputPolicyAgent' : ''}`,
+    `    Layer 2b — Leaders Team   : vpPmAgent, techLeadAgent, qaLeadAgent, securityLeadAgent`,
+    `    Layer 2c — Platform Team  : platformPmAgent, uiPrimitivesAgent, uiCompositeAgent, apiClientAgent, dbSchemaAgent, platformQaAgent`,
     `    Layer 3  — Implementation : backendDev, authAgent${l3.includeFrontend !== false ? ', frontendDev' : ''}${l3.includeIntegration ? ', integrationAgent' : ''}`,
   ];
 
@@ -895,6 +930,7 @@ async function orchestrateUpdate(changeRequest, checkpointData, outputDir, githu
       uiComposite:  'uiCompositeAgent',
       apiClient:    'apiClientAgent',
       dbSchema:     'dbSchemaAgent',
+      designLead:   'designLeadAgent',
     };
     for (const [key, agentName] of Object.entries(platformMap)) {
       if (!platformUpdates[key] || !activeAgents.has(agentName)) continue;

@@ -5,13 +5,40 @@ const path = require('path');
 const chalk = require('chalk');
 const { createSquadPmSpecAgent, createSquadPmReviewAgent, createSquadPmUpdateSpecAgent } = require('./agents/squadPmAgent');
 
-// Layer 3 agents eligible to run inside a squad
-const SQUAD_ELIGIBLE_AGENTS = new Set(['backendDev', 'frontendDev', 'authAgent', 'integrationAgent']);
+// Dev agents eligible to run inside a squad
+const SQUAD_DEV_AGENTS = new Set(['backendDev', 'frontendDev', 'authAgent', 'integrationAgent']);
 
-// Run one squad: PM spec → dev agents → PM review → (optional) fix round
+// New per-squad specialist agents (run after dev agents)
+const SQUAD_SPECIALIST_AGENTS = ['squadDesignerAgent', 'squadCleanupAgent', 'squadQaAgent', 'squadSecurityAgent'];
+
+// ── Single-agent runner with retry ───────────────────────────────────────────
+async function _runSingleAgent(agentName, contextStr, squad, context, toolSets, agentRegistry) {
+  const createAgent = agentRegistry[agentName];
+  if (!createAgent) return null;
+
+  for (let attempt = 1; attempt <= 2; attempt++) {
+    try {
+      const needsShell = agentName === 'squadQaAgent';
+      const toolSet = needsShell ? toolSets.all : toolSets.fs;
+      const agent = createAgent(toolSet);
+      const result = await agent.run(contextStr);
+      context.addAgentOutput(`${squad.id}:${agentName}`, result.summary, result.filesCreated);
+      console.log(chalk.green(`    [${squad.name}] ${agentName} done — ${result.filesCreated.length} file(s)`));
+      return result;
+    } catch (err) {
+      if (attempt === 2) {
+        console.log(chalk.red(`    [${squad.name}] ${agentName} failed: ${err.message}`));
+        return { error: err.message, summary: `FAILED: ${err.message}`, filesCreated: [] };
+      }
+      console.log(chalk.yellow(`    [${squad.name}] ${agentName} failed (attempt 1) — retrying...`));
+    }
+  }
+}
+
+// Run one squad: PM spec → designer → dev agents → cleanup → QA → security → PM review
 async function runSquad(squad, context, toolSets, agentRegistry, activeAgents) {
-  const agents = (squad.agents || ['backendDev', 'frontendDev'])
-    .filter(name => SQUAD_ELIGIBLE_AGENTS.has(name))
+  const devAgents = (squad.agents || ['backendDev', 'frontendDev'])
+    .filter(name => SQUAD_DEV_AGENTS.has(name))
     .filter(name => agentRegistry[name])
     .filter(name => activeAgents.has(name));
 
@@ -29,17 +56,49 @@ async function runSquad(squad, context, toolSets, agentRegistry, activeAgents) {
     console.log(chalk.yellow(`    [${squad.name}] Spec writing failed: ${err.message} — continuing without spec`));
   }
 
-  // ── Phase 2: Dev agents implement ────────────────────────────────────────
-  const squadResults = await _runDevAgents(squad, agents, context, toolSets, agentRegistry);
+  // ── Phase 2: Squad Designer writes screen-by-screen design doc ───────────
+  if (agentRegistry['squadDesignerAgent']) {
+    console.log(chalk.bold.yellow(`    [${squad.name}] Designer writing design doc...`));
+    await _runSingleAgent('squadDesignerAgent',
+      context.buildSquadScopedContext('squadDesignerAgent', squad),
+      squad, context, toolSets, agentRegistry);
+  }
 
-  // ── Phase 3: Squad PM reviews the output ─────────────────────────────────
+  // ── Phase 3: Dev agents implement ────────────────────────────────────────
+  const squadResults = await _runDevAgents(squad, devAgents, context, toolSets, agentRegistry);
+
+  // ── Phase 4: Squad Cleanup (error handling + code cleanup) ───────────────
+  if (agentRegistry['squadCleanupAgent']) {
+    console.log(chalk.bold.yellow(`    [${squad.name}] Cleanup: error handling + code cleanup...`));
+    await _runSingleAgent('squadCleanupAgent',
+      context.buildSquadScopedContext('squadCleanupAgent', squad),
+      squad, context, toolSets, agentRegistry);
+  }
+
+  // ── Phase 5: Squad QA (tests + review + accessibility) ───────────────────
+  if (agentRegistry['squadQaAgent']) {
+    console.log(chalk.bold.yellow(`    [${squad.name}] QA: writing + running tests...`));
+    await _runSingleAgent('squadQaAgent',
+      context.buildSquadScopedContext('squadQaAgent', squad),
+      squad, context, toolSets, agentRegistry);
+  }
+
+  // ── Phase 6: Squad Security review ───────────────────────────────────────
+  if (agentRegistry['squadSecurityAgent']) {
+    console.log(chalk.bold.yellow(`    [${squad.name}] Security review...`));
+    await _runSingleAgent('squadSecurityAgent',
+      context.buildSquadScopedContext('squadSecurityAgent', squad),
+      squad, context, toolSets, agentRegistry);
+  }
+
+  // ── Phase 7: Squad PM reviews the output ─────────────────────────────────
   console.log(chalk.bold.yellow(`    [${squad.name}] PM reviewing implementation...`));
   const verdict = await _runPmReview(squad, context, toolSets);
 
-  // ── Phase 4: One fix round if PM found gaps ───────────────────────────────
+  // ── Phase 8: One fix round if PM found gaps ───────────────────────────────
   if (verdict === 'GAPS') {
     console.log(chalk.yellow(`    [${squad.name}] PM found gaps — running fix round...`));
-    await _runDevAgents(squad, agents, context, toolSets, agentRegistry);
+    await _runDevAgents(squad, devAgents, context, toolSets, agentRegistry);
     context.setSquadGaps(squad.id, null);
 
     console.log(chalk.bold.yellow(`    [${squad.name}] PM re-reviewing after fix...`));
@@ -54,24 +113,10 @@ async function _runDevAgents(squad, agents, context, toolSets, agentRegistry) {
   const results = {};
   for (const agentName of agents) {
     console.log(chalk.cyan(`    [${squad.name}] Running ${agentName}...`));
-    const createAgent = agentRegistry[agentName];
-    for (let attempt = 1; attempt <= 2; attempt++) {
-      try {
-        const agent = createAgent(toolSets.fs);
-        const result = await agent.run(context.buildSquadScopedContext(agentName, squad));
-        context.addAgentOutput(`${squad.id}:${agentName}`, result.summary, result.filesCreated);
-        console.log(chalk.green(`    [${squad.name}] ${agentName} done — ${result.filesCreated.length} file(s)`));
-        results[agentName] = result;
-        break;
-      } catch (err) {
-        if (attempt === 2) {
-          console.log(chalk.red(`    [${squad.name}] ${agentName} failed: ${err.message}`));
-          results[agentName] = { error: err.message, summary: `FAILED: ${err.message}`, filesCreated: [] };
-        } else {
-          console.log(chalk.yellow(`    [${squad.name}] ${agentName} failed (attempt 1) — retrying...`));
-        }
-      }
-    }
+    const result = await _runSingleAgent(agentName,
+      context.buildSquadScopedContext(agentName, squad),
+      squad, context, toolSets, agentRegistry);
+    if (result) results[agentName] = result;
   }
   return results;
 }
@@ -102,9 +147,8 @@ async function _runPmReview(squad, context, toolSets) {
   }
 }
 
-// Run all squads in parallel, then merge their outputs so Layer 4 agents
-// (testWriter, reviewer, security) can find 'backendDev' / 'frontendDev' outputs
-// as if one agent had built the whole app.
+// Run all squads in parallel, then merge their outputs so global Layer 4 agents
+// can find 'backendDev' / 'frontendDev' outputs as if one agent built the whole app.
 async function runAllSquads(squadPlan, context, toolSets, agentRegistry, activeAgents) {
   const tasks = squadPlan.squads.map(async (squad) => {
     console.log(chalk.bold.cyan(`\n  ▶  Squad: ${squad.name} — ${squad.userFacingArea}`));
@@ -114,10 +158,8 @@ async function runAllSquads(squadPlan, context, toolSets, agentRegistry, activeA
 
   const allSquadResults = await Promise.all(tasks);
 
-  // Merge per-agent-type summaries into standard keys for downstream platform agents
   _mergeOutputsToContext(allSquadResults, context);
 
-  // Flatten to { 'squadId:agentName': result } for the approval gate / failure check
   const flatResults = {};
   for (const { squad, results } of allSquadResults) {
     for (const [agentName, result] of Object.entries(results)) {
@@ -128,9 +170,6 @@ async function runAllSquads(squadPlan, context, toolSets, agentRegistry, activeA
 }
 
 // Merge every squad's output for a given agent type into one combined entry.
-// e.g. 'backendDev' = Auth Squad summary + Listings Squad summary + ...
-// This lets Layer 4 agents (testWriter, reviewer) use the existing DEPENDENCY_MAP
-// without any changes — they look up 'backendDev' and get everything.
 function _mergeOutputsToContext(allSquadResults, context) {
   const byAgent = {};
 
@@ -151,10 +190,10 @@ function _mergeOutputsToContext(allSquadResults, context) {
   }
 }
 
-// ── Update mode: run a single existing squad with a targeted change ────────────
+// ── Update mode ───────────────────────────────────────────────────────────────
 async function runSquadUpdate(squad, changeDescription, context, toolSets, agentRegistry, activeAgents) {
-  const agents = (squad.agents || ['backendDev', 'frontendDev'])
-    .filter(name => SQUAD_ELIGIBLE_AGENTS.has(name))
+  const devAgents = (squad.agents || ['backendDev', 'frontendDev'])
+    .filter(name => SQUAD_DEV_AGENTS.has(name))
     .filter(name => agentRegistry[name])
     .filter(name => activeAgents.has(name));
 
@@ -166,23 +205,32 @@ async function runSquadUpdate(squad, changeDescription, context, toolSets, agent
     const specPath = path.join(context.outputDir, 'docs', 'squads', `${squad.id}-spec.md`);
     if (fs.existsSync(specPath)) {
       context.setSquadSpec(squad.id, fs.readFileSync(specPath, 'utf8'));
-      console.log(chalk.green(`    [${squad.name}] Spec updated → docs/squads/${squad.id}-spec.md`));
+      console.log(chalk.green(`    [${squad.name}] Spec updated`));
     }
   } catch (err) {
     console.log(chalk.yellow(`    [${squad.name}] Spec update failed: ${err.message} — continuing`));
   }
 
   // Phase 2: Dev agents apply the change
-  const squadResults = await _runDevAgentsUpdate(squad, agents, changeDescription, context, toolSets, agentRegistry);
+  const squadResults = await _runDevAgentsUpdate(squad, devAgents, changeDescription, context, toolSets, agentRegistry);
 
-  // Phase 3: PM reviews
+  // Phase 3: Cleanup + QA + Security on updated code
+  for (const agentName of ['squadCleanupAgent', 'squadQaAgent', 'squadSecurityAgent']) {
+    if (agentRegistry[agentName]) {
+      console.log(chalk.bold.yellow(`    [${squad.name}] ${agentName} on updated code...`));
+      await _runSingleAgent(agentName,
+        context.buildSquadUpdateContext(agentName, squad, changeDescription),
+        squad, context, toolSets, agentRegistry);
+    }
+  }
+
+  // Phase 4: PM reviews
   console.log(chalk.bold.yellow(`    [${squad.name}] PM reviewing update...`));
   const verdict = await _runPmReview(squad, context, toolSets);
 
-  // Phase 4: One fix round if PM found gaps
   if (verdict === 'GAPS') {
     console.log(chalk.yellow(`    [${squad.name}] PM found gaps — running fix round...`));
-    await _runDevAgentsUpdate(squad, agents, changeDescription, context, toolSets, agentRegistry);
+    await _runDevAgentsUpdate(squad, devAgents, changeDescription, context, toolSets, agentRegistry);
     context.setSquadGaps(squad.id, null);
     console.log(chalk.bold.yellow(`    [${squad.name}] PM re-reviewing after fix...`));
     await _runPmReview(squad, context, toolSets);
@@ -195,35 +243,20 @@ async function _runDevAgentsUpdate(squad, agents, changeDescription, context, to
   const results = {};
   for (const agentName of agents) {
     console.log(chalk.cyan(`    [${squad.name}] Updating ${agentName}...`));
-    const createAgent = agentRegistry[agentName];
-    for (let attempt = 1; attempt <= 2; attempt++) {
-      try {
-        const agent = createAgent(toolSets.fs);
-        const result = await agent.run(context.buildSquadUpdateContext(agentName, squad, changeDescription));
-        context.addAgentOutput(`${squad.id}:${agentName}`, result.summary, result.filesCreated);
-        console.log(chalk.green(`    [${squad.name}] ${agentName} done — ${result.filesCreated.length} file(s)`));
-        results[agentName] = result;
-        break;
-      } catch (err) {
-        if (attempt === 2) {
-          console.log(chalk.red(`    [${squad.name}] ${agentName} failed: ${err.message}`));
-          results[agentName] = { error: err.message, summary: `FAILED: ${err.message}`, filesCreated: [] };
-        } else {
-          console.log(chalk.yellow(`    [${squad.name}] ${agentName} failed (attempt 1) — retrying...`));
-        }
-      }
-    }
+    const result = await _runSingleAgent(agentName,
+      context.buildSquadUpdateContext(agentName, squad, changeDescription),
+      squad, context, toolSets, agentRegistry);
+    if (result) results[agentName] = result;
   }
   return results;
 }
 
-// Run all affected squads (update) + new squads (standard) in parallel
 async function runAllSquadsUpdate(updatePlan, context, toolSets, agentRegistry, activeAgents) {
   const tasks = [
     ...updatePlan.affectedSquads.map(({ id, changeDescription }) => async () => {
       const squad = context.squadPlan.squads.find(s => s.id === id);
       if (!squad) {
-        console.log(chalk.yellow(`  ⚠️   Squad "${id}" not found in squad plan — skipping.`));
+        console.log(chalk.yellow(`  ⚠️   Squad "${id}" not found — skipping.`));
         return null;
       }
       console.log(chalk.bold.cyan(`\n  ✏️   Updating Squad: ${squad.name}`));
@@ -238,7 +271,6 @@ async function runAllSquadsUpdate(updatePlan, context, toolSets, agentRegistry, 
   ];
 
   const allResults = (await Promise.all(tasks.map(t => t()))).filter(Boolean);
-
   _mergeOutputsToContext(allResults, context);
 
   const flatResults = {};

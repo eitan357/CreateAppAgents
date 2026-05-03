@@ -8,8 +8,68 @@ const { DEPENDENCY_MAP } = require('./agentDependencies');
 // Agents that receive quality feedback during fix rounds
 const FIX_ROUND_AGENTS = new Set(['backendDev', 'frontendDev', 'authAgent']);
 
-// Platform agents that squads must import from instead of creating their own
-const PLATFORM_AGENTS = ['uiPrimitivesAgent', 'uiCompositeAgent', 'apiClientAgent', 'dbSchemaAgent'];
+// Agents that write code and must produce a self-plan before any files
+const SELF_PLANNING_AGENTS = new Set([
+  'backendDev', 'frontendDev', 'authAgent', 'integrationAgent',
+  'uiPrimitivesAgent', 'uiCompositeAgent', 'apiClientAgent', 'dbSchemaAgent',
+  'squadCleanupAgent', 'squadQaAgent',
+]);
+
+// Guidelines injected per agent role from the Leaders Team
+const GUIDELINE_MAP = {
+  backendDev:         'docs/guidelines/tech-guidelines.md',
+  frontendDev:        'docs/guidelines/tech-guidelines.md',
+  authAgent:          'docs/guidelines/tech-guidelines.md',
+  integrationAgent:   'docs/guidelines/tech-guidelines.md',
+  squadDesignerAgent: 'docs/guidelines/design-guidelines.md',
+  squadQaAgent:       'docs/guidelines/qa-guidelines.md',
+  squadSecurityAgent: 'docs/guidelines/security-guidelines.md',
+  squadCleanupAgent:  'docs/guidelines/tech-guidelines.md',
+  uiPrimitivesAgent:  'docs/guidelines/design-guidelines.md',
+  uiCompositeAgent:   'docs/guidelines/design-guidelines.md',
+  platformPmAgent:    'docs/guidelines/pm-guidelines.md',
+  platformQaAgent:    'docs/guidelines/qa-guidelines.md',
+};
+
+function _injectSelfPlanningPrompt(lines, agentName, squadId) {
+  if (!SELF_PLANNING_AGENTS.has(agentName)) return;
+  const planPath = `docs/agent-plans/${agentName}${squadId ? '-' + squadId : ''}.md`;
+  lines.push(
+    '# Step 0 — Self-Planning (MANDATORY before writing any code files)',
+    `Before creating or modifying ANY files, write a task plan to: ${planPath}`,
+    'The plan must list:',
+    '  ## Files to create',
+    '  - relative/path/to/file.ext — brief description of contents',
+    '  ## Files to modify',
+    '  - relative/path/to/existing.ext — what changes',
+    '  ## Execution order',
+    '  1. First: ...',
+    'Only after writing the plan, execute it file by file in the listed order.',
+    '',
+  );
+}
+
+function _injectLeadershipGuidelines(lines, agentName, agentOutputs) {
+  const guidelinePath = GUIDELINE_MAP[agentName];
+  if (!guidelinePath) return;
+  // Check if the guideline was produced by a leader agent
+  const leaderAgentMap = {
+    'docs/guidelines/pm-guidelines.md':       'vpPmAgent',
+    'docs/guidelines/tech-guidelines.md':     'techLeadAgent',
+    'docs/guidelines/design-guidelines.md':   'designLeadAgent',
+    'docs/guidelines/qa-guidelines.md':       'qaLeadAgent',
+    'docs/guidelines/security-guidelines.md': 'securityLeadAgent',
+  };
+  const leaderAgent = leaderAgentMap[guidelinePath];
+  const leaderOutput = leaderAgent ? agentOutputs[leaderAgent] : null;
+  if (!leaderOutput) return;
+  lines.push(
+    `# Leadership Guidelines — read before starting`,
+    `The ${leaderAgent} has produced guidelines at ${guidelinePath}.`,
+    `Use read_file to load it as your first step, before writing any code.`,
+    '',
+  );
+}
 
 function _injectPlatformRules(lines, agentOutputs) {
   const hasUi  = agentOutputs['uiPrimitivesAgent'] || agentOutputs['uiCompositeAgent'];
@@ -401,6 +461,8 @@ class ProjectContext {
     }
 
     _injectPlatformRules(lines, this.agentOutputs);
+    _injectLeadershipGuidelines(lines, agentName, this.agentOutputs);
+    _injectSelfPlanningPrompt(lines, agentName, squad.id);
 
     lines.push(
       `# Your Task — ${agentName} (${squad.name})`,
@@ -499,6 +561,8 @@ class ProjectContext {
     }
 
     _injectPlatformRules(lines, this.agentOutputs);
+    _injectLeadershipGuidelines(lines, agentName, this.agentOutputs);
+    _injectSelfPlanningPrompt(lines, agentName, squad.id);
 
     lines.push(
       `# Your Task — ${agentName} (${squad.name}) UPDATE`,
