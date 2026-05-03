@@ -8,6 +8,31 @@
 
 ---
 
+## מבנה החברה — 3 רמות
+
+```
+┌─────────────────────────────────────────────────────────┐
+│  צוות Leaders (Layer 2b)                                │
+│  VP PM · Tech Lead · QA Lead · Security Lead            │
+│  מוציאים מסמכי הנחיות לכל שאר הצוותים                  │
+└─────────────────────────────────────────────────────────┘
+                          ↓
+┌─────────────────────────────────────────────────────────┐
+│  צוות Platform (Layer 2c)                               │
+│  Platform PM → UI Devs → API Dev → DB Dev → Platform QA │
+│  בונה shared/components · shared/api · shared/db        │
+└─────────────────────────────────────────────────────────┘
+                          ↓
+┌──────────────┐  ┌──────────────┐  ┌──────────────┐
+│  Squad A     │  │  Squad B     │  │  Squad C     │  ← במקביל
+│  PM→Design   │  │  PM→Design   │  │  PM→Design   │
+│  →Dev→Clean  │  │  →Dev→Clean  │  │  →Dev→Clean  │
+│  →QA→Sec→PM  │  │  →QA→Sec→PM  │  │  →QA→Sec→PM  │
+└──────────────┘  └──────────────┘  └──────────────┘
+```
+
+---
+
 ## שלב 0 — הכנה (index.js)
 
 ```
@@ -36,11 +61,11 @@ ProjectContext נוצר (requirements, plan, squadPlan, outputDir)
 
 | Agent | משימה | קלט | פלט | סוג |
 |-------|-------|-----|-----|-----|
-| **requirementsAnalyst** | קורא את הדרישות הגולמיות של המשתמש ומייצר PRD מובנה: user stories, קריטריוני קבלה, edge cases, ו-MVP scope. זהו הבסיס שממנו כל agent אחר פועל. | דרישות גולמיות מהמשתמש | `docs/requirements-spec.md`, `docs/domain-glossary.md` | 📋 |
-| **systemArchitect** | קורא את ה-PRD ומגדיר את ארכיטקטורת המערכת: monolith/microservices, backend patterns, flow בין שכבות, tech stack בסיסי. | requirementsAnalyst | `docs/system-architecture.md`, `docs/architecture.md` | 📋 |
-| **mobileTechAdvisor** *(opt)* | בוחר framework למובייל (React Native/Expo/Flutter), ספריות state management, ניווט, ו-build configuration. | requirementsAnalyst + systemArchitect | `docs/mobile-tech-decisions.md` | 📋 |
-| **webTechAdvisor** *(opt)* | בוחר framework לווב (Next.js/Nuxt/Remix/Vite), מגדיר TypeScript setup, monorepo, ESLint/Prettier/Husky. | requirementsAnalyst + systemArchitect | `docs/web-tech-decisions.md` | 📋 |
-| **businessPlanningAgent** *(opt)* | מעריך עלויות פיתוח ותפעול, מגדיר MVP scope, ומייצר roadmap עסקי עם milestones. | requirementsAnalyst | `docs/business-plan.md` | 📋 |
+| **requirementsAnalyst** | ממיר דרישות גולמיות ל-PRD מובנה: user stories, קריטריוני קבלה, edge cases, MVP scope | דרישות גולמיות | `docs/requirements-spec.md`, `docs/domain-glossary.md` | 📋 |
+| **systemArchitect** | מגדיר ארכיטקטורת מערכת: monolith/microservices, patterns, tech stack | requirementsAnalyst | `docs/system-architecture.md`, `docs/architecture.md` | 📋 |
+| **mobileTechAdvisor** *(opt)* | בוחר framework למובייל, state management, ניווט, build config | requirementsAnalyst + systemArchitect | `docs/mobile-tech-decisions.md` | 📋 |
+| **webTechAdvisor** *(opt)* | בוחר framework לווב, TypeScript setup, monorepo, ESLint/Prettier | requirementsAnalyst + systemArchitect | `docs/web-tech-decisions.md` | 📋 |
+| **businessPlanningAgent** *(opt)* | מעריך עלויות, מגדיר MVP scope ו-roadmap עסקי | requirementsAnalyst | `docs/business-plan.md` | 📋 |
 
 ---
 
@@ -48,61 +73,91 @@ ProjectContext נוצר (requirements, plan, squadPlan, outputDir)
 
 | Agent | משימה | קלט | פלט | סוג |
 |-------|-------|-----|-----|-----|
-| **dataArchitect** | מתכנן את מודל הנתונים המלא: entities, שדות, types, relations (1:1, 1:N, M:N), indexes, ו-constraints. זהו ה-blueprint שממנו dbSchemaAgent יממש את הקוד. | requirementsAnalyst + systemArchitect | `docs/data-model.md` | 📋 |
-| **apiDesigner** | מגדיר כל endpoint ב-REST/GraphQL: method, path, request body, response schema, קודי שגיאה, ו-auth requirements. זהו ה-contract בין backend לfrontend. | requirementsAnalyst + systemArchitect | `docs/api-design.md` | 📋 |
-| **frontendArchitect** | מגדיר folder structure, routing strategy, state management, ו-data fetching patterns לצד הלקוח. | requirementsAnalyst + systemArchitect | `docs/frontend-architecture.md` | 📋 |
-| **renderingStrategyAgent** *(opt)* | מחליט per-page איזו strategy להשתמש (CSR/SSR/SSG/ISR) ב-Next.js/Nuxt, מגדיר App Router structure ו-protected routes. | systemArchitect + frontendArchitect | `docs/rendering-strategy.md` | 📋 |
-| **uxDesignerAgent** *(opt)* | מצייר wireframes טקסטואליים לכל מסך, מגדיר user flows, empty/error/loading states, ו-microcopy. מונע מה-frontendDev לקבל החלטות UX. | requirementsAnalyst + systemArchitect | `docs/ux-flows.md`, `docs/wireframes.md` | 📋 |
-| **designSystemAgent** *(opt)* | מגדיר design tokens (צבעים, טיפוגרפיה, spacing, shadows), variants לכל קומפוננט, ו-dark mode spec. זהו ה-source of truth לעיצוב. | frontendArchitect + uxDesignerAgent | `docs/design-system.md` | 📋 |
-| **localizationAgent** *(opt)* | מגדיר i18n setup ומייצר קבצי תרגום ראשוניים לכל שפה נדרשת (עברית/ערבית/אנגלית כולל RTL). | requirementsAnalyst + frontendArchitect | `frontend/src/i18n/` — קונפיג + קבצי תרגום | 💻 |
-| **inputPolicyAgent** *(opt)* | קורא כל form בדרישות ומייצר מדיניות ולידציה מלאה: max length לכל שדה, תבניות regex, סוגי קבצים מותרים, גודל מקסימלי, כמות מקסימלית, והודעות שגיאה. frontendDev ו-authAgent מממשים לפי מסמך זה. | requirementsAnalyst + uxDesignerAgent | `docs/input-policy.md` | 📋 |
+| **dataArchitect** | מתכנן מודל נתונים מלא: entities, relations, indexes, constraints. Blueprint לdbSchemaAgent | requirementsAnalyst + systemArchitect | `docs/data-model.md` | 📋 |
+| **apiDesigner** | מגדיר כל endpoint: method, path, request/response schema, auth. Contract בין backend לfrontend | requirementsAnalyst + systemArchitect | `docs/api-design.md` | 📋 |
+| **frontendArchitect** | מגדיר folder structure, routing, state management, data fetching לצד הלקוח | requirementsAnalyst + systemArchitect | `docs/frontend-architecture.md` | 📋 |
+| **renderingStrategyAgent** *(opt)* | מחליט CSR/SSR/SSG/ISR per-page ב-Next.js/Nuxt, מגדיר App Router ו-protected routes | systemArchitect + frontendArchitect | `docs/rendering-strategy.md` | 📋 |
+| **uxDesignerAgent** *(opt)* | מצייר wireframes טקסטואליים לכל מסך, מגדיר user flows, empty/error/loading states | requirementsAnalyst + systemArchitect | `docs/ux-flows.md`, `docs/wireframes.md` | 📋 |
+| **designLeadAgent** | כותב שני מסמכים: (1) design system — tokens, variants, dark mode. (2) הנחיות עיצוב לכל Squad Designer | frontendArchitect + uxDesignerAgent | `docs/design-system.md`, `docs/guidelines/design-guidelines.md` | 📋 |
+| **localizationAgent** *(opt)* | מגדיר i18n setup ומייצר קבצי תרגום (עברית/ערבית/אנגלית כולל RTL) | requirementsAnalyst + frontendArchitect | `frontend/src/i18n/` | 💻 |
+| **inputPolicyAgent** | מייצר מדיניות ולידציה מלאה: max length, regex, file types/sizes, timing, error messages לכל שדה | requirementsAnalyst + uxDesignerAgent | `docs/input-policy.md` | 📋 |
 
 ---
 
-## LAYER 2b — Platform Build (רצף, sequential — תמיד רץ אם יש frontend)
+## LAYER 2b — Leaders Team (רצף, sequential)
 
-> רץ **לפני** כל squad. הsquads מייבאים מהקבצים האלה — לא יוצרים כפילויות.
+> ראשי המקצועות. **כל agent כאן מוציא מסמך הנחיות** שצוותי הfeature קוראים לפני שמתחילים לעבוד.
+> רצים אחרי Design כדי שיוכלו לקרוא את כל המסמכים הארכיטקטוניים.
 
 | Agent | משימה | קלט | פלט | סוג |
 |-------|-------|-----|-----|-----|
-| **uiPrimitivesAgent** | מממש את כל קומפוננטות הבסיס שכל צוות ישתמש בהן: Button (variants, sizes, loading), Input (types, error state), Select, Checkbox, Radio, TextArea, Typography, Icon, Badge, Avatar, Spinner, Tooltip. כולל index.ts לimport נוח. | designSystemAgent + uxDesignerAgent + inputPolicyAgent + frontendArchitect | `shared/components/primitives/` | 💻 |
-| **uiCompositeAgent** | מממש קומפוננטות מורכבות שבנויות מ-primitives: Card, Modal, Drawer, Toast, Table, List, Carousel, Tabs, Accordion, Form, Pagination. כולל **EmptyState, ErrorState, LoadingState** (חובה לכל צוות). | uiPrimitivesAgent + uxDesignerAgent + frontendArchitect | `shared/components/composite/` | 💻 |
-| **apiClientAgent** | מממש את שכבת ה-HTTP: wrapper עם auth header injection, retry logic, ו-timeout. מייצר typed methods לכל endpoint מה-API design. כל בקשת רשת עוברת דרכו — אין fetch/axios ישיר. | apiDesigner + systemArchitect | `shared/api/types.ts`, `shared/api/client.ts`, `shared/api/endpoints.ts`, `shared/api/index.ts` | 💻 |
-| **dbSchemaAgent** | מממש את כל שכבת הנתונים: DB connection, model/entity files (אחד לכל entity מdataArchitect), ו-migrations ראשוניים. תומך ב-Mongoose, Prisma, TypeORM, Sequelize, Drizzle. | dataArchitect + systemArchitect | `shared/db/connection.ts`, `shared/db/models/` או `shared/db/entities/` או `prisma/schema.prisma`, `shared/db/index.ts` | 💻 |
+| **vpPmAgent** | קורא דרישות + חלוקת צוותים → מגדיר לכל Squad PM: אילו user stories שלו, acceptance criteria, תלויות בין צוותים, priority (P0/P1/P2) | requirementsAnalyst + systemArchitect + dataArchitect + apiDesigner | `docs/guidelines/pm-guidelines.md` | 📋 |
+| **techLeadAgent** | מגדיר coding standards: module structure, naming conventions, שימוש חובה ב-shared/, error handling patterns, testing requirements | systemArchitect + apiDesigner + dataArchitect + frontendArchitect | `docs/guidelines/tech-guidelines.md` | 📋 |
+| **qaLeadAgent** | מגדיר testing strategy: unit vs integration, coverage requirements, test data, forbidden patterns, accessibility requirements | requirementsAnalyst + apiDesigner + systemArchitect | `docs/guidelines/qa-guidelines.md` | 📋 |
+| **securityLeadAgent** | מנתח threat model לפרויקט הספציפי → מייצר OWASP checklist מותאם + הנחיות per-squad לפי מה שכל צוות מטפל בו | systemArchitect + apiDesigner + dataArchitect | `docs/guidelines/security-guidelines.md` | 📋 |
+
+---
+
+## LAYER 2c — Platform Team (רצף, sequential — צוות עם PM + Devs + QA)
+
+> בונה את כל הקוד המשותף. כל squad מייבא מכאן — לא יוצר כפילויות.
+> ה-PM קורא את הנחיות ה-VP PM ומגדיר spec לצוות. ה-QA בודק completeness.
+
+| Agent | משימה | קלט | פלט | סוג |
+|-------|-------|-----|-----|-----|
+| **platformPmAgent** | קורא pm-guidelines + design + API + data model → כותב spec מפורט לכל 4 dev agents: אילו components, endpoints, entities לממש | vpPmAgent + designLeadAgent + apiDesigner + dataArchitect | `docs/squads/platform-spec.md` | 📋 |
+| **uiPrimitivesAgent** | מממש כל קומפוננטות הבסיס: Button, Input, Select, Checkbox, Radio, TextArea, Typography, Icon, Badge, Avatar, Spinner, Tooltip + index.ts | designLeadAgent + uxDesignerAgent + inputPolicyAgent | `shared/components/primitives/` | 💻 |
+| **uiCompositeAgent** | מממש קומפוננטות מורכבות: Card, Modal, Drawer, Toast, Table, Carousel, **EmptyState, ErrorState, LoadingState** (חובה), NavBar, Sidebar + index.ts | uiPrimitivesAgent + uxDesignerAgent + frontendArchitect | `shared/components/composite/` | 💻 |
+| **apiClientAgent** | מממש HTTP wrapper עם auth injection, retry, timeout. Typed methods לכל endpoint. כל HTTP call עובר דרכו | apiDesigner + systemArchitect | `shared/api/types.ts`, `shared/api/client.ts`, `shared/api/endpoints.ts`, `shared/api/index.ts` | 💻 |
+| **dbSchemaAgent** | מממש DB connection, model/entity files (אחד לכל entity), migrations. תומך Mongoose/Prisma/TypeORM/Sequelize/Drizzle | dataArchitect + systemArchitect | `shared/db/connection.ts`, `shared/db/models/` או `prisma/schema.prisma`, `shared/db/index.ts` | 💻 |
+| **platformQaAgent** | קורא platform-spec ובודק: האם כל component/endpoint/entity קיים ומיוצא מה-index? | platformPmAgent + uiPrimitivesAgent + uiCompositeAgent + apiClientAgent + dbSchemaAgent | `docs/squads/platform-review.md` — READY / INCOMPLETE | 🔍 |
 
 **כל squad מקבל בcontext:**
 ```
 ⚠️ MANDATORY — import from platform, do NOT duplicate:
-  import { Button, Input }      from '../../shared/components/primitives';
-  import { Card, EmptyState }   from '../../shared/components/composite';
-  import { api }                from '../../shared/api';
-  import type { User, ... }     from '../../shared/api/types';
-  import { User, connect }      from '../../shared/db';
+  import { Button, Input }    from '../../shared/components/primitives';
+  import { Card, EmptyState } from '../../shared/components/composite';
+  import { api }              from '../../shared/api';
+  import type { User, ... }   from '../../shared/api/types';
+  import { User, connect }    from '../../shared/db';
 ```
 
 ---
 
-## LAYER 3 — Implementation — Squad Mode
+## LAYER 3 — Implementation — Squad Mode (מקביל בין squads)
 
-כשקיים squadPlan, Layer 3 רץ כ-Squads במקביל (כל squad sequential פנימית).
+כל squad רץ **sequential פנימית** עם 8 שלבים. הsquads עצמם רצים **במקביל** אחד לשני.
 
-### Squad PM Cycle (per squad)
+### Self-Planning Pattern (כל agent שכותב קוד)
+לפני שכותב **כל** קובץ, כל code-writing agent כותב תוכנית לעצמו:
+```
+docs/agent-plans/{agentName}-{squadId}.md:
+  ## Files to create
+  - path/to/file.ts — תוכן
+  ## Files to modify
+  - path/to/existing.ts — מה משתנה
+  ## Execution order
+  1. First: ...
+```
 
-| Agent | משימה | קלט | פלט | סוג |
-|-------|-------|-----|-----|-----|
-| **SquadPmSpec** | קורא את הדרישות הכלליות ואת פלטי שכבת ה-Design, ומתרגם אותם למשימות טכניות קונקרטיות עבור הצוות הספציפי: אילו endpoints לבנות, אילו מסכים, אילו models לשמש, ו-acceptance criteria לכל פיצ'ר. | דרישות + systemArchitect + dataArchitect + apiDesigner | `docs/squads/{id}-spec.md` | 📋 |
-| **backendDev** | קורא את ה-spec של הצוות ומממש את הצד האחורי של הדומיין: routes, controllers, services, middleware, ו-DB queries. מייבא models מ-shared/db ו-client מ-shared/api. | systemArchitect + dataArchitect + apiDesigner + apiClientAgent + dbSchemaAgent + squad spec | `backend/src/modules/{squad}/` | 💻 |
-| **frontendDev** | קורא את ה-spec של הצוות ומממש את הצד הקדמי: screens, components, hooks, ו-forms. מייבא אך ורק מ-shared/components ו-shared/api — לא יוצר קומפוננטות בסיס עצמאיות. | platform agents + frontendArchitect + uxDesignerAgent + inputPolicyAgent + squad spec | `frontend/src/{squad}/` או `mobile/src/{squad}/` | 💻 |
-| **authAgent** | מממש authentication ו-authorization: JWT/session handling, login/register/logout routes, password hashing, ו-route protection middleware. | systemArchitect + apiDesigner + dataArchitect + apiClientAgent + dbSchemaAgent + inputPolicyAgent + squad spec | auth routes, middleware, guard utils | 💻 |
-| **integrationAgent** *(opt)* | מממש חיבורים ל-APIs חיצוניים שצוין ה-spec: Stripe payments, Firebase, webhooks, SMS, email providers. | systemArchitect + apiDesigner + apiClientAgent + squad spec | integration services, webhook handlers | 💻 |
-| **SquadPmReview** | קורא את ה-spec של הצוות ואז קורא את כל הקבצים שנכתבו. בודק: האם כל endpoint קיים? האם כל מסך מומש? האם acceptance criteria מולאו? מוציא verdict: ACCEPTED או GAPS. | squad spec + כל קבצי הsquad | `docs/squads/{id}-review.md` — VERDICT + רשימת פערים | 🔍 |
+### שמונת השלבים של כל Squad
 
-**אם GAPS:** סבב תיקון אחד → dev agents קוראים קוד קיים ומתקנים → PM Re-review.
+| שלב | Agent | משימה | קלט | פלט | סוג |
+|-----|-------|-------|-----|-----|-----|
+| 1 | **Squad PM (Spec)** | קורא pm-guidelines + דרישות → מתרגם למשימות טכניות קונקרטיות לצוות זה בלבד: endpoints, screens, acceptance criteria | vpPmAgent guidelines + design docs + squad info | `docs/squads/{id}-spec.md` | 📋 |
+| 2 | **squadDesignerAgent** | קורא design-guidelines + squad spec → כותב עיצוב מפורט screen-by-screen: components, layout, states, forms, navigation | designLeadAgent guidelines + spec + ux-flows | `docs/squads/{id}-design.md` | 📋 |
+| 3 | **backendDev** | מממש backend לדומיין הצוות לפי tech-guidelines + spec: routes, controllers, services, DB queries | tech-guidelines + spec + shared/db + shared/api | `backend/src/modules/{squad}/` | 💻 |
+| 3 | **frontendDev** | מממש frontend לדומיין הצוות לפי tech-guidelines + squad design: screens, hooks, forms | tech-guidelines + squad design + shared/components + shared/api | `frontend/src/{squad}/` | 💻 |
+| 3 | **authAgent** *(squad auth בלבד)* | מממש JWT/session, login/register/logout, route protection | tech-guidelines + spec + shared/db + inputPolicyAgent | auth routes + middleware | 💻 |
+| 3 | **integrationAgent** *(opt)* | מממש third-party APIs, webhooks, external services | tech-guidelines + spec | integration services | 💻 |
+| 4 | **squadCleanupAgent** | קורא כל קבצי הצוות → מוסיף error handling + מנקה קוד (unused imports, console.log, dead code, dedup בתוך הצוות) | tech-guidelines + כל קבצי הצוות | עדכון in-place + `docs/squads/{id}-cleanup-report.md` | 💻 (משנה קיים) |
+| 5 | **squadQaAgent** | כותב unit + integration tests, מריץ אותם, מתקן כישלונות, בודק accessibility | qa-guidelines + spec + כל קבצי הצוות | `*.test.ts`, `docs/squads/{id}-qa-report.md` | 💻 + 🔍 |
+| 6 | **squadSecurityAgent** | מיישם OWASP checklist מsecurity-guidelines על קוד הצוות הספציפי. מתקן HIGH findings ישירות | security-guidelines + כל קבצי הצוות | `docs/squads/{id}-security-report.md` + תיקונים | 🔍 + 💻 |
+| 7 | **Squad PM (Review)** | קורא spec + כל קבצי הצוות → האם כל acceptance criteria מולאו? | spec + כל קבצי הצוות | `docs/squads/{id}-review.md` — VERDICT: ACCEPTED / GAPS | 🔍 |
+| 8 | **Fix Round** *(אם GAPS)* | dev agents קוראים gaps → מתקנים → PM re-review | squad gaps doc | תיקונים in-place | 💻 |
 
 לאחר כל הsquads, `_mergeOutputsToContext()` ממזג פלטים:
-`auth:backendDev` + `listings:backendDev` → `agentOutputs['backendDev']` (Layer 4 עובד ללא שינוי)
-
-ללא squadPlan: Layer 3 רץ parallel רגיל.
+`auth:backendDev` + `listings:backendDev` → `agentOutputs['backendDev']`
 
 ---
 
@@ -110,17 +165,17 @@ ProjectContext נוצר (requirements, plan, squadPlan, outputDir)
 
 | Agent | משימה | קלט | פלט | סוג |
 |-------|-------|-----|-----|-----|
-| **notificationsAgent** | מגדיר FCM/APNs, מממש notification service לשליחה מה-backend, ו-local reminder scheduling בצד הלקוח. | frontendDev + backendDev + integrationAgent | push notification service, local reminder utils | 💻 |
-| **deepLinksAgent** | מגדיר Universal Links ו-App Links, מממש deep link handlers לכל מסך, ו-QR code utils. | frontendDev + backendDev | link config, handler router | 💻 |
-| **offlineFirstAgent** | מממש persistence layer (WatermelonDB/TanStack), offline queue לבקשות שלא נשלחו, ו-sync logic כשהחיבור חוזר. | frontendDev + dataArchitect + apiDesigner | offline db config, sync service | 💻 |
-| **realtimeAgent** | מוסיף Socket.io server ב-backend ו-client hooks בfrontend לעדכונים חיים: chat, live feed, real-time notifications. | backendDev + frontendDev + integrationAgent | socket server, real-time hooks | 💻 |
-| **animationsAgent** | מוסיף Lottie animations, shared element transitions, ו-micro-interaction components שאין בספריית הprimitives. | frontendDev + frontendArchitect | animation components, Lottie assets | 💻 |
-| **onboardingAgent** | מממש first-run experience: splash screen, onboarding flow עם slides, permission rationale dialogs, ו-empty states לראשונה. | frontendDev + frontendArchitect | onboarding screens, permission handlers | 💻 |
-| **monetizationAgent** | מממש RevenueCat integration, IAP flows (subscriptions + one-time), ו-paywall screens. | frontendDev + backendDev + integrationAgent | IAP service, subscription screens | 💻 |
-| **mlMobileAgent** | מגדיר ML Kit / TFLite, מממש utilities ל-OCR, face detection, image classification, ו-on-device translation. | frontendDev + systemArchitect | ML utilities, model files | 💻 |
-| **arVrAgent** | מגדיר ARKit/ARCore, מממש 3D object placement components ו-AR session management. | frontendDev + systemArchitect | AR components, 3D utils | 💻 |
-| **widgetsExtensionsAgent** | מממש home screen widgets (iOS/Android), Apple Watch extension, ו-Share extension. | frontendDev | widget targets, extension code | 💻 |
-| **otaUpdatesAgent** | מגדיר Expo EAS Update או CodePush, מממש update check logic ו-rollback handling. | frontendDev + devops | OTA config, update service | 💻 + ⚙️ |
+| **notificationsAgent** | FCM/APNs setup, notification service, local reminders | frontendDev + backendDev + integrationAgent | push service, reminder utils | 💻 |
+| **deepLinksAgent** | Universal Links, App Links, deep link handlers, QR utils | frontendDev + backendDev | link config, handler router | 💻 |
+| **offlineFirstAgent** | WatermelonDB/TanStack persistence, offline queue, sync logic | frontendDev + dataArchitect + apiDesigner | offline db, sync service | 💻 |
+| **realtimeAgent** | Socket.io server + client hooks, live updates, chat | backendDev + frontendDev + integrationAgent | socket server, real-time hooks | 💻 |
+| **animationsAgent** | Lottie animations, shared transitions, micro-interactions | frontendDev + frontendArchitect | animation components | 💻 |
+| **onboardingAgent** | First-run experience, splash, permission rationale, empty states | frontendDev + frontendArchitect | onboarding screens | 💻 |
+| **monetizationAgent** | RevenueCat, IAP flows, subscription screens | frontendDev + backendDev + integrationAgent | IAP service, subscription screens | 💻 |
+| **mlMobileAgent** | ML Kit/TFLite, OCR, face detection, on-device ML | frontendDev + systemArchitect | ML utilities | 💻 |
+| **arVrAgent** | ARKit/ARCore, 3D placement components | frontendDev + systemArchitect | AR components | 💻 |
+| **widgetsExtensionsAgent** | Home screen widgets, Apple Watch, Share extension | frontendDev | widget targets | 💻 |
+| **otaUpdatesAgent** | Expo EAS Update / CodePush config, update check logic | frontendDev + devops | OTA config, update service | 💻 + ⚙️ |
 
 ---
 
@@ -128,10 +183,10 @@ ProjectContext נוצר (requirements, plan, squadPlan, outputDir)
 
 | Agent | משימה | קלט | פלט | סוג |
 |-------|-------|-----|-----|-----|
-| **responsiveDesignAgent** | מוסיף mobile-first CSS breakpoints, fluid typography, responsive image components, ו-container queries לכל מסך קיים. | frontendArchitect + frontendDev | responsive styles, layout components | 💻 |
-| **pwaAgent** | מגדיר Service Worker עם offline cache strategy, Web App Manifest, ו-install prompt component. | frontendDev + frontendArchitect | SW config, manifest, install prompt | 💻 + ⚙️ |
-| **webMonetizationAgent** | מממש Stripe Billing: checkout session, customer portal, webhook handler לacronyms subscription events, ו-feature gating per plan. | backendDev + frontendDev + dataArchitect + apiDesigner | Stripe integration, billing screens | 💻 |
-| **cmsAgent** | מזהה כל hardcoded text בקוד, מגדיר CMS (Payload CMS לNext.js / Strapi לאחרים), מייצר contentService ו-useContent() hook, seed data, ו-**`docs/cms-migration.md`** — מפת החלפה. | frontendDev + backendDev + systemArchitect | CMS config, content service, migration plan | 💻 + 📋 |
+| **responsiveDesignAgent** | Mobile-first CSS breakpoints, fluid typography, responsive images | frontendArchitect + frontendDev | responsive styles | 💻 |
+| **pwaAgent** | Service Worker, Web App Manifest, offline cache, install prompt | frontendDev + frontendArchitect | SW config, manifest | 💻 + ⚙️ |
+| **webMonetizationAgent** | Stripe Billing, checkout, customer portal, webhook handler, feature gating | backendDev + frontendDev + dataArchitect + apiDesigner | Stripe integration, billing screens | 💻 |
+| **cmsAgent** | מזהה hardcoded text, מגדיר CMS, contentService, useContent() hook, cms-migration.md | frontendDev + backendDev + systemArchitect | CMS config + `docs/cms-migration.md` | 💻 + 📋 |
 
 ---
 
@@ -139,135 +194,165 @@ ProjectContext נוצר (requirements, plan, squadPlan, outputDir)
 
 | Agent | משימה | קלט | פלט | סוג |
 |-------|-------|-----|-----|-----|
-| **cmsIntegratorAgent** | קורא את `docs/cms-migration.md` ואז עובר על כל קובץ component בפרויקט. מחשב את ה-relative import path לפי עומק הקובץ ומחליף כל hardcoded string ב-`t('key', 'fallback')`. משנה קבצים קיימים בלבד — לא יוצר קבצים חדשים. | cmsAgent output + כל קבצי הcomponents | עדכון in-place לכל קובץ component | 💻 (משנה קיים) |
+| **cmsIntegratorAgent** | קורא cms-migration.md ועובר על כל component files → מחליף hardcoded strings ב-`t('key','fallback')` | cmsAgent + כל component files | עדכון in-place לכל קבצים | 💻 (משנה קיים) |
 
 ---
 
-## LAYER 3e — Error Handling (רצף, תמיד רץ)
+## LAYER 3e — Error Handling גלובלי (רצף, global pass)
+
+> ה-squadCleanupAgent מטפל בשגיאות **בתוך כל squad**. Layer זה עושה pass גלובלי נוסף.
 
 | Agent | משימה | קלט | פלט | סוג |
 |-------|-------|-----|-----|-----|
-| **errorHandlingAgent** | קורא את כל route files ו-package.json, ואז מוסיף שכבת error handling אחידה לכל הפרויקט: Express global error middleware, asyncHandler wrapper, httpErrors, React ErrorBoundary, ו-API client error interceptors. עושה תיקון surgical — לא מחליף קבצים שלמים. | backendDev + frontendDev + authAgent | עדכון in-place לroutes קיימים + קבצי error חדשים | 💻 (מעדכן קיים + יוצר חדש) |
+| **errorHandlingAgent** | קורא כל route files → מוסיף Express global error middleware, asyncHandler, ErrorBoundary, API interceptors. Surgical — לא מחליף קבצים | backendDev + frontendDev + authAgent | עדכון in-place + קבצי error חדשים | 💻 (משנה קיים) |
 
 ---
 
-## LAYER 3f — Code Refinement (רצף, תמיד רץ)
+## LAYER 3f — Code Refinement גלובלי (רצף)
+
+> ה-squadCleanupAgent מנקה **בתוך כל squad**. Layer זה עושה deduplication **בין squads**.
 
 | Agent | משימה | קלט | פלט | סוג |
 |-------|-------|-----|-----|-----|
-| **codeDeduplicationAgent** | קורא את כל קבצי הפרויקט, מזהה לוגיקה/קומפוננטות/hooks כפולים בין squads, מחלץ אותם ל-`shared/utils/`, ומעדכן את כל ה-importers כולל test files. חייב לראות את כל הקוד — לכן גלובלי ולא per-squad. | backendDev + frontendDev + authAgent + errorHandlingAgent | `shared/utils/` + עדכון imports בכל קבצים קיימים | 💻 (מעדכן קיים + יוצר חדש) |
-| **codeCleanupAgent** | קורא את כל הקבצים אחרי ה-deduplication ומסיר: unused imports, dead code, console.log, commented-out blocks, debugger statements. לא מוסיף פונקציונליות — רק מנקה. | codeDeduplicationAgent | עדכון in-place לכל קבצים קיימים | 💻 (מעדכן קיים) |
+| **codeDeduplicationAgent** | קורא **את כל הקוד מכל הsquads** → מזהה כפילויות cross-squad → מחלץ ל-shared/utils/ | backendDev + frontendDev + authAgent + errorHandlingAgent | `shared/utils/` + עדכון imports | 💻 (משנה קיים) |
+| **codeCleanupAgent** | מנקה לאחר deduplication: unused imports, dead code, console.log | codeDeduplicationAgent | עדכון in-place | 💻 (משנה קיים) |
 
 ---
 
-## LAYER 4 — Quality (מקביל, parallel)
+## LAYER 4 — Quality גלובלי (מקביל, global pass)
+
+> ה-squadQaAgent ו-squadSecurityAgent עובדים **על קוד כל squad בנפרד**.
+> Layer זה עושה quality pass **על כל האפליקציה המאוחדת**.
 
 | Agent | משימה | קלט | פלט | סוג |
 |-------|-------|-----|-----|-----|
-| **testWriter** | כותב unit tests ו-integration tests לכל module: בודק happy path, edge cases, ו-error cases. משתמש ב-Jest/Vitest/Playwright לפי ה-tech stack. | backendDev + frontendDev + authAgent + dataArchitect | `*.test.ts` / `*.spec.ts` לצד כל module | 💻 |
-| **security** | סורק את הקוד לחולשות: XSS, SQL injection, CSRF, IDOR, exposed secrets, insecure JWT, ו-missing rate limiting. מוציא דוח ממוקד עם המלצות תיקון. | backendDev + authAgent + apiDesigner | `docs/security-report.md` | 🔍 |
-| **reviewer** | בודק איכות קוד כוללת: bugs פוטנציאליים, anti-patterns, קבצים חסרים, error handling שגוי, ו-missing validation. | backendDev + frontendDev + authAgent + integrationAgent | `docs/code-review.md` | 🔍 |
-| **performanceAgent** *(opt)* | מנתח startup time, memory leaks, ו-60fps bottlenecks באפליקציית מובייל. | frontendDev + frontendArchitect | `docs/performance-report.md` | 🔍 |
-| **webPerformanceAgent** *(opt)* | מנתח Core Web Vitals (LCP/CLS/INP), bundle size, ו-code splitting opportunities באפליקציית ווב. | frontendDev + frontendArchitect + renderingStrategyAgent | `docs/web-performance-report.md` | 🔍 |
-| **accessibilityAgent** *(opt)* | בודק WCAG 2.1: VoiceOver/TalkBack labels, keyboard navigation, ARIA attributes, ו-color contrast ratios. | frontendDev | `docs/accessibility-report.md` | 🔍 |
-| **loadTestingAgent** *(opt)* | כותב k6 scripts לload/stress/soak testing של ה-backend endpoints. | backendDev + apiDesigner + devops | `k6/` — test scripts | 💻 |
-| **dependencyManagementAgent** *(opt)* | מריץ npm audit, בודק licenses, ו-מדווח על packages מיושנים עם CVEs. | frontendDev + backendDev | `docs/dependency-report.md` | 🔍 |
-| **userTestingAgent** *(opt)* | מגדיר TestFlight / Firebase App Distribution, כותב usability test scripts, ו-A/B test setup. | frontendDev + backendDev | `docs/user-testing-plan.md` | 📋 |
-| **privacyEthicsAgent** *(opt)* | בודק GDPR/CCPA compliance: cookie consent, data retention policies, ו-data export/deletion endpoints. | backendDev + frontendDev + analyticsMonitoring | `docs/privacy-report.md` | 🔍 |
+| **testWriter** | כותב tests נוספים cross-squad: integration בין squads, E2E flows | backendDev + frontendDev + authAgent + dataArchitect | `*.test.ts` נוספים | 💻 |
+| **security** | security review גלובלי על האפליקציה כולה — חוצה צוותים | backendDev + authAgent + apiDesigner | `docs/security-report.md` | 🔍 |
+| **reviewer** | code review גלובלי: patterns, consistency בין squads | backendDev + frontendDev + authAgent + integrationAgent | `docs/code-review.md` | 🔍 |
+| **performanceAgent** *(opt)* | profiling מלא של האפליקציה: startup, memory, 60fps | frontendDev + frontendArchitect | `docs/performance-report.md` | 🔍 |
+| **webPerformanceAgent** *(opt)* | Core Web Vitals, bundle analysis, code splitting | frontendDev + frontendArchitect + renderingStrategyAgent | `docs/web-performance-report.md` | 🔍 |
+| **accessibilityAgent** *(opt)* | WCAG 2.1 review גלובלי | frontendDev | `docs/accessibility-report.md` | 🔍 |
+| **loadTestingAgent** *(opt)* | k6 load/stress/soak scripts לbackend המלא | backendDev + apiDesigner + devops | `k6/` | 💻 |
+| **dependencyManagementAgent** *(opt)* | npm audit, licenses, outdated packages | frontendDev + backendDev | `docs/dependency-report.md` | 🔍 |
+| **userTestingAgent** *(opt)* | TestFlight/Firebase Distribution setup, A/B scripts | frontendDev + backendDev | `docs/user-testing-plan.md` | 📋 |
+| **privacyEthicsAgent** *(opt)* | GDPR/CCPA: cookie consent, data retention, data deletion endpoints | backendDev + frontendDev + analyticsMonitoring | `docs/privacy-report.md` | 🔍 |
 
 ---
 
-## LAYER 4b — Test Run (רצף)
+## LAYER 4b — Test Run (רצף, גלובלי)
 
 | Agent | משימה | קלט | פלט | סוג |
 |-------|-------|-----|-----|-----|
-| **testRunner** | מריץ `npm install` ואז את כל ה-test suite (jest/vitest/playwright) עם `\|\| true` כדי שלא ייפול. אוסף output מלא וכיסוי per-file. גישה בלעדית ל-shell. | testWriter + קבצי קוד | `docs/test-results.md` — output מלא + coverage | 🔍 |
+| **testRunner** | מריץ `npm install` + כל ה-test suite (jest/vitest/playwright) עם `\|\| true`. צריך אפליקציה שלמה רצה — לכן גלובלי. גישת shell בלעדית. | testWriter + קבצי קוד | `docs/test-results.md` | 🔍 |
 
 ---
 
-## LAYER 4c — Test Fix (רצף)
+## LAYER 4c — Test Fix (רצף, גלובלי)
 
 | Agent | משימה | קלט | פלט | סוג |
 |-------|-------|-----|-----|-----|
-| **testFixer** | קורא את `test-results.md` ולכל כישלון קורא את קובץ ה-test וקובץ ה-source. אם הטסט שגוי — מתקן את הטסט. אם הקוד שגוי — מתקן את הקוד. לא כותב טסטים חדשים. | test-results.md | תיקונים in-place לקבצי test או source | 💻 (מעדכן קיים) |
+| **testFixer** | קורא test-results.md ולכל כישלון קורא test + source. אם test שגוי → מתקן test. אם קוד שגוי → מתקן קוד. | test-results.md | תיקונים in-place | 💻 (משנה קיים) |
 
 ---
 
-## 🔄 Quality Fix Loop (עד 2 סבבים)
+## 🔄 Quality Fix Loop (עד 2 סבבים, גלובלי)
 
 ```
 אם דוחות Quality מכילים בעיות → approval gate
 
   backendDev + frontendDev + authAgent
-    קוראים דוחות (feedbackNotes) — dependencies מדולגות, חוסך 5-15K tokens
+    קוראים דוחות (feedbackNotes) — dependencies מדולגות
     מתקנים קוד קיים (read_file → fix → write_file)
 
   Quality Re-run: Layer 4 → 4b → 4c
-  approval gate → הצגת תוצאות → סבב נוסף אם נדרש (עד max 2)
+  approval gate → סבב נוסף אם נדרש (עד max 2)
 ```
 
 ---
 
-## LAYER 5 — Operations (מקביל, parallel — ללא approval gate)
+## LAYER 5 — Operations (מקביל, ללא approval gate)
 
 | Agent | משימה | קלט | פלט | סוג |
 |-------|-------|-----|-----|-----|
-| **devops** | מגדיר את תשתית ה-deployment: Dockerfile, docker-compose, GitHub Actions CI/CD pipeline, nginx config, ו-environment variables setup. | systemArchitect + backendDev + frontendDev | `Dockerfile`, `docker-compose.yml`, `.github/workflows/`, `nginx.conf` | ⚙️ |
-| **documentation** | כותב תיעוד מלא לפרויקט: README עם setup guide, API reference לכל endpoint, CONTRIBUTING guide, ו-environment variables table. | requirementsAnalyst + apiDesigner + backendDev + frontendDev + devops | `README.md`, `docs/api-reference.md`, `docs/setup-guide.md`, `CONTRIBUTING.md` | 📋 |
-| **analyticsMonitoring** *(opt)* | מגדיר Sentry לcrash reporting, GA4/Plausible לanalytics, RUM, ו-feature flag utils. | frontendDev + backendDev | Sentry config, analytics setup, feature flag utils | 💻 + ⚙️ |
-| **seoAgent** *(opt)* | מוסיף meta tags, Open Graph, JSON-LD structured data, `sitemap.xml`, `robots.txt`, ו-canonical URLs לכל page. | frontendDev + renderingStrategyAgent + frontendArchitect | SEO components, sitemap, robots | 💻 |
-| **appStorePublisher** *(opt)* | מגדיר Fastlane לautomated builds, code signing, App Store Connect + Google Play setup, ו-release checklist. | systemArchitect + frontendDev + devops | Fastlane config, signing scripts, `docs/release-checklist.md` | ⚙️ + 📋 |
-| **asoMarketingAgent** *(opt)* | כותב App Store Optimization: keywords research, store listing copy, ו-screenshot strategy. | requirementsAnalyst | `docs/store-listing.md` | 📋 |
+| **devops** | Dockerfile, docker-compose, GitHub Actions CI/CD, nginx, env vars | systemArchitect + backendDev + frontendDev | `Dockerfile`, `docker-compose.yml`, `.github/workflows/`, `nginx.conf` | ⚙️ |
+| **documentation** | README, API reference, setup guide, CONTRIBUTING | requirementsAnalyst + apiDesigner + backendDev + frontendDev + devops | `README.md`, `docs/api-reference.md`, `CONTRIBUTING.md` | 📋 |
+| **analyticsMonitoring** *(opt)* | Sentry, GA4/Plausible, RUM, feature flags | frontendDev + backendDev | Sentry config, analytics setup | 💻 + ⚙️ |
+| **seoAgent** *(opt)* | meta tags, Open Graph, JSON-LD, sitemap.xml, robots.txt | frontendDev + renderingStrategyAgent + frontendArchitect | SEO components, sitemap | 💻 |
+| **appStorePublisher** *(opt)* | Fastlane, code signing, App Store Connect + Google Play | systemArchitect + frontendDev + devops | Fastlane config, `docs/release-checklist.md` | ⚙️ + 📋 |
+| **asoMarketingAgent** *(opt)* | App Store Optimization: keywords, store listing copy, screenshot strategy | requirementsAnalyst | `docs/store-listing.md` | 📋 |
 
 ---
 
-## PM Acceptance Review
+## PM Acceptance Review (גלובלי, VP-level)
 
 | Agent | משימה | קלט | פלט | סוג |
 |-------|-------|-----|-----|-----|
-| **pmReviewer** | קורא את כל קבצי הפרויקט ובודק coverage מלא מול הדרישות המקוריות: האם כל user story מומש? האם כל קריטריון קבלה מולא? מוציא verdict כולל עם רשימת פערים אם קיימים. | כל agent outputs (קורא קבצים ישירות) | `docs/pm-review.md` — ✅/⚠️/❌ לכל דרישה + **VERDICT: ACCEPTED / NEEDS_FIXES** | 🔍 |
+| **pmReviewer** | קורא את כל הפרויקט ובודק coverage מלא מול הדרישות המקוריות. מחזיר verdict עם רשימת פערים | vpPmAgent + requirementsAnalyst + כל agent outputs | `docs/pm-review.md` — ✅/⚠️/❌ לכל דרישה + **VERDICT: ACCEPTED / NEEDS_FIXES** | 🔍 |
 
-**PM Fix Loop (עד 2 סבבים):** אם NEEDS_FIXES → backendDev + frontendDev + authAgent קוראים pm-review.md ומשלימים → Quality Re-run → PM Re-review.
+**PM Fix Loop (עד 2 סבבים):** אם NEEDS_FIXES → backendDev + frontendDev + authAgent מתקנים → Quality Re-run → PM Re-review.
 
 ---
 
-## 🏢 Squad System — 3 שלבים
+## 🏢 Squad System — מנגנון הריצה
 
-### שלב 1 — Squad Planner (squadPlanner.js)
-Sonnet 4.6 מחלק את האפליקציה לצוותים: 2-3 לאפליקציות קטנות, 3-5 בינוני, 5-6 גדול.
+### Squad Planner (squadPlanner.js)
+Sonnet 4.6 מחלק לצוותים: 2-3 קטן, 3-5 בינוני, 5-6 גדול.
 כל squad: `id`, `name`, `userFacingArea`, `backendModule`, `frontendModule`, `keyFeatures`, `agents`
 
-### שלב 2 — Squad Runner (squadRunner.js)
+### Squad Runner (squadRunner.js)
 ```
 runAllSquads() — כל squads במקביל
   runSquad(squad):
-    Phase 1: SquadPmSpec   → docs/squads/{id}-spec.md          📋
-    Phase 2: dev agents    → backend/src/modules/{squad}/       💻
-                             frontend/src/{squad}/              💻
-    Phase 3: SquadPmReview → docs/squads/{id}-review.md        🔍
-    Phase 4: if GAPS → fix round → re-review
+    Phase 1: Squad PM Spec   → docs/squads/{id}-spec.md          📋
+    Phase 2: squadDesigner   → docs/squads/{id}-design.md        📋
+    Phase 3: dev agents      → backend + frontend code           💻
+    Phase 4: squadCleanup    → error handling + code cleanup      💻
+    Phase 5: squadQa         → tests + accessibility              💻 + 🔍
+    Phase 6: squadSecurity   → security review                    🔍 + 💻
+    Phase 7: Squad PM Review → VERDICT: ACCEPTED / GAPS           🔍
+    Phase 8: fix round if GAPS → re-review
 
-_mergeOutputsToContext(): auth:backendDev + listings:backendDev → agentOutputs['backendDev']
+_mergeOutputsToContext(): merges per-squad outputs for global Layer 4
 ```
 
-### שלב 3 — Update Mode (updatePlanner.js + orchestrateUpdate)
+### Leadership Context Flow
+```
+Leaders Team writes → docs/guidelines/
+                              ↓
+                     injected via GUIDELINE_MAP in context.js:
+  vpPmAgent       → Squad PM + platformPmAgent
+  techLeadAgent   → backendDev + frontendDev + authAgent + squadCleanupAgent
+  designLeadAgent → squadDesignerAgent + uiPrimitivesAgent + uiCompositeAgent
+  qaLeadAgent     → squadQaAgent + platformQaAgent
+  securityLeadAgent → squadSecurityAgent
+```
+
+### Self-Planning Flow
+```
+Every code-writing agent (backendDev, frontendDev, authAgent, integrationAgent,
+uiPrimitivesAgent, uiCompositeAgent, apiClientAgent, dbSchemaAgent,
+squadCleanupAgent, squadQaAgent):
+
+  Step 0: write docs/agent-plans/{agentName}-{squadId}.md
+          → list every file to create/modify + execution order
+  Step 1+: execute the plan file by file
+```
+
+### Update Mode (updatePlanner.js + orchestrateUpdate)
 ```
 analyzeUpdate(changeRequest, existingSquadPlan) → {
   affectedSquads:  [{ id, changeDescription }],
   newSquads:       [{ ...squad schema }],
   platformUpdates: {
-    uiPrimitives: "..." | null,   ← רץ uiPrimitivesAgent בUpdate mode
-    uiComposite:  "..." | null,   ← רץ uiCompositeAgent בUpdate mode
-    apiClient:    "..." | null,   ← רץ apiClientAgent בUpdate mode
-    dbSchema:     "..." | null    ← רץ dbSchemaAgent בUpdate mode
+    uiPrimitives, uiComposite, apiClient, dbSchema, designLead  (each: "..." | null)
   }
 }
 
 סדר ריצה בUpdate Mode:
   Platform agents שמושפעים (קוראים קוד קיים → מוסיפים בלבד)
            ↓
-  Squads קיימים (SquadPmUpdateSpec → dev update → PM review)
-  Squads חדשים  (תהליך רגיל)
+  Squads קיימים: SquadPmUpdateSpec → dev update → cleanup → QA → security → PM review
+  Squads חדשים:  תהליך רגיל (8 שלבים)
            ↓
   Quality Re-run + PM Review + GitHub push
 ```
@@ -281,7 +366,7 @@ analyzeUpdate(changeRequest, existingSquadPlan) → {
 | `parseGithubRepo(input)` | מנתח owner/repo / URL / SSH |
 | `checkGithubAccess(owner, repo, token)` | בודק קיום + הרשאות push |
 | `createGithubRepo(repoName, token, isPrivate)` | יוצר repo חדש |
-| `pushCheckpoint(outputDir, ...)` | **non-fatal** — push אחרי כל layer, לא מפיל build |
+| `pushCheckpoint(outputDir, ...)` | **non-fatal** — push אחרי כל layer |
 | `pushToGithub(outputDir, ...)` | **fatal** — push סופי בסוף build |
 
 ---
@@ -298,7 +383,7 @@ checkpoint כולל: requirements, plan, squadPlan,
 
 index.js — כשנמצא checkpoint:
   1️⃣  בנייה חדשה מאפס
-  2️⃣  המשך מנקודת עצירה (layers שהושלמו → מדולגים)
+  2️⃣  המשך מנקודת עצירה
   3️⃣  עדכון / הוספת פיצ'ר  ← דורש squadPlan בcheckpoint
 ```
 
@@ -308,17 +393,17 @@ index.js — כשנמצא checkpoint:
 
 | מודול | תפקיד |
 |-------|--------|
-| **base.js** | `BaseAgent` — Opus 4.7, thinking + max_tokens לפי tier. timeout: 20 דקות לכל call. |
-| **context.js** | `ProjectContext` — state משותף. `buildScopedContext()` מזריק dependencies. `_injectPlatformRules()` מזריק הנחיות שימוש בshared code לכל squad. `platformUpdateNotes` לUpdate Mode. |
+| **base.js** | `BaseAgent` — Opus 4.7, thinking + max_tokens לפי tier. timeout: 20 דקות. |
+| **context.js** | `ProjectContext` — state משותף. `buildScopedContext()` + `buildSquadScopedContext()`. `_injectPlatformRules()`, `_injectLeadershipGuidelines()`, `_injectSelfPlanningPrompt()` מוזרקים אוטומטית לפי agent role. |
 | **agentDependencies.js** | DEPENDENCY_MAP — מה כל agent "רואה" מהagents שרצו לפניו. |
 | **layerRunner.js** | `runLayerInParallel` / `runLayerSequential` — retry x2 לכל agent. |
-| **squadRunner.js** | `runAllSquads`, `runSquadUpdate`, `runAllSquadsUpdate` — Squad PM cycle. |
+| **squadRunner.js** | `runAllSquads`, `runSquadUpdate`, `runAllSquadsUpdate` — 8-phase squad cycle. |
 | **squadPlanner.js** | `createSquadPlan` — Sonnet 4.6 מחלק לצוותים. |
 | **updatePlanner.js** | `analyzeUpdate` — Sonnet 4.6 מנתח בקשת שינוי → affectedSquads + newSquads + platformUpdates. |
 | **tools/fileSystem.js** | `read_file` / `write_file` / `list_files` — לכל ה-agents. |
-| **tools/shell.js** | `run_command` — לtestRunner ו-devops בלבד. |
+| **tools/shell.js** | `run_command` — לtestRunner, devops, ו-squadQaAgent בלבד. |
 | **approval.js** | approval gates בין layers. |
-| **github.js** | חיבור ל-GitHub: validation, repo creation, checkpoint push, final push. |
+| **github.js** | GitHub: validation, repo creation, checkpoint push, final push. |
 
 ---
 
@@ -326,15 +411,17 @@ index.js — כשנמצא checkpoint:
 
 | | |
 |-|-|
-| סה"כ agents | ~60 |
-| agents שמייצרים קוד (💻) | ~40 |
-| agents שמייצרים מסמכי הנחיות (📋) | ~12 |
-| agents שמייצרים דוחות/ניתוח (🔍) | ~10 |
+| סה"כ agents | ~68 |
+| agents שמייצרים קוד (💻) | ~42 |
+| agents שמייצרים מסמכי הנחיות (📋) | ~15 |
+| agents שמייצרים דוחות (🔍) | ~12 |
 | agents שמייצרים קונפיג (⚙️) | ~5 |
-| agents שמשנים קבצים קיימים | cmsIntegratorAgent, errorHandlingAgent, codeDeduplicationAgent, codeCleanupAgent, testFixer |
+| agents שמשנים קבצים קיימים | cmsIntegratorAgent, errorHandlingAgent, codeDeduplicationAgent, codeCleanupAgent, testFixer, squadCleanupAgent, squadSecurityAgent (HIGH findings) |
+| **Leaders Team agents** | vpPmAgent, techLeadAgent, qaLeadAgent, securityLeadAgent |
+| **Platform Team agents** | platformPmAgent, uiPrimitivesAgent, uiCompositeAgent, apiClientAgent, dbSchemaAgent, platformQaAgent |
+| **Per-squad agents** | squadDesignerAgent, squadCleanupAgent, squadQaAgent, squadSecurityAgent |
+| שלבים per-squad | 8 (PM spec → designer → devs → cleanup → QA → security → PM review → fix) |
 | מודל לפיתוח | Claude Opus 4.7 (timeout: 20 דקות) |
 | מודל לתכנון | Claude Sonnet 4.6 (timeout: 10 דקות) |
-| מקסימום סבבי Quality Fix | 2 |
-| מקסימום סבבי PM Fix | 2 |
-| agents עם גישת shell | testRunner, devops |
+| agents עם גישת shell | testRunner, devops, squadQaAgent |
 | checkpoint | אחרי כל layer — local + GitHub push |
