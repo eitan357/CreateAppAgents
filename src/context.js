@@ -10,9 +10,27 @@ const FIX_ROUND_AGENTS = new Set(['backendDev', 'frontendDev', 'authAgent']);
 
 // Agents that write code and must produce a self-plan before any files
 const SELF_PLANNING_AGENTS = new Set([
+  // Core implementation
   'backendDev', 'frontendDev', 'authAgent', 'integrationAgent',
+  // Platform build
   'uiPrimitivesAgent', 'uiCompositeAgent', 'apiClientAgent', 'dbSchemaAgent',
-  'squadErrorHandlingAgent', 'squadCodeCleanupAgent', 'squadDeduplicationAgent', 'squadQaAgent',
+  // Per-squad specialists
+  'squadErrorHandlingAgent', 'squadCodeCleanupAgent', 'squadDeduplicationAgent',
+  'squadQaAgent', 'squadSecurityAgent',
+  // Layer 2
+  'localizationAgent',
+  // Mobile features (Layer 3b)
+  'notificationsAgent', 'deepLinksAgent', 'offlineFirstAgent', 'realtimeAgent',
+  'animationsAgent', 'onboardingAgent', 'monetizationAgent',
+  'mlMobileAgent', 'arVrAgent', 'widgetsExtensionsAgent', 'otaUpdatesAgent',
+  // Web features (Layer 3c/3d)
+  'responsiveDesignAgent', 'pwaAgent', 'webMonetizationAgent', 'cmsAgent', 'cmsIntegratorAgent',
+  // Global refinement (Layer 3f)
+  'codeDeduplicationAgent',
+  // Quality (Layer 4)
+  'testWriter', 'loadTestingAgent', 'testFixer',
+  // Operations (Layer 5)
+  'devops', 'analyticsMonitoring', 'appStorePublisher',
 ]);
 
 // Guidelines injected per agent role from the Leaders Team
