@@ -10,6 +10,7 @@ const { createFileSystemTools } = require('./tools/fileSystem');
 const { createShellTools } = require('./tools/shell');
 const { runLayerInParallel, runLayerSequential, getFailedAgents } = require('./layerRunner');
 const { runAllSquads, runAllSquadsUpdate } = require('./squadRunner');
+const { runPlatformPipeline } = require('./platformRunner');
 const { analyzeUpdate, formatUpdatePlan } = require('./updatePlanner');
 const { pushCheckpoint, pushToGithub } = require('./github');
 
@@ -50,6 +51,7 @@ const { createSecurityLeadAgent }        = require('./agents/securityLeadAgent')
 // ── Platform Team agents ──────────────────────────────────────────────────────
 const { createPlatformPmAgent }          = require('./agents/platformPmAgent');
 const { createPlatformQaAgent }          = require('./agents/platformQaAgent');
+const { createPlatformSecurityAgent }    = require('./agents/platformSecurityAgent');
 
 // ── Web Feature agents ────────────────────────────────────────────────────────
 const { createRenderingStrategyAgent }   = require('./agents/renderingStrategyAgent');
@@ -145,6 +147,7 @@ const AGENT_REGISTRY = {
   // Platform Team
   platformPmAgent:          createPlatformPmAgent,
   platformQaAgent:          createPlatformQaAgent,
+  platformSecurityAgent:    createPlatformSecurityAgent,
   // Web Features
   renderingStrategyAgent:   createRenderingStrategyAgent,
   responsiveDesignAgent:    createResponsiveDesignAgent,
@@ -212,28 +215,12 @@ const LAYER_DEFINITIONS = [
   },
   {
     id: '2c',
-    name: 'Platform Build',
+    name: 'Platform',
     parallel: false,
+    // Agents listed here are used only for skip-detection and display.
+    // Execution is handled entirely by runPlatformPipeline() which runs all
+    // 7 phases: spec → build → feature infra → QA loop → security → PM review → PM fix.
     agents: ['platformPmAgent', 'uiPrimitivesAgent', 'uiCompositeAgent', 'apiClientAgent', 'dbSchemaAgent'],
-  },
-  {
-    id: '2d',
-    name: 'Feature Infrastructure',
-    parallel: true,
-    agents: [
-      // Mobile feature infrastructure
-      'notificationsAgent', 'deepLinksAgent', 'offlineFirstAgent', 'realtimeAgent',
-      'animationsAgent', 'onboardingAgent', 'monetizationAgent', 'mlMobileAgent',
-      'arVrAgent', 'widgetsExtensionsAgent', 'otaUpdatesAgent',
-      // Web feature infrastructure
-      'responsiveDesignAgent', 'pwaAgent', 'webMonetizationAgent',
-    ],
-  },
-  {
-    id: '2e',
-    name: 'Platform QA',
-    parallel: false,
-    agents: ['platformQaAgent'],
   },
   {
     id: 3,
@@ -441,9 +428,10 @@ function getActiveAgents(plan) {
   names.add('qaLeadAgent');
   names.add('securityLeadAgent');
 
-  // Platform Team — PM and QA always run; dev agents conditional on frontend
+  // Platform Team — always run
   names.add('platformPmAgent');
   names.add('platformQaAgent');
+  names.add('platformSecurityAgent');
   names.add('dbSchemaAgent');
 
   // Frontend-dependent platform agents
@@ -527,7 +515,9 @@ function formatPlan(plan) {
     `    Layer 1  — Discovery      : requirementsAnalyst, systemArchitect${optional.includes('mobileTechAdvisor') ? ', mobileTechAdvisor' : ''}${optional.includes('webTechAdvisor') ? ', webTechAdvisor' : ''}${optional.includes('businessPlanningAgent') ? ', businessPlanningAgent' : ''}`,
     `    Layer 2  — Design         : dataArchitect, apiDesigner${l3.includeFrontend !== false ? ', frontendArchitect' : ''}${optional.includes('uxDesignerAgent') ? ', uxDesignerAgent' : ''}${l3.includeFrontend !== false ? ', designLeadAgent' : ''}${optional.includes('renderingStrategyAgent') ? ', renderingStrategyAgent' : ''}${optional.includes('localizationAgent') ? ', localizationAgent' : ''}${l3.includeFrontend !== false ? ', inputPolicyAgent' : ''}`,
     `    Layer 2b — Leaders Team      : vpPmAgent, techLeadAgent, qaLeadAgent, securityLeadAgent`,
-    `    Layer 2c — Platform Build    : platformPmAgent, uiPrimitivesAgent, uiCompositeAgent, apiClientAgent, dbSchemaAgent`,
+    `    Layer 2c — Platform (7-phase pipeline):`,
+    `              Phase 1 : platformPmAgent (spec)`,
+    `              Phase 2 : uiPrimitivesAgent → uiCompositeAgent → apiClientAgent → dbSchemaAgent`,
   ];
 
   const mobileInfra = optional.filter(a =>
@@ -539,10 +529,15 @@ function formatPlan(plan) {
   );
   const allInfra = [...mobileInfra, ...webInfra];
   if (allInfra.length > 0) {
-    lines.push(`    Layer 2d — Feature Infra     : ${allInfra.join(', ')}`);
+    lines.push(`              Phase 3 : ${allInfra.join(', ')} (parallel feature infra)`);
   }
 
-  lines.push(`    Layer 2e — Platform QA       : platformQaAgent`);
+  lines.push(
+    `              Phase 4 : platformQaAgent + fix loop (max 2)`,
+    `              Phase 5 : platformSecurityAgent`,
+    `              Phase 6 : Platform PM review`,
+    `              Phase 7 : fix round if GAPS (build → QA → PM re-review)`,
+  );
   lines.push(`    Layer 3  — Implementation    : backendDev, authAgent${l3.includeFrontend !== false ? ', frontendDev' : ''}${l3.includeIntegration ? ', integrationAgent' : ''}`);
 
   if (optional.includes('cmsIntegratorAgent')) {
@@ -692,7 +687,10 @@ async function orchestrate(requirements, projectName, outputDir, checkpoint = nu
     console.log(chalk.gray(`Mode  : ${layerDef.parallel ? 'parallel' : 'sequential'}`));
 
     let layerResults;
-    if (layerDef.id === 3 && context.squadPlan) {
+    if (layerDef.id === '2c') {
+      // Platform pipeline: spec → build → feature infra → QA loop → security → PM review → PM fix
+      layerResults = await runPlatformPipeline(context, toolSets, AGENT_REGISTRY, activeAgents);
+    } else if (layerDef.id === 3 && context.squadPlan) {
       // ── Squad mode: run each squad's agents in parallel, sequential within squad
       console.log(chalk.bold.cyan(`\n  Running ${context.squadPlan.squads.length} squads in parallel...`));
       layerResults = await runAllSquads(context.squadPlan, context, toolSets, AGENT_REGISTRY, activeAgents);

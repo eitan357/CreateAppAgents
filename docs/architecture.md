@@ -18,8 +18,9 @@
 └─────────────────────────────────────────────────────────┘
                           ↓
 ┌─────────────────────────────────────────────────────────┐
-│  צוות Platform (Layer 2c)                               │
-│  Platform PM → UI Devs → API Dev → DB Dev → Platform QA │
+│  צוות Platform (Layer 2c — 7 שלבים)                    │
+│  Spec → Build → Feature Infra → QA loop → Security      │
+│  → PM Review → PM fix round                             │
 │  בונה shared/components · shared/api · shared/db        │
 └─────────────────────────────────────────────────────────┘
                           ↓
@@ -100,56 +101,55 @@ ProjectContext נוצר (requirements, plan, squadPlan, outputDir)
 
 ---
 
-## LAYER 2c — Platform Build (רצף, sequential)
+## LAYER 2c — Platform Pipeline (7 שלבים, `platformRunner.js`)
 
-> בונה את כל הקוד המשותף הבסיסי. כל squad מייבא מכאן — לא יוצר כפילויות.
+> צוות הפלטפורמה עובר את **אותו** pipeline כמו כל squad: spec → build → feature infra → QA loop → security → PM review → PM fix.
+> הכל מנוהל ע"י `platformRunner.js` — הOrchestrator מפעיל אותו כ-Layer 2c ואז עובר ישר לLayer 3.
 
-| Agent | משימה | קלט | פלט | סוג |
-|-------|-------|-----|-----|-----|
-| **platformPmAgent** | קורא pm-guidelines + design + API + data model → כותב spec מפורט: אילו components, endpoints, entities לממש | vpPmAgent + designLeadAgent + apiDesigner + dataArchitect | `docs/squads/platform-spec.md` | 📋 |
-| **uiPrimitivesAgent** | מממש כל קומפוננטות הבסיס: Button, Input, Select, Checkbox, Radio, TextArea, Typography, Icon, Badge, Avatar, Spinner, Tooltip + index.ts | designLeadAgent + uxDesignerAgent + inputPolicyAgent | `shared/components/primitives/` | 💻 |
-| **uiCompositeAgent** | מממש קומפוננטות מורכבות: Card, Modal, Drawer, Toast, Table, Carousel, **EmptyState, ErrorState, LoadingState** (חובה), NavBar, Sidebar + index.ts | uiPrimitivesAgent + uxDesignerAgent + frontendArchitect | `shared/components/composite/` | 💻 |
-| **apiClientAgent** | מממש HTTP wrapper עם auth injection, retry, timeout. Typed methods לכל endpoint. כל HTTP call עובר דרכו | apiDesigner + systemArchitect | `shared/api/` | 💻 |
-| **dbSchemaAgent** | מממש DB connection, model/entity files, migrations. תומך Mongoose/Prisma/TypeORM/Sequelize/Drizzle | dataArchitect + systemArchitect | `shared/db/` | 💻 |
+### שלבי ה-Pipeline
 
----
+| שלב | Agent/פעולה | פלט | סוג |
+|-----|-------------|-----|-----|
+| **Phase 1** — Spec | **platformPmAgent** — קורא pm-guidelines + design + API + data model → כותב spec מפורט | `docs/squads/platform-spec.md` | 📋 |
+| **Phase 2** — Build | **uiPrimitivesAgent** → **uiCompositeAgent** → **apiClientAgent** → **dbSchemaAgent** (sequential) | `shared/components/`, `shared/api/`, `shared/db/` | 💻 |
+| **Phase 3** — Feature Infra | כל feature agents שנבחרו (parallel) | `shared/notifications/`, `shared/animations/`, `shared/offline/`, ... | 💻 |
+| **Phase 4** — QA loop | **platformQaAgent** → אם INCOMPLETE → re-run Phase 2 → re-check (max 2 rounds) | `docs/squads/platform-review.md` — READY / INCOMPLETE | 🔍 |
+| **Phase 5** — Security | **platformSecurityAgent** — סורק `shared/` לפי security-guidelines | `docs/squads/platform-security-report.md` — SECURE / NEEDS_FIXES | 🔍 + 💻 |
+| **Phase 6** — PM Review | **platformPmReview** — בודק spec vs מימוש בפועל | `docs/squads/platform-pm-review.md` — ACCEPTED / GAPS | 🔍 |
+| **Phase 7** — PM Fix | אם GAPS → re-run Phase 2 → QA re-check → PM re-review | — | 💻 |
 
-## LAYER 2d — Feature Infrastructure (מקביל, parallel)
+### Phase 2 — Platform Build
 
-> בונה תשתיות features משותפות לפני שהsquads מתחילים — כך squads יכולים **לייבא** מהן במקום לממש מחדש.
-> כל agent שנבחר ע"י ה-PM רץ במקביל. Agents שלא נבחרו מדולגים.
+| Agent | משימה | קלט | פלט |
+|-------|-------|-----|-----|
+| **uiPrimitivesAgent** | מממש כל קומפוננטות הבסיס: Button, Input, Select, Checkbox, Radio, TextArea, Typography, Icon, Badge, Avatar, Spinner, Tooltip + index.ts | designLeadAgent + uxDesignerAgent + inputPolicyAgent | `shared/components/primitives/` |
+| **uiCompositeAgent** | מממש קומפוננטות מורכבות: Card, Modal, Drawer, Toast, Table, Carousel, **EmptyState, ErrorState, LoadingState** (חובה), NavBar, Sidebar + index.ts | uiPrimitivesAgent + uxDesignerAgent | `shared/components/composite/` |
+| **apiClientAgent** | HTTP wrapper עם auth injection, retry, timeout. Typed methods לכל endpoint | apiDesigner + systemArchitect | `shared/api/` |
+| **dbSchemaAgent** | DB connection, model/entity files, migrations. Mongoose/Prisma/TypeORM/Sequelize/Drizzle | dataArchitect + systemArchitect | `shared/db/` |
 
-### Mobile Feature Infrastructure
-| Agent | תשתית | קלט | פלט | סוג |
-|-------|--------|-----|-----|-----|
-| **notificationsAgent** | FCM/APNs service, notification handlers, local reminders — `shared/notifications/` | systemArchitect + apiDesigner + dbSchemaAgent | `shared/notifications/` | 💻 |
-| **deepLinksAgent** | Universal Links, App Links, deep link router — `shared/deepLinks/` | systemArchitect + frontendArchitect | `shared/deepLinks/` | 💻 |
-| **offlineFirstAgent** | WatermelonDB/TanStack persistence, offline queue, sync engine — `shared/offline/` | systemArchitect + dataArchitect + dbSchemaAgent | `shared/offline/` | 💻 |
-| **realtimeAgent** | Socket.io server + client hooks, live update infrastructure — `shared/realtime/` | systemArchitect + apiDesigner | `shared/realtime/` | 💻 |
-| **animationsAgent** | Reanimated utils, animation hooks, Lottie wrapper, Skeleton, BottomSheet, SwipeableRow, haptics — `shared/animations/` | uiPrimitivesAgent + designLeadAgent + frontendArchitect | `shared/animations/` | 💻 |
-| **onboardingAgent** | Splash screen, onboarding slides, PermissionRationale, FeatureDiscovery, EmptyState, ProfileSetup | uxDesignerAgent + uiPrimitivesAgent + uiCompositeAgent + frontendArchitect | `mobile/src/screens/onboarding/`, `mobile/src/components/` | 💻 |
-| **monetizationAgent** | RevenueCat SDK, IAP flows, subscription service — `shared/monetization/` | systemArchitect + apiDesigner + dbSchemaAgent | `shared/monetization/` | 💻 |
-| **mlMobileAgent** | ML Kit/TFLite utilities, OCR, face detection — `shared/ml/` | systemArchitect + frontendArchitect | `shared/ml/` | 💻 |
-| **arVrAgent** | ARKit/ARCore setup, 3D scene utilities — `shared/ar/` | systemArchitect + frontendArchitect | `shared/ar/` | 💻 |
-| **widgetsExtensionsAgent** | Home screen widget infrastructure, Share extension setup | frontendArchitect + uiPrimitivesAgent | widget targets + config | 💻 |
-| **otaUpdatesAgent** | Expo EAS Update / CodePush config, update check service | systemArchitect + frontendArchitect | OTA config + `shared/updates/` | 💻 + ⚙️ |
+### Phase 3 — Feature Infrastructure (parallel, optional per PM selection)
 
-### Web Feature Infrastructure
-| Agent | תשתית | קלט | פלט | סוג |
-|-------|--------|-----|-----|-----|
-| **responsiveDesignAgent** | Mobile-first CSS utilities, breakpoint hooks, fluid typography, responsive image helpers — `shared/responsive/` | frontendArchitect + designLeadAgent | `shared/responsive/` + global CSS | 💻 |
-| **pwaAgent** | Service Worker, Web App Manifest, offline cache strategy, install prompt hook | frontendArchitect + systemArchitect | `public/sw.js`, `public/manifest.json`, `shared/pwa/` | 💻 + ⚙️ |
-| **webMonetizationAgent** | Stripe Billing, checkout session, customer portal, webhook handler, feature gate hook — `shared/billing/` | systemArchitect + apiDesigner + dataArchitect + dbSchemaAgent | `shared/billing/` | 💻 |
+#### Mobile
+| Agent | תשתית | פלט |
+|-------|--------|-----|
+| **notificationsAgent** | FCM/APNs service, notification handlers, local reminders | `shared/notifications/` |
+| **deepLinksAgent** | Universal Links, App Links, deep link router | `shared/deepLinks/` |
+| **offlineFirstAgent** | WatermelonDB/TanStack persistence, offline queue, sync engine | `shared/offline/` |
+| **realtimeAgent** | Socket.io server + client hooks, live update infrastructure | `shared/realtime/` |
+| **animationsAgent** | Reanimated utils, animation hooks, Lottie wrapper, Skeleton, BottomSheet, SwipeableRow, haptics | `shared/animations/` |
+| **onboardingAgent** | Splash screen, onboarding slides, PermissionRationale, FeatureDiscovery, EmptyState, ProfileSetup | `mobile/src/screens/onboarding/` |
+| **monetizationAgent** | RevenueCat SDK, IAP flows, subscription service | `shared/monetization/` |
+| **mlMobileAgent** | ML Kit/TFLite utilities, OCR, face detection | `shared/ml/` |
+| **arVrAgent** | ARKit/ARCore setup, 3D scene utilities | `shared/ar/` |
+| **widgetsExtensionsAgent** | Home screen widget infrastructure, Share extension setup | widget targets |
+| **otaUpdatesAgent** | Expo EAS Update / CodePush config, update check service | `shared/updates/` |
 
----
-
-## LAYER 2e — Platform QA (רצף, sequential)
-
-> בודק את **כל** התשתיות: Layer 2c + Layer 2d ביחד.
-
-| Agent | משימה | קלט | פלט | סוג |
-|-------|-------|-----|-----|-----|
-| **platformQaAgent** | קורא platform-spec ובודק: האם כל component/endpoint/entity/shared-module קיים ומיוצא? כולל בדיקת feature infrastructure מ-Layer 2d | platformPmAgent + כל outputs של 2c + 2d | `docs/squads/platform-review.md` — READY / INCOMPLETE | 🔍 |
+#### Web
+| Agent | תשתית | פלט |
+|-------|--------|-----|
+| **responsiveDesignAgent** | Mobile-first CSS utilities, breakpoint hooks, fluid typography | `shared/responsive/` |
+| **pwaAgent** | Service Worker, Web App Manifest, offline cache, install prompt hook | `public/sw.js`, `public/manifest.json` |
+| **webMonetizationAgent** | Stripe Billing, checkout, customer portal, webhook handler, feature gate | `shared/billing/` |
 
 **כל squad מקבל בcontext:**
 ```
@@ -369,7 +369,7 @@ Leaders Team writes → docs/guidelines/
                        + squadErrorHandlingAgent + squadCodeCleanupAgent + squadDeduplicationAgent
   designLeadAgent   → squadDesignerAgent + uiPrimitivesAgent + uiCompositeAgent
   qaLeadAgent       → squadQaAgent + platformQaAgent
-  securityLeadAgent → squadSecurityAgent
+  securityLeadAgent → squadSecurityAgent + platformSecurityAgent
 ```
 
 ### Self-Planning Flow
@@ -465,7 +465,7 @@ index.js — כשנמצא checkpoint:
 | agents שמשנים קבצים קיימים | cmsIntegratorAgent (per-squad, גם מגדיר תשתית), codeDeduplicationAgent, testFixer, squadErrorHandlingAgent, squadCodeCleanupAgent, squadDeduplicationAgent, squadSecurityAgent (HIGH findings) |
 | **Audit agents (דוח בלבד, אין שינוי קוד)** | errorAuditAgent, codeQualityAuditAgent, cmsQaAgent |
 | **Leaders Team agents** | vpPmAgent, techLeadAgent, qaLeadAgent, securityLeadAgent |
-| **Platform Team agents** | platformPmAgent, uiPrimitivesAgent, uiCompositeAgent, apiClientAgent, dbSchemaAgent, platformQaAgent |
+| **Platform Team agents** | platformPmAgent, uiPrimitivesAgent, uiCompositeAgent, apiClientAgent, dbSchemaAgent, platformQaAgent, platformSecurityAgent |
 | **Per-squad agents** | squadDesignerAgent, squadErrorHandlingAgent, squadCodeCleanupAgent, squadDeduplicationAgent, squadQaAgent, squadSecurityAgent |
 | שלבים per-squad | 9 (PM spec → designer → devs → error handling → cleanup → dedup → CMS → QA+loop → security → PM review+loop) |
 | מודל לפיתוח | Claude Opus 4.7 (timeout: 20 דקות) |

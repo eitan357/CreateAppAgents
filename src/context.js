@@ -49,6 +49,7 @@ const GUIDELINE_MAP = {
   uiCompositeAgent:          'docs/guidelines/design-guidelines.md',
   platformPmAgent:           'docs/guidelines/pm-guidelines.md',
   platformQaAgent:           'docs/guidelines/qa-guidelines.md',
+  platformSecurityAgent:     'docs/guidelines/security-guidelines.md',
 };
 
 function _injectSelfPlanningPrompt(lines, agentName, squadId) {

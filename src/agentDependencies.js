@@ -31,6 +31,7 @@ const DEPENDENCY_MAP = {
   platformQaAgent:        ['platformPmAgent', 'uiPrimitivesAgent', 'uiCompositeAgent', 'apiClientAgent', 'dbSchemaAgent',
                            'notificationsAgent', 'offlineFirstAgent', 'realtimeAgent', 'animationsAgent',
                            'responsiveDesignAgent', 'pwaAgent', 'webMonetizationAgent'],
+  platformSecurityAgent:  ['platformPmAgent', 'uiPrimitivesAgent', 'uiCompositeAgent', 'apiClientAgent', 'dbSchemaAgent'],
 
   // ── Platform Build ────────────────────────────────────────────────────────
   uiPrimitivesAgent:      ['designLeadAgent', 'uxDesignerAgent', 'frontendArchitect', 'inputPolicyAgent'],

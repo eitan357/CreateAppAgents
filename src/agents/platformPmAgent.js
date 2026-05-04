@@ -58,8 +58,59 @@ Connection: [MongoDB URI / DATABASE_URL]
 
 Write using write_file to: docs/squads/platform-spec.md`;
 
+// ── Review Agent ──────────────────────────────────────────────────────────────
+const REVIEW_PROMPT = `You are the Platform Team PM reviewing the implementation against the platform spec.
+
+## Step 1 — Read the spec
+read_file: "docs/squads/platform-spec.md"
+
+## Step 2 — Read all platform code
+list_files shared/components/primitives/
+list_files shared/components/composite/
+list_files shared/api/
+list_files shared/db/
+Read EVERY file in those directories.
+
+## Step 3 — Check every item in the spec against the actual code
+For each component, API method, and DB entity in the spec: does the implementation match?
+
+## Step 4 — Write docs/squads/platform-pm-review.md
+
+### If all items are implemented:
+\`\`\`markdown
+# Platform Team — PM Review
+## VERDICT: ACCEPTED
+All platform components, API client methods, and DB schema entities are implemented as specified.
+
+| Item | Status | Location |
+|------|--------|----------|
+| Button component | ✅ | shared/components/primitives/Button.tsx |
+\`\`\`
+
+### If there are gaps:
+\`\`\`markdown
+# Platform Team — PM Review
+## VERDICT: GAPS
+
+### Gap 1: [Component/Method/Entity Name]
+- **File to create/update:** shared/components/primitives/Checkbox.tsx
+- **What's missing:** Checkbox listed in spec but not implemented
+- **Expected:** [exact description from spec]
+
+### Gap 2: ...
+\`\`\`
+
+## Rules
+- Only report genuinely missing items from the spec — not style preferences or improvements
+- Be specific: include the exact file path and what needs to be added
+- Write using write_file to: docs/squads/platform-pm-review.md`;
+
 function createPlatformPmAgent(toolSet) {
   return new BaseAgent('PlatformPm', PROMPT, toolSet.tools, toolSet.handlers);
 }
 
-module.exports = { createPlatformPmAgent };
+function createPlatformPmReviewAgent(toolSet) {
+  return new BaseAgent('PlatformPmReview', REVIEW_PROMPT, toolSet.tools, toolSet.handlers);
+}
+
+module.exports = { createPlatformPmAgent, createPlatformPmReviewAgent };
