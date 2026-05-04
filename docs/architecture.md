@@ -143,6 +143,7 @@ ProjectContext נוצר (requirements, plan, squadPlan, outputDir)
 | **arVrAgent** | ARKit/ARCore setup, 3D scene utilities | `shared/ar/` |
 | **widgetsExtensionsAgent** | Home screen widget infrastructure, Share extension setup | widget targets |
 | **otaUpdatesAgent** | Expo EAS Update / CodePush config, update check service | `shared/updates/` |
+| **socialSharingAgent** | Share Sheet נייטיב, URL schemes (WhatsApp/Telegram/Instagram/Facebook/Twitter/LinkedIn/SMS), clipboard, `OpenInApp` utilities כולל **פתיחת לוח שנה נייטיב עם אירוע מוכן** — `useShare()` + `OpenInApp` מ-`shared/sharing/` | `shared/sharing/` |
 
 #### Web
 | Agent | תשתית | פלט |
@@ -315,7 +316,7 @@ docs/agent-plans/{agentName}-{squadId}.md:
 
 | Agent | משימה | קלט | פלט | סוג |
 |-------|-------|-----|-----|-----|
-| **devops** | Dockerfile, docker-compose, GitHub Actions CI/CD, nginx, env vars | systemArchitect + backendDev + frontendDev | `Dockerfile`, `docker-compose.yml`, `.github/workflows/`, `nginx.conf` | ⚙️ |
+| **devops** | **Step 0**: קורא את כל ה-`package.json` files, מזהה Expo native modules, מייצר `scripts/install.sh` חכם. אח"כ: Dockerfile, docker-compose, GitHub Actions CI/CD, nginx, env vars | systemArchitect + backendDev + frontendDev | `scripts/install.sh`, `Dockerfile`, `docker-compose.yml`, `.github/workflows/`, `nginx.conf` | ⚙️ |
 | **documentation** | README, API reference, setup guide, CONTRIBUTING | requirementsAnalyst + apiDesigner + backendDev + frontendDev + devops | `README.md`, `docs/api-reference.md`, `CONTRIBUTING.md` | 📋 |
 | **analyticsMonitoring** *(opt)* | Sentry, GA4/Plausible, RUM, feature flags | frontendDev + backendDev | Sentry config, analytics setup | 💻 + ⚙️ |
 | **seoAgent** *(opt)* | meta tags, Open Graph, JSON-LD, sitemap.xml, robots.txt | frontendDev + renderingStrategyAgent + frontendArchitect | SEO components, sitemap | 💻 |
@@ -464,23 +465,32 @@ Feature infrastructure agents כמו `animationsAgent` (react-native-reanimated)
 
 ---
 
-## ⚠️ Gap ידוע — שיתוף לאפליקציות חברתיות
+## שיתוף לאפליקציות חברתיות ו-Open-in-App
 
-**מה מכוסה:**
-- `deepLinksAgent` — **כיוון נכנס**: Firebase Dynamic Links, Universal Links, App Links → פותח את האפליקציה שלך מ-URL חיצוני
-- `integrationAgent` — SDK-ים של צד שלישי (Firebase, Supabase, Stripe), כולל Analytics integration
-- `authAgent` — Social Login (Facebook/Google/Apple)
+### כיסוי מלא לפי כיוון
 
-**מה לא מכוסה — כיוון יוצא:**
-שיתוף תוכן **מ**האפליקציה **ל**-WhatsApp, Telegram, Instagram, Facebook וכו':
-- Native Share Sheet (iOS/Android): `Share.share({ message, url })` — React Native built-in
-- URL Schemes ספציפיות: `whatsapp://send?text=...`, `tg://msg?text=...`
-- Instagram Stories SDK, Facebook SDK לשיתוף stories/posts
-- Copy Link functionality
+| כיוון | Agent | מה מכוסה |
+|--------|-------|-----------|
+| **נכנס** (אפליקציה אחרת פותחת אותך) | `deepLinksAgent` | Firebase Dynamic Links, Universal Links (iOS), App Links (Android), deep link router, deferred deep links |
+| **יוצא — שיתוף** | `socialSharingAgent` | Native Share Sheet, URL schemes לWhatsApp/Telegram/Facebook/Twitter/LinkedIn/SMS, Instagram Stories, clipboard |
+| **יוצא — פתיחת app** | `socialSharingAgent` (`OpenInApp`) | פותח WhatsApp/Telegram/Instagram/Facebook, פותח לוח שנה נייטיב עם אירוע מוכן, מפות, חיוג |
+| **Social Login** | `authAgent` | Facebook/Google/Apple Sign-In |
+| **API integrations** | `integrationAgent` | WhatsApp Business API (בוטים), Google Calendar API, Stripe, Firebase Admin, וכו' |
 
-**כיצד מטפלים בזה כיום:**
-אם שיתוף חברתי מוזכר בדרישות → `integrationAgent` (Layer 3, per-squad) מכסה אותו תחת "third-party integrations".
-אם נדרשת תשתית מרכזית (share sheet אחיד לכל הsquads) → ניתן להוסיף `socialSharingAgent` לפאזה 3 של ה-Platform Pipeline.
+### דוגמה — בוט WhatsApp שמוסיף פגישות ללוח שנה
+
+> **כל ה-agents הקיימים מספיקים לדוגמה זו — אין צורך ב-agents חדשים.**
+
+| חלק | Agent | תפקיד |
+|-----|-------|--------|
+| WhatsApp Business API (webhooks + send) | `integrationAgent` | מקבל הודעות נכנסות, שולח תשובות |
+| זיהוי תאריכים מטקסט | `backendDev` | regex / AI API call (OpenAI/Claude) לחילוץ תאריך ושעה |
+| OAuth ללוח שנה | `authAgent` | Google OAuth2 / Microsoft OAuth — בעל העסק מתחבר פעם אחת |
+| Google Calendar / Outlook | `integrationAgent` | יצירת אירוע ב-Calendar API |
+| פתיחת לוח שנה מה-app | `socialSharingAgent` | `OpenInApp.calendar(event)` — פותח לוח שנה נייטיב עם האירוע מוכן |
+
+**מתי לשקול `botFrameworkAgent` (לא קיים כרגע):**
+רק לבוטים מורכבים מאוד — ניהול multi-turn conversations, intent classification, session state בין הודעות מרובות, middleware chain. לבוטים פשוטים `integrationAgent` + `backendDev` מספיקים.
 
 ---
 
@@ -515,7 +525,7 @@ Feature infrastructure agents כמו `animationsAgent` (react-native-reanimated)
 | agents שמשנים קבצים קיימים | cmsIntegratorAgent (per-squad, גם מגדיר תשתית), codeDeduplicationAgent, testFixer, squadErrorHandlingAgent, squadCodeCleanupAgent, squadDeduplicationAgent, squadSecurityAgent (HIGH findings) |
 | **Audit agents (דוח בלבד, אין שינוי קוד)** | errorAuditAgent, codeQualityAuditAgent, cmsQaAgent |
 | **Leaders Team agents** | vpPmAgent, techLeadAgent, qaLeadAgent, securityLeadAgent |
-| **Platform Team agents** | platformPmAgent, uiPrimitivesAgent, uiCompositeAgent, apiClientAgent, dbSchemaAgent, platformQaAgent, platformSecurityAgent |
+| **Platform Team agents** | platformPmAgent, uiPrimitivesAgent, uiCompositeAgent, apiClientAgent, dbSchemaAgent, platformQaAgent, platformSecurityAgent, socialSharingAgent (feature infra) |
 | **Per-squad agents** | squadDesignerAgent, squadErrorHandlingAgent, squadCodeCleanupAgent, squadDeduplicationAgent, squadQaAgent, squadSecurityAgent |
 | שלבים per-squad | 9 (PM spec → designer → devs → error handling → cleanup → dedup → CMS → QA+loop → security → PM review+loop) |
 | מודל לפיתוח | Claude Opus 4.7 (timeout: 20 דקות) |

@@ -23,8 +23,9 @@ const SELF_PLANNING_AGENTS = new Set([
   'notificationsAgent', 'deepLinksAgent', 'offlineFirstAgent', 'realtimeAgent',
   'animationsAgent', 'onboardingAgent', 'monetizationAgent',
   'mlMobileAgent', 'arVrAgent', 'widgetsExtensionsAgent', 'otaUpdatesAgent',
-  // Web features (Layer 3c/3d)
-  'responsiveDesignAgent', 'pwaAgent', 'webMonetizationAgent', 'cmsAgent', 'cmsIntegratorAgent',
+  'socialSharingAgent',
+  // Web features
+  'responsiveDesignAgent', 'pwaAgent', 'webMonetizationAgent', 'cmsIntegratorAgent',
   // Global refinement (Layer 3f)
   'codeDeduplicationAgent',
   // Quality (Layer 4)

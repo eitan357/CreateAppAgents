@@ -72,6 +72,7 @@ const { createMLMobileAgent }            = require('./agents/mlMobileAgent');
 const { createARVRAgent }                = require('./agents/arVrAgent');
 const { createWidgetsExtensionsAgent }   = require('./agents/widgetsExtensionsAgent');
 const { createOTAUpdatesAgent }          = require('./agents/otaUpdatesAgent');
+const { createSocialSharingAgent }       = require('./agents/socialSharingAgent');
 
 // ── Platform Build agents ─────────────────────────────────────────────────────
 const { createUiPrimitivesAgent }        = require('./agents/uiPrimitivesAgent');
@@ -166,6 +167,7 @@ const AGENT_REGISTRY = {
   arVrAgent:                createARVRAgent,
   widgetsExtensionsAgent:   createWidgetsExtensionsAgent,
   otaUpdatesAgent:          createOTAUpdatesAgent,
+  socialSharingAgent:       createSocialSharingAgent,
   // Per-squad specialist agents (run inside squadRunner, registered here for lookup)
   squadErrorHandlingAgent:  createSquadErrorHandlingAgent,
   squadCodeCleanupAgent:    createSquadCodeCleanupAgent,
@@ -349,6 +351,7 @@ const OPTIONAL_AGENTS_GUIDE = `
 - arVrAgent            : Augmented reality (ARKit/ARCore), 3D object placement
 - widgetsExtensionsAgent: Home screen widgets, Apple Watch, Android widgets, Share extensions
 - otaUpdatesAgent      : Over-the-air updates (Expo EAS Update / CodePush) without App Store review
+- socialSharingAgent   : Unified sharing infrastructure — Share Sheet, WhatsApp/Telegram/Instagram/Facebook/Twitter URL schemes, open-in-app utilities, clipboard, and native calendar integration. Squads import useShare() and OpenInApp from shared/sharing/
 
 ### Quality (Layer 4):
 - performanceAgent     : Mobile app startup optimization, memory leaks, 60fps animations, profiling
@@ -459,6 +462,11 @@ function getActiveAgents(plan) {
     names.add('cmsQaAgent');
   }
 
+  // socialSharingAgent — any project with a frontend (mobile or web)
+  if (l3.includeFrontend !== false) {
+    names.add('socialSharingAgent');
+  }
+
   return names;
 }
 
@@ -522,7 +530,8 @@ function formatPlan(plan) {
 
   const mobileInfra = optional.filter(a =>
     ['notificationsAgent','deepLinksAgent','offlineFirstAgent','realtimeAgent','animationsAgent',
-     'onboardingAgent','monetizationAgent','mlMobileAgent','arVrAgent','widgetsExtensionsAgent','otaUpdatesAgent'].includes(a)
+     'onboardingAgent','monetizationAgent','mlMobileAgent','arVrAgent','widgetsExtensionsAgent',
+     'otaUpdatesAgent','socialSharingAgent'].includes(a)
   );
   const webInfra = optional.filter(a =>
     ['responsiveDesignAgent','pwaAgent','webMonetizationAgent'].includes(a)

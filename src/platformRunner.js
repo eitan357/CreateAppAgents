@@ -15,6 +15,8 @@ const PLATFORM_FEATURE_AGENTS = [
   'notificationsAgent', 'deepLinksAgent', 'offlineFirstAgent', 'realtimeAgent',
   'animationsAgent', 'onboardingAgent', 'monetizationAgent', 'mlMobileAgent',
   'arVrAgent', 'widgetsExtensionsAgent', 'otaUpdatesAgent',
+  // Social sharing & external app integration (mobile + web)
+  'socialSharingAgent',
   // Web feature infrastructure
   'responsiveDesignAgent', 'pwaAgent', 'webMonetizationAgent',
 ];

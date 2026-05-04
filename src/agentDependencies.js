@@ -58,6 +58,9 @@ const DEPENDENCY_MAP = {
   arVrAgent:              ['systemArchitect', 'frontendArchitect'],
   monetizationAgent:      ['systemArchitect', 'apiDesigner', 'dbSchemaAgent'],
 
+  // ── Social Sharing & External App Integration ─────────────────────────────
+  socialSharingAgent:     ['systemArchitect', 'frontendArchitect'],
+
   // ── Web Feature Infrastructure (Layer 2d — run before squads) ─────────────
   responsiveDesignAgent:  ['frontendArchitect', 'designLeadAgent'],
   pwaAgent:               ['frontendArchitect', 'systemArchitect'],
