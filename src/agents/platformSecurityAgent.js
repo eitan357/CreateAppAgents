@@ -22,6 +22,21 @@ Focus on:
 - **Input handling**: component props that accept user content are not passed unsanitized to the DOM or native layer
 - **Secrets**: no credentials, API keys, or tokens hardcoded in shared/ code
 
+## Step 2b — Fix plan (ONLY if HIGH severity issues were found — skip otherwise)
+If Step 2 identified one or more HIGH severity issues that require code changes:
+
+Write a fix plan to: docs/agent-plans/platformSecurityAgent.md
+
+The plan must list:
+  ## HIGH issues to fix
+  - [file:line] — [issue description] → [planned fix]
+  ## Execution order
+  1. Fix [file:line]: [exact change]
+  2. ...
+
+Only after writing this plan, apply the fixes.
+If Step 2 found **no HIGH issues**, skip Step 2b entirely and proceed to Step 3.
+
 ## Step 3 — Write docs/squads/platform-security-report.md
 
 \`\`\`markdown

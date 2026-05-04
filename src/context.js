@@ -16,7 +16,8 @@ const SELF_PLANNING_AGENTS = new Set([
   'uiPrimitivesAgent', 'uiCompositeAgent', 'apiClientAgent', 'dbSchemaAgent',
   // Per-squad specialists
   'squadErrorHandlingAgent', 'squadCodeCleanupAgent', 'squadDeduplicationAgent',
-  'squadQaAgent', 'squadSecurityAgent',
+  'squadQaAgent',
+  // squadSecurityAgent — self-planning is conditional (only on HIGH findings), handled in prompt
   // Layer 2
   'localizationAgent',
   // Mobile features (Layer 3b)

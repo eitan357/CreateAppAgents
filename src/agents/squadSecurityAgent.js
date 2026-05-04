@@ -25,6 +25,21 @@ Focus especially on:
 - Sensitive data: is anything sensitive logged or returned unnecessarily?
 - File uploads (if this squad handles files): MIME type validation, size limits
 
+## Step 2b — Fix plan (ONLY if HIGH severity issues were found — skip otherwise)
+If Step 2 identified one or more HIGH severity issues that require code changes:
+
+Write a fix plan to: docs/agent-plans/squadSecurityAgent-{squad-id}.md
+
+The plan must list:
+  ## HIGH issues to fix
+  - [file:line] — [issue description] → [planned fix]
+  ## Execution order
+  1. Fix [file:line]: [exact change]
+  2. ...
+
+Only after writing this plan, apply the fixes.
+If Step 2 found **no HIGH issues**, skip Step 2b entirely and proceed to Step 3.
+
 ## Step 3 — Write docs/squads/{squad-id}-security-report.md
 
 \`\`\`
