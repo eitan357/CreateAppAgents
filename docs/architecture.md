@@ -128,10 +128,10 @@ ProjectContext נוצר (requirements, plan, squadPlan, outputDir)
 
 ## LAYER 3 — Implementation — Squad Mode (מקביל בין squads)
 
-כל squad רץ **sequential פנימית** עם 8 שלבים. הsquads עצמם רצים **במקביל** אחד לשני.
+כל squad רץ **sequential פנימית** עם 9 שלבים. הsquads עצמם רצים **במקביל** אחד לשני.
 
-### Self-Planning Pattern (כל agent שכותב קוד)
-לפני שכותב **כל** קובץ, כל code-writing agent כותב תוכנית לעצמו:
+### Self-Planning Pattern (כל agent שכותב קוד — ללא יוצא מן הכלל)
+לפני שכותב **כל** קובץ, **כל** code-writing agent כותב תוכנית לעצמו:
 ```
 docs/agent-plans/{agentName}-{squadId}.md:
   ## Files to create
@@ -141,6 +141,20 @@ docs/agent-plans/{agentName}-{squadId}.md:
   ## Execution order
   1. First: ...
 ```
+
+**כל 32 ה-agents שכותבים קוד** מחויבים בשלב זה:
+
+| קטגוריה | Agents |
+|---------|--------|
+| Core implementation | `backendDev`, `frontendDev`, `authAgent`, `integrationAgent` |
+| Platform build | `uiPrimitivesAgent`, `uiCompositeAgent`, `apiClientAgent`, `dbSchemaAgent` |
+| Per-squad specialists | `squadErrorHandlingAgent`, `squadCodeCleanupAgent`, `squadDeduplicationAgent`, `squadQaAgent`, `squadSecurityAgent` |
+| Layer 2 | `localizationAgent` |
+| Mobile features | `notificationsAgent`, `deepLinksAgent`, `offlineFirstAgent`, `realtimeAgent`, `animationsAgent`, `onboardingAgent`, `monetizationAgent`, `mlMobileAgent`, `arVrAgent`, `widgetsExtensionsAgent`, `otaUpdatesAgent` |
+| Web features | `responsiveDesignAgent`, `pwaAgent`, `webMonetizationAgent`, `cmsAgent`, `cmsIntegratorAgent` |
+| Global refinement | `codeDeduplicationAgent` |
+| Quality | `testWriter`, `loadTestingAgent`, `testFixer` |
+| Operations | `devops`, `analyticsMonitoring`, `appStorePublisher` |
 
 ### עשרת השלבים של כל Squad
 
@@ -331,13 +345,14 @@ Leaders Team writes → docs/guidelines/
 
 ### Self-Planning Flow
 ```
-Every code-writing agent (backendDev, frontendDev, authAgent, integrationAgent,
-uiPrimitivesAgent, uiCompositeAgent, apiClientAgent, dbSchemaAgent,
-squadErrorHandlingAgent, squadCodeCleanupAgent, squadDeduplicationAgent, squadQaAgent):
+ALL 32 code-writing agents (no exceptions):
 
   Step 0: write docs/agent-plans/{agentName}-{squadId}.md
           → list every file to create/modify + execution order
   Step 1+: execute the plan file by file
+
+מנגנון: _injectSelfPlanningPrompt() ב-context.js בודק SELF_PLANNING_AGENTS
+        ומזריק Step 0 לפרומפט של כל agent בנפרד.
 ```
 
 ### Update Mode (updatePlanner.js + orchestrateUpdate)
@@ -354,7 +369,7 @@ analyzeUpdate(changeRequest, existingSquadPlan) → {
   Platform agents שמושפעים (קוראים קוד קיים → מוסיפים בלבד)
            ↓
   Squads קיימים: SquadPmUpdateSpec → dev update → cleanup → QA → security → PM review
-  Squads חדשים:  תהליך רגיל (8 שלבים)
+  Squads חדשים:  תהליך רגיל (9 שלבים)
            ↓
   Quality Re-run + PM Review + GitHub push
 ```
