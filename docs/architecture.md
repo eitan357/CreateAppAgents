@@ -169,7 +169,7 @@ docs/agent-plans/{agentName}-{squadId}.md:
 | 4a | **squadErrorHandlingAgent** | **רק** error handling: asyncHandler לכל route handler, ErrorBoundary לכל מסך, .catch לכל API call | tech-guidelines + כל קבצי הצוות | עדכון in-place + `docs/squads/{id}-errorhandling-report.md` | 💻 (משנה קיים) |
 | 4b | **squadCodeCleanupAgent** | **רק** ניקוי קוד: unused imports, console.log, debugger, dead code, commented-out blocks | tech-guidelines + כל קבצי הצוות | עדכון in-place + `docs/squads/{id}-codecleanup-report.md` | 💻 (משנה קיים) |
 | 4c | **squadDeduplicationAgent** | **רק** כפילויות בתוך הצוות: מחלץ patterns חוזרים ל-`{squad}/utils.ts` | כל קבצי הצוות | `{squad}/utils.ts` + עדכון imports + `docs/squads/{id}-dedup-report.md` | 💻 |
-| 5 | **cmsIntegratorAgent** *(opt)* | מחיל cms-migration.md על קבצי הצוות — מחליף hardcoded strings ב-`t('key','fallback')` | cmsAgent migration plan + כל קבצי הצוות | עדכון in-place | 💻 (משנה קיים) |
+| 5 | **cmsIntegratorAgent** *(opt)* | **סוכן CMS משולב per-squad**: (1) בודק אם תשתית CMS קיימת — אם לא, מגדיר אותה (Payload/Strapi, contentService, useContent hook). (2) סורק קבצי הצוות לhardcoded text. (3) מוסיף seed data. (4) מחיל t() replacements על הקבצים | frontendDev + backendDev + systemArchitect | CMS config *(פעם ראשונה בלבד)* + `cms/seed-data.json` + עדכון קבצים + `docs/squads/{id}-cms-report.md` | 💻 |
 | 6 | **squadQaAgent** | כותב unit + integration tests, מריץ אותם, מתקן כישלונות, בודק accessibility. **לאחר מכן QA fix loop (עד 2)** | qa-guidelines + spec + כל קבצי הצוות | `*.test.ts`, `docs/squads/{id}-qa-report.md` | 💻 + 🔍 |
 | 6+ | **QA Fix Loop** | אם QA report מכיל FAIL → dev agents מתקנים → QA re-check (מקסימום 2 סבבים) | qa-report | תיקונים in-place | 💻 |
 | 7 | **squadSecurityAgent** | מיישם OWASP checklist מsecurity-guidelines על קוד הצוות הספציפי. מתקן HIGH findings ישירות | security-guidelines + כל קבצי הצוות | `docs/squads/{id}-security-report.md` + תיקונים | 🔍 + 💻 |
@@ -206,15 +206,7 @@ docs/agent-plans/{agentName}-{squadId}.md:
 | **responsiveDesignAgent** | Mobile-first CSS breakpoints, fluid typography, responsive images | frontendArchitect + frontendDev | responsive styles | 💻 |
 | **pwaAgent** | Service Worker, Web App Manifest, offline cache, install prompt | frontendDev + frontendArchitect | SW config, manifest | 💻 + ⚙️ |
 | **webMonetizationAgent** | Stripe Billing, checkout, customer portal, webhook handler, feature gating | backendDev + frontendDev + dataArchitect + apiDesigner | Stripe integration, billing screens | 💻 |
-| **cmsAgent** | מזהה hardcoded text, מגדיר CMS, contentService, useContent() hook, cms-migration.md | frontendDev + backendDev + systemArchitect | CMS config + `docs/cms-migration.md` | 💻 + 📋 |
-
----
-
-## LAYER 3d — CMS Integration (רצף, אופציונלי)
-
-| Agent | משימה | קלט | פלט | סוג |
-|-------|-------|-----|-----|-----|
-| **cmsIntegratorAgent** | קורא cms-migration.md ועובר על כל component files → מחליף hardcoded strings ב-`t('key','fallback')` | cmsAgent + כל component files | עדכון in-place לכל קבצים | 💻 (משנה קיים) |
+| **cmsIntegratorAgent** *(per-squad, ראה Squad Phase 5)* | סוכן CMS per-squad — ראה LAYER 3 Squad Pipeline | — | — | — |
 
 ---
 
@@ -433,7 +425,7 @@ index.js — כשנמצא checkpoint:
 | agents שמייצרים מסמכי הנחיות (📋) | ~15 |
 | agents שמייצרים דוחות (🔍) | ~12 |
 | agents שמייצרים קונפיג (⚙️) | ~5 |
-| agents שמשנים קבצים קיימים | cmsIntegratorAgent, codeDeduplicationAgent, testFixer, squadErrorHandlingAgent, squadCodeCleanupAgent, squadDeduplicationAgent, squadSecurityAgent (HIGH findings) |
+| agents שמשנים קבצים קיימים | cmsIntegratorAgent (per-squad, גם מגדיר תשתית), codeDeduplicationAgent, testFixer, squadErrorHandlingAgent, squadCodeCleanupAgent, squadDeduplicationAgent, squadSecurityAgent (HIGH findings) |
 | **Audit agents (דוח בלבד, אין שינוי קוד)** | errorAuditAgent, codeQualityAuditAgent, cmsQaAgent |
 | **Leaders Team agents** | vpPmAgent, techLeadAgent, qaLeadAgent, securityLeadAgent |
 | **Platform Team agents** | platformPmAgent, uiPrimitivesAgent, uiCompositeAgent, apiClientAgent, dbSchemaAgent, platformQaAgent |

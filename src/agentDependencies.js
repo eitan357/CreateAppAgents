@@ -58,14 +58,13 @@ const DEPENDENCY_MAP = {
   responsiveDesignAgent:  ['frontendArchitect', 'frontendDev'],
   pwaAgent:               ['frontendDev', 'frontendArchitect'],
   webMonetizationAgent:   ['backendDev', 'frontendDev', 'dataArchitect', 'apiDesigner'],
-  cmsAgent:               ['frontendDev', 'backendDev', 'systemArchitect'],
-  cmsIntegratorAgent:     ['cmsAgent', 'frontendDev'],
+  cmsIntegratorAgent:     ['frontendDev', 'backendDev', 'systemArchitect'],
 
   // ── Quality & Hardening ───────────────────────────────────────────────────
   codeDeduplicationAgent:    ['backendDev', 'frontendDev', 'authAgent'],
   errorAuditAgent:           ['backendDev', 'frontendDev', 'authAgent'],
   codeQualityAuditAgent:     ['backendDev', 'frontendDev', 'authAgent', 'codeDeduplicationAgent'],
-  cmsQaAgent:                ['cmsAgent', 'cmsIntegratorAgent', 'frontendDev'],
+  cmsQaAgent:                ['cmsIntegratorAgent', 'frontendDev'],
   security:               ['backendDev', 'authAgent', 'apiDesigner'],
   testWriter:             ['backendDev', 'frontendDev', 'authAgent', 'dataArchitect'],
   testRunner:             ['testWriter', 'backendDev', 'frontendDev', 'authAgent'],
