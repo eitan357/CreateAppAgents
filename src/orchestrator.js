@@ -212,33 +212,34 @@ const LAYER_DEFINITIONS = [
   },
   {
     id: '2c',
-    name: 'Platform Team',
+    name: 'Platform Build',
     parallel: false,
-    agents: ['platformPmAgent', 'uiPrimitivesAgent', 'uiCompositeAgent', 'apiClientAgent', 'dbSchemaAgent', 'platformQaAgent'],
+    agents: ['platformPmAgent', 'uiPrimitivesAgent', 'uiCompositeAgent', 'apiClientAgent', 'dbSchemaAgent'],
+  },
+  {
+    id: '2d',
+    name: 'Feature Infrastructure',
+    parallel: true,
+    agents: [
+      // Mobile feature infrastructure
+      'notificationsAgent', 'deepLinksAgent', 'offlineFirstAgent', 'realtimeAgent',
+      'animationsAgent', 'onboardingAgent', 'monetizationAgent', 'mlMobileAgent',
+      'arVrAgent', 'widgetsExtensionsAgent', 'otaUpdatesAgent',
+      // Web feature infrastructure
+      'responsiveDesignAgent', 'pwaAgent', 'webMonetizationAgent',
+    ],
+  },
+  {
+    id: '2e',
+    name: 'Platform QA',
+    parallel: false,
+    agents: ['platformQaAgent'],
   },
   {
     id: 3,
     name: 'Implementation',
     parallel: true,
     agents: ['backendDev', 'frontendDev', 'authAgent', 'integrationAgent'],
-  },
-  {
-    id: '3b',
-    name: 'Mobile Features',
-    parallel: true,
-    agents: [
-      'notificationsAgent', 'deepLinksAgent', 'offlineFirstAgent', 'realtimeAgent',
-      'animationsAgent', 'onboardingAgent', 'monetizationAgent', 'mlMobileAgent',
-      'arVrAgent', 'widgetsExtensionsAgent', 'otaUpdatesAgent',
-    ],
-  },
-  {
-    id: '3c',
-    name: 'Web Features',
-    parallel: true,
-    agents: [
-      'responsiveDesignAgent', 'pwaAgent', 'webMonetizationAgent',
-    ],
   },
   {
     id: '3f',
@@ -525,31 +526,30 @@ function formatPlan(plan) {
     '🤖  Layers:',
     `    Layer 1  — Discovery      : requirementsAnalyst, systemArchitect${optional.includes('mobileTechAdvisor') ? ', mobileTechAdvisor' : ''}${optional.includes('webTechAdvisor') ? ', webTechAdvisor' : ''}${optional.includes('businessPlanningAgent') ? ', businessPlanningAgent' : ''}`,
     `    Layer 2  — Design         : dataArchitect, apiDesigner${l3.includeFrontend !== false ? ', frontendArchitect' : ''}${optional.includes('uxDesignerAgent') ? ', uxDesignerAgent' : ''}${l3.includeFrontend !== false ? ', designLeadAgent' : ''}${optional.includes('renderingStrategyAgent') ? ', renderingStrategyAgent' : ''}${optional.includes('localizationAgent') ? ', localizationAgent' : ''}${l3.includeFrontend !== false ? ', inputPolicyAgent' : ''}`,
-    `    Layer 2b — Leaders Team   : vpPmAgent, techLeadAgent, qaLeadAgent, securityLeadAgent`,
-    `    Layer 2c — Platform Team  : platformPmAgent, uiPrimitivesAgent, uiCompositeAgent, apiClientAgent, dbSchemaAgent, platformQaAgent`,
-    `    Layer 3  — Implementation : backendDev, authAgent${l3.includeFrontend !== false ? ', frontendDev' : ''}${l3.includeIntegration ? ', integrationAgent' : ''}`,
+    `    Layer 2b — Leaders Team      : vpPmAgent, techLeadAgent, qaLeadAgent, securityLeadAgent`,
+    `    Layer 2c — Platform Build    : platformPmAgent, uiPrimitivesAgent, uiCompositeAgent, apiClientAgent, dbSchemaAgent`,
   ];
 
-  const mobileFeatures = optional.filter(a =>
+  const mobileInfra = optional.filter(a =>
     ['notificationsAgent','deepLinksAgent','offlineFirstAgent','realtimeAgent','animationsAgent',
      'onboardingAgent','monetizationAgent','mlMobileAgent','arVrAgent','widgetsExtensionsAgent','otaUpdatesAgent'].includes(a)
   );
-  if (mobileFeatures.length > 0) {
-    lines.push(`    Layer 3b — Mobile Features : ${mobileFeatures.join(', ')}`);
-  }
-
-  const webFeatures = optional.filter(a =>
+  const webInfra = optional.filter(a =>
     ['responsiveDesignAgent','pwaAgent','webMonetizationAgent'].includes(a)
   );
-  if (webFeatures.length > 0) {
-    lines.push(`    Layer 3c — Web Features    : ${webFeatures.join(', ')}`);
+  const allInfra = [...mobileInfra, ...webInfra];
+  if (allInfra.length > 0) {
+    lines.push(`    Layer 2d — Feature Infra     : ${allInfra.join(', ')}`);
   }
+
+  lines.push(`    Layer 2e — Platform QA       : platformQaAgent`);
+  lines.push(`    Layer 3  — Implementation    : backendDev, authAgent${l3.includeFrontend !== false ? ', frontendDev' : ''}${l3.includeIntegration ? ', integrationAgent' : ''}`);
 
   if (optional.includes('cmsIntegratorAgent')) {
-    lines.push(`    Squad Phase 5 (per-squad) — CMS : cmsIntegratorAgent (runs inside each squad)`);
+    lines.push(`    Squad Phase 5 (per-squad)    — CMS : cmsIntegratorAgent`);
   }
 
-  lines.push(`    Layer 3f — Global Dedup    : codeDeduplicationAgent`);
+  lines.push(`    Layer 3f — Global Dedup      : codeDeduplicationAgent`);
 
   const extraQuality = optional.filter(a => ['performanceAgent','webPerformanceAgent','accessibilityAgent','loadTestingAgent','dependencyManagementAgent','userTestingAgent','privacyEthicsAgent'].includes(a));
   const cmsQa = optional.includes('cmsIntegratorAgent') ? ', cmsQaAgent' : '';

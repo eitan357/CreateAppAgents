@@ -100,19 +100,56 @@ ProjectContext נוצר (requirements, plan, squadPlan, outputDir)
 
 ---
 
-## LAYER 2c — Platform Team (רצף, sequential — צוות עם PM + Devs + QA)
+## LAYER 2c — Platform Build (רצף, sequential)
 
-> בונה את כל הקוד המשותף. כל squad מייבא מכאן — לא יוצר כפילויות.
-> ה-PM קורא את הנחיות ה-VP PM ומגדיר spec לצוות. ה-QA בודק completeness.
+> בונה את כל הקוד המשותף הבסיסי. כל squad מייבא מכאן — לא יוצר כפילויות.
 
 | Agent | משימה | קלט | פלט | סוג |
 |-------|-------|-----|-----|-----|
-| **platformPmAgent** | קורא pm-guidelines + design + API + data model → כותב spec מפורט לכל 4 dev agents: אילו components, endpoints, entities לממש | vpPmAgent + designLeadAgent + apiDesigner + dataArchitect | `docs/squads/platform-spec.md` | 📋 |
+| **platformPmAgent** | קורא pm-guidelines + design + API + data model → כותב spec מפורט: אילו components, endpoints, entities לממש | vpPmAgent + designLeadAgent + apiDesigner + dataArchitect | `docs/squads/platform-spec.md` | 📋 |
 | **uiPrimitivesAgent** | מממש כל קומפוננטות הבסיס: Button, Input, Select, Checkbox, Radio, TextArea, Typography, Icon, Badge, Avatar, Spinner, Tooltip + index.ts | designLeadAgent + uxDesignerAgent + inputPolicyAgent | `shared/components/primitives/` | 💻 |
 | **uiCompositeAgent** | מממש קומפוננטות מורכבות: Card, Modal, Drawer, Toast, Table, Carousel, **EmptyState, ErrorState, LoadingState** (חובה), NavBar, Sidebar + index.ts | uiPrimitivesAgent + uxDesignerAgent + frontendArchitect | `shared/components/composite/` | 💻 |
-| **apiClientAgent** | מממש HTTP wrapper עם auth injection, retry, timeout. Typed methods לכל endpoint. כל HTTP call עובר דרכו | apiDesigner + systemArchitect | `shared/api/types.ts`, `shared/api/client.ts`, `shared/api/endpoints.ts`, `shared/api/index.ts` | 💻 |
-| **dbSchemaAgent** | מממש DB connection, model/entity files (אחד לכל entity), migrations. תומך Mongoose/Prisma/TypeORM/Sequelize/Drizzle | dataArchitect + systemArchitect | `shared/db/connection.ts`, `shared/db/models/` או `prisma/schema.prisma`, `shared/db/index.ts` | 💻 |
-| **platformQaAgent** | קורא platform-spec ובודק: האם כל component/endpoint/entity קיים ומיוצא מה-index? | platformPmAgent + uiPrimitivesAgent + uiCompositeAgent + apiClientAgent + dbSchemaAgent | `docs/squads/platform-review.md` — READY / INCOMPLETE | 🔍 |
+| **apiClientAgent** | מממש HTTP wrapper עם auth injection, retry, timeout. Typed methods לכל endpoint. כל HTTP call עובר דרכו | apiDesigner + systemArchitect | `shared/api/` | 💻 |
+| **dbSchemaAgent** | מממש DB connection, model/entity files, migrations. תומך Mongoose/Prisma/TypeORM/Sequelize/Drizzle | dataArchitect + systemArchitect | `shared/db/` | 💻 |
+
+---
+
+## LAYER 2d — Feature Infrastructure (מקביל, parallel)
+
+> בונה תשתיות features משותפות לפני שהsquads מתחילים — כך squads יכולים **לייבא** מהן במקום לממש מחדש.
+> כל agent שנבחר ע"י ה-PM רץ במקביל. Agents שלא נבחרו מדולגים.
+
+### Mobile Feature Infrastructure
+| Agent | תשתית | קלט | פלט | סוג |
+|-------|--------|-----|-----|-----|
+| **notificationsAgent** | FCM/APNs service, notification handlers, local reminders — `shared/notifications/` | systemArchitect + apiDesigner + dbSchemaAgent | `shared/notifications/` | 💻 |
+| **deepLinksAgent** | Universal Links, App Links, deep link router — `shared/deepLinks/` | systemArchitect + frontendArchitect | `shared/deepLinks/` | 💻 |
+| **offlineFirstAgent** | WatermelonDB/TanStack persistence, offline queue, sync engine — `shared/offline/` | systemArchitect + dataArchitect + dbSchemaAgent | `shared/offline/` | 💻 |
+| **realtimeAgent** | Socket.io server + client hooks, live update infrastructure — `shared/realtime/` | systemArchitect + apiDesigner | `shared/realtime/` | 💻 |
+| **animationsAgent** | Reanimated utils, animation hooks, Lottie wrapper, Skeleton, BottomSheet, SwipeableRow, haptics — `shared/animations/` | uiPrimitivesAgent + designLeadAgent + frontendArchitect | `shared/animations/` | 💻 |
+| **onboardingAgent** | Splash screen, onboarding slides, PermissionRationale, FeatureDiscovery, EmptyState, ProfileSetup | uxDesignerAgent + uiPrimitivesAgent + uiCompositeAgent + frontendArchitect | `mobile/src/screens/onboarding/`, `mobile/src/components/` | 💻 |
+| **monetizationAgent** | RevenueCat SDK, IAP flows, subscription service — `shared/monetization/` | systemArchitect + apiDesigner + dbSchemaAgent | `shared/monetization/` | 💻 |
+| **mlMobileAgent** | ML Kit/TFLite utilities, OCR, face detection — `shared/ml/` | systemArchitect + frontendArchitect | `shared/ml/` | 💻 |
+| **arVrAgent** | ARKit/ARCore setup, 3D scene utilities — `shared/ar/` | systemArchitect + frontendArchitect | `shared/ar/` | 💻 |
+| **widgetsExtensionsAgent** | Home screen widget infrastructure, Share extension setup | frontendArchitect + uiPrimitivesAgent | widget targets + config | 💻 |
+| **otaUpdatesAgent** | Expo EAS Update / CodePush config, update check service | systemArchitect + frontendArchitect | OTA config + `shared/updates/` | 💻 + ⚙️ |
+
+### Web Feature Infrastructure
+| Agent | תשתית | קלט | פלט | סוג |
+|-------|--------|-----|-----|-----|
+| **responsiveDesignAgent** | Mobile-first CSS utilities, breakpoint hooks, fluid typography, responsive image helpers — `shared/responsive/` | frontendArchitect + designLeadAgent | `shared/responsive/` + global CSS | 💻 |
+| **pwaAgent** | Service Worker, Web App Manifest, offline cache strategy, install prompt hook | frontendArchitect + systemArchitect | `public/sw.js`, `public/manifest.json`, `shared/pwa/` | 💻 + ⚙️ |
+| **webMonetizationAgent** | Stripe Billing, checkout session, customer portal, webhook handler, feature gate hook — `shared/billing/` | systemArchitect + apiDesigner + dataArchitect + dbSchemaAgent | `shared/billing/` | 💻 |
+
+---
+
+## LAYER 2e — Platform QA (רצף, sequential)
+
+> בודק את **כל** התשתיות: Layer 2c + Layer 2d ביחד.
+
+| Agent | משימה | קלט | פלט | סוג |
+|-------|-------|-----|-----|-----|
+| **platformQaAgent** | קורא platform-spec ובודק: האם כל component/endpoint/entity/shared-module קיים ומיוצא? כולל בדיקת feature infrastructure מ-Layer 2d | platformPmAgent + כל outputs של 2c + 2d | `docs/squads/platform-review.md` — READY / INCOMPLETE | 🔍 |
 
 **כל squad מקבל בcontext:**
 ```
