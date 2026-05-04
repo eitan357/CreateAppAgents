@@ -435,6 +435,55 @@ index.js — כשנמצא checkpoint:
 
 ---
 
+## Shell Access & התקנת ספריות
+
+רק 3 סוגי agents מריצים פקודות shell — כולם דרך `tools/shell.js`:
+
+| Agent | שכבה | מה הוא עושה עם shell |
+|-------|------|----------------------|
+| **testRunner** | Layer 4b | מריץ `npm install` ואז את כל ה-test suite. זהו ה-**install הראשי** של כל הpackages שנוספו ל-`package.json` על ידי agents קודמים |
+| **devops** | Layer 5 | מגדיר Docker, CI/CD pipeline, env vars, nginx. מריץ install בתוך Dockerfile ובCI workflow |
+| **squadQaAgent** | per-squad (Phase 6) | מריץ tests בתוך הsquad — `npm test`, linters, coverage |
+
+**כיצד נוסף package חדש לפרויקט:**
+
+```
+שלב 1 — agent כותב code שמייבא מהpackage + מוסיף ל-package.json
+         (write_file בלבד — אין shell)
+
+שלב 2 — testRunner (Layer 4b) מריץ:
+           npm install          ← מתקין את כל ה-dependencies
+           npm test             ← מריץ tests
+
+שלב 3 — devops (Layer 5) מוסיף את ה-install לDockerfile ול-CI workflow
+```
+
+**⚠️ Native Modules (React Native / Expo):**
+Feature infrastructure agents כמו `animationsAgent` (react-native-reanimated) ו-`notificationsAgent` (expo-notifications) מוסיפים packages שדורשים `npx expo install` ולא רק `npm install` — כי הם צמודים לגרסת Expo SDK.
+ה-`devops` agent מודע לכך ויוסיף את הפקודות הנכונות ל-`Dockerfile` ול-`prebuild` script.
+
+---
+
+## ⚠️ Gap ידוע — שיתוף לאפליקציות חברתיות
+
+**מה מכוסה:**
+- `deepLinksAgent` — **כיוון נכנס**: Firebase Dynamic Links, Universal Links, App Links → פותח את האפליקציה שלך מ-URL חיצוני
+- `integrationAgent` — SDK-ים של צד שלישי (Firebase, Supabase, Stripe), כולל Analytics integration
+- `authAgent` — Social Login (Facebook/Google/Apple)
+
+**מה לא מכוסה — כיוון יוצא:**
+שיתוף תוכן **מ**האפליקציה **ל**-WhatsApp, Telegram, Instagram, Facebook וכו':
+- Native Share Sheet (iOS/Android): `Share.share({ message, url })` — React Native built-in
+- URL Schemes ספציפיות: `whatsapp://send?text=...`, `tg://msg?text=...`
+- Instagram Stories SDK, Facebook SDK לשיתוף stories/posts
+- Copy Link functionality
+
+**כיצד מטפלים בזה כיום:**
+אם שיתוף חברתי מוזכר בדרישות → `integrationAgent` (Layer 3, per-squad) מכסה אותו תחת "third-party integrations".
+אם נדרשת תשתית מרכזית (share sheet אחיד לכל הsquads) → ניתן להוסיף `socialSharingAgent` לפאזה 3 של ה-Platform Pipeline.
+
+---
+
 ## תשתית משותפת
 
 | מודול | תפקיד |
@@ -443,11 +492,12 @@ index.js — כשנמצא checkpoint:
 | **context.js** | `ProjectContext` — state משותף. `buildScopedContext()` + `buildSquadScopedContext()`. `_injectPlatformRules()`, `_injectLeadershipGuidelines()`, `_injectSelfPlanningPrompt()` מוזרקים אוטומטית לפי agent role. |
 | **agentDependencies.js** | DEPENDENCY_MAP — מה כל agent "רואה" מהagents שרצו לפניו. |
 | **layerRunner.js** | `runLayerInParallel` / `runLayerSequential` — retry x2 לכל agent. |
-| **squadRunner.js** | `runAllSquads`, `runSquadUpdate`, `runAllSquadsUpdate` — 8-phase squad cycle. |
+| **squadRunner.js** | `runAllSquads`, `runSquadUpdate`, `runAllSquadsUpdate` — 9-phase squad pipeline. |
+| **platformRunner.js** | `runPlatformPipeline` — 7-phase platform pipeline (spec → build → feature infra → QA loop → security → PM review → PM fix). |
 | **squadPlanner.js** | `createSquadPlan` — Sonnet 4.6 מחלק לצוותים. |
 | **updatePlanner.js** | `analyzeUpdate` — Sonnet 4.6 מנתח בקשת שינוי → affectedSquads + newSquads + platformUpdates. |
 | **tools/fileSystem.js** | `read_file` / `write_file` / `list_files` — לכל ה-agents. |
-| **tools/shell.js** | `run_command` — לtestRunner, devops, ו-squadQaAgent בלבד. |
+| **tools/shell.js** | `run_command` — לtestRunner, devops, ו-squadQaAgent בלבד. ראה: [Shell Access & התקנת ספריות](#shell-access--התקנת-ספריות). |
 | **approval.js** | approval gates בין layers. |
 | **github.js** | GitHub: validation, repo creation, checkpoint push, final push. |
 
