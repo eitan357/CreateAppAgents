@@ -38,7 +38,7 @@ const DEPENDENCY_MAP = {
 
   // ── Core Implementation ───────────────────────────────────────────────────
   backendDev:             ['systemArchitect', 'dataArchitect', 'apiDesigner', 'apiClientAgent', 'dbSchemaAgent'],
-  frontendDev:            ['systemArchitect', 'frontendArchitect', 'apiDesigner', 'uxDesignerAgent', 'designSystemAgent', 'localizationAgent', 'uiPrimitivesAgent', 'uiCompositeAgent', 'apiClientAgent', 'inputPolicyAgent'],
+  frontendDev:            ['systemArchitect', 'frontendArchitect', 'apiDesigner', 'uxDesignerAgent', 'designLeadAgent', 'localizationAgent', 'uiPrimitivesAgent', 'uiCompositeAgent', 'apiClientAgent', 'inputPolicyAgent'],
   authAgent:              ['systemArchitect', 'apiDesigner', 'dataArchitect', 'apiClientAgent', 'dbSchemaAgent', 'inputPolicyAgent'],
   integrationAgent:       ['systemArchitect', 'apiDesigner', 'apiClientAgent'],
 
@@ -62,9 +62,10 @@ const DEPENDENCY_MAP = {
   cmsIntegratorAgent:     ['cmsAgent', 'frontendDev'],
 
   // ── Quality & Hardening ───────────────────────────────────────────────────
-  errorHandlingAgent:        ['backendDev', 'frontendDev', 'authAgent'],
-  codeDeduplicationAgent:    ['backendDev', 'frontendDev', 'authAgent', 'errorHandlingAgent'],
-  codeCleanupAgent:          ['codeDeduplicationAgent'],
+  codeDeduplicationAgent:    ['backendDev', 'frontendDev', 'authAgent'],
+  errorAuditAgent:           ['backendDev', 'frontendDev', 'authAgent'],
+  codeQualityAuditAgent:     ['backendDev', 'frontendDev', 'authAgent', 'codeDeduplicationAgent'],
+  cmsQaAgent:                ['cmsAgent', 'cmsIntegratorAgent', 'frontendDev'],
   security:               ['backendDev', 'authAgent', 'apiDesigner'],
   testWriter:             ['backendDev', 'frontendDev', 'authAgent', 'dataArchitect'],
   testRunner:             ['testWriter', 'backendDev', 'frontendDev', 'authAgent'],
@@ -93,13 +94,15 @@ const DEPENDENCY_MAP = {
   seoAgent:               ['frontendDev', 'renderingStrategyAgent', 'frontendArchitect'],
 
   // ── Per-squad specialist agents ───────────────────────────────────────────
-  squadDesignerAgent:     ['designLeadAgent', 'uxDesignerAgent', 'designLeadAgent'],
-  squadQaAgent:           ['qaLeadAgent', 'backendDev', 'frontendDev', 'authAgent'],
-  squadSecurityAgent:     ['securityLeadAgent', 'backendDev', 'frontendDev', 'authAgent'],
-  squadCleanupAgent:      ['techLeadAgent', 'backendDev', 'frontendDev', 'authAgent'],
+  squadDesignerAgent:        ['designLeadAgent', 'uxDesignerAgent'],
+  squadQaAgent:              ['qaLeadAgent', 'backendDev', 'frontendDev', 'authAgent'],
+  squadSecurityAgent:        ['securityLeadAgent', 'backendDev', 'frontendDev', 'authAgent'],
+  squadErrorHandlingAgent:   ['techLeadAgent', 'backendDev', 'frontendDev', 'authAgent'],
+  squadCodeCleanupAgent:     ['techLeadAgent', 'backendDev', 'frontendDev', 'authAgent'],
+  squadDeduplicationAgent:   ['backendDev', 'frontendDev', 'authAgent'],
 
   // ── PM Acceptance Review ──────────────────────────────────────────────────
-  pmReviewer:             ['vpPmAgent', 'requirementsAnalyst', 'systemArchitect', 'backendDev', 'frontendDev', 'authAgent', 'squadQaAgent', 'squadSecurityAgent', 'squadCleanupAgent', 'uiPrimitivesAgent', 'uiCompositeAgent', 'apiClientAgent'],
+  pmReviewer:             ['vpPmAgent', 'requirementsAnalyst', 'systemArchitect', 'backendDev', 'frontendDev', 'authAgent', 'squadQaAgent', 'squadSecurityAgent', 'squadErrorHandlingAgent', 'squadCodeCleanupAgent', 'uiPrimitivesAgent', 'uiCompositeAgent', 'apiClientAgent'],
 };
 
 module.exports = { DEPENDENCY_MAP };

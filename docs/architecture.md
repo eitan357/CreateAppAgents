@@ -26,8 +26,10 @@
 ┌──────────────┐  ┌──────────────┐  ┌──────────────┐
 │  Squad A     │  │  Squad B     │  │  Squad C     │  ← במקביל
 │  PM→Design   │  │  PM→Design   │  │  PM→Design   │
-│  →Dev→Clean  │  │  →Dev→Clean  │  │  →Dev→Clean  │
-│  →QA→Sec→PM  │  │  →QA→Sec→PM  │  │  →QA→Sec→PM  │
+│  →Dev→ErrH   │  │  →Dev→ErrH   │  │  →Dev→ErrH   │
+│  →Clean→Dedup│  │  →Clean→Dedup│  │  →Clean→Dedup│
+│  →CMS→QA loop│  │  →CMS→QA loop│  │  →CMS→QA loop│
+│  →Sec→PM loop│  │  →Sec→PM loop│  │  →Sec→PM loop│
 └──────────────┘  └──────────────┘  └──────────────┘
 ```
 
@@ -140,7 +142,7 @@ docs/agent-plans/{agentName}-{squadId}.md:
   1. First: ...
 ```
 
-### שמונת השלבים של כל Squad
+### עשרת השלבים של כל Squad
 
 | שלב | Agent | משימה | קלט | פלט | סוג |
 |-----|-------|-------|-----|-----|-----|
@@ -150,11 +152,15 @@ docs/agent-plans/{agentName}-{squadId}.md:
 | 3 | **frontendDev** | מממש frontend לדומיין הצוות לפי tech-guidelines + squad design: screens, hooks, forms | tech-guidelines + squad design + shared/components + shared/api | `frontend/src/{squad}/` | 💻 |
 | 3 | **authAgent** *(squad auth בלבד)* | מממש JWT/session, login/register/logout, route protection | tech-guidelines + spec + shared/db + inputPolicyAgent | auth routes + middleware | 💻 |
 | 3 | **integrationAgent** *(opt)* | מממש third-party APIs, webhooks, external services | tech-guidelines + spec | integration services | 💻 |
-| 4 | **squadCleanupAgent** | קורא כל קבצי הצוות → מוסיף error handling + מנקה קוד (unused imports, console.log, dead code, dedup בתוך הצוות) | tech-guidelines + כל קבצי הצוות | עדכון in-place + `docs/squads/{id}-cleanup-report.md` | 💻 (משנה קיים) |
-| 5 | **squadQaAgent** | כותב unit + integration tests, מריץ אותם, מתקן כישלונות, בודק accessibility | qa-guidelines + spec + כל קבצי הצוות | `*.test.ts`, `docs/squads/{id}-qa-report.md` | 💻 + 🔍 |
-| 6 | **squadSecurityAgent** | מיישם OWASP checklist מsecurity-guidelines על קוד הצוות הספציפי. מתקן HIGH findings ישירות | security-guidelines + כל קבצי הצוות | `docs/squads/{id}-security-report.md` + תיקונים | 🔍 + 💻 |
-| 7 | **Squad PM (Review)** | קורא spec + כל קבצי הצוות → האם כל acceptance criteria מולאו? | spec + כל קבצי הצוות | `docs/squads/{id}-review.md` — VERDICT: ACCEPTED / GAPS | 🔍 |
-| 8 | **Fix Round** *(אם GAPS)* | dev agents קוראים gaps → מתקנים → PM re-review | squad gaps doc | תיקונים in-place | 💻 |
+| 4a | **squadErrorHandlingAgent** | **רק** error handling: asyncHandler לכל route handler, ErrorBoundary לכל מסך, .catch לכל API call | tech-guidelines + כל קבצי הצוות | עדכון in-place + `docs/squads/{id}-errorhandling-report.md` | 💻 (משנה קיים) |
+| 4b | **squadCodeCleanupAgent** | **רק** ניקוי קוד: unused imports, console.log, debugger, dead code, commented-out blocks | tech-guidelines + כל קבצי הצוות | עדכון in-place + `docs/squads/{id}-codecleanup-report.md` | 💻 (משנה קיים) |
+| 4c | **squadDeduplicationAgent** | **רק** כפילויות בתוך הצוות: מחלץ patterns חוזרים ל-`{squad}/utils.ts` | כל קבצי הצוות | `{squad}/utils.ts` + עדכון imports + `docs/squads/{id}-dedup-report.md` | 💻 |
+| 5 | **cmsIntegratorAgent** *(opt)* | מחיל cms-migration.md על קבצי הצוות — מחליף hardcoded strings ב-`t('key','fallback')` | cmsAgent migration plan + כל קבצי הצוות | עדכון in-place | 💻 (משנה קיים) |
+| 6 | **squadQaAgent** | כותב unit + integration tests, מריץ אותם, מתקן כישלונות, בודק accessibility. **לאחר מכן QA fix loop (עד 2)** | qa-guidelines + spec + כל קבצי הצוות | `*.test.ts`, `docs/squads/{id}-qa-report.md` | 💻 + 🔍 |
+| 6+ | **QA Fix Loop** | אם QA report מכיל FAIL → dev agents מתקנים → QA re-check (מקסימום 2 סבבים) | qa-report | תיקונים in-place | 💻 |
+| 7 | **squadSecurityAgent** | מיישם OWASP checklist מsecurity-guidelines על קוד הצוות הספציפי. מתקן HIGH findings ישירות | security-guidelines + כל קבצי הצוות | `docs/squads/{id}-security-report.md` + תיקונים | 🔍 + 💻 |
+| 8 | **Squad PM (Review)** | קורא spec + כל קבצי הצוות → האם כל acceptance criteria מולאו? | spec + כל קבצי הצוות | `docs/squads/{id}-review.md` — VERDICT: ACCEPTED / GAPS | 🔍 |
+| 9 | **PM Fix Loop** *(אם GAPS)* | dev agents קוראים gaps → מתקנים → **QA re-check** → PM re-review | squad gaps doc | תיקונים in-place | 💻 |
 
 לאחר כל הsquads, `_mergeOutputsToContext()` ממזג פלטים:
 `auth:backendDev` + `listings:backendDev` → `agentOutputs['backendDev']`
@@ -198,37 +204,29 @@ docs/agent-plans/{agentName}-{squadId}.md:
 
 ---
 
-## LAYER 3e — Error Handling גלובלי (רצף, global pass)
+## LAYER 3f — Global Deduplication (רצף)
 
-> ה-squadCleanupAgent מטפל בשגיאות **בתוך כל squad**. Layer זה עושה pass גלובלי נוסף.
-
-| Agent | משימה | קלט | פלט | סוג |
-|-------|-------|-----|-----|-----|
-| **errorHandlingAgent** | קורא כל route files → מוסיף Express global error middleware, asyncHandler, ErrorBoundary, API interceptors. Surgical — לא מחליף קבצים | backendDev + frontendDev + authAgent | עדכון in-place + קבצי error חדשים | 💻 (משנה קיים) |
-
----
-
-## LAYER 3f — Code Refinement גלובלי (רצף)
-
-> ה-squadCleanupAgent מנקה **בתוך כל squad**. Layer זה עושה deduplication **בין squads**.
+> squadDeduplicationAgent מנקה כפילויות **בתוך כל squad**. Layer זה מנקה כפילויות **בין squads**.
 
 | Agent | משימה | קלט | פלט | סוג |
 |-------|-------|-----|-----|-----|
-| **codeDeduplicationAgent** | קורא **את כל הקוד מכל הsquads** → מזהה כפילויות cross-squad → מחלץ ל-shared/utils/ | backendDev + frontendDev + authAgent + errorHandlingAgent | `shared/utils/` + עדכון imports | 💻 (משנה קיים) |
-| **codeCleanupAgent** | מנקה לאחר deduplication: unused imports, dead code, console.log | codeDeduplicationAgent | עדכון in-place | 💻 (משנה קיים) |
+| **codeDeduplicationAgent** | קורא **את כל הקוד מכל הsquads** → מזהה כפילויות cross-squad → מחלץ ל-`shared/utils/` | backendDev + frontendDev + authAgent | `shared/utils/` + עדכון imports + `docs/deduplication-report.md` | 💻 (משנה קיים) |
 
 ---
 
 ## LAYER 4 — Quality גלובלי (מקביל, global pass)
 
 > ה-squadQaAgent ו-squadSecurityAgent עובדים **על קוד כל squad בנפרד**.
-> Layer זה עושה quality pass **על כל האפליקציה המאוחדת**.
+> Layer זה עושה quality + audit pass **על כל האפליקציה המאוחדת**.
 
 | Agent | משימה | קלט | פלט | סוג |
 |-------|-------|-----|-----|-----|
 | **testWriter** | כותב tests נוספים cross-squad: integration בין squads, E2E flows | backendDev + frontendDev + authAgent + dataArchitect | `*.test.ts` נוספים | 💻 |
 | **security** | security review גלובלי על האפליקציה כולה — חוצה צוותים | backendDev + authAgent + apiDesigner | `docs/security-report.md` | 🔍 |
 | **reviewer** | code review גלובלי: patterns, consistency בין squads | backendDev + frontendDev + authAgent + integrationAgent | `docs/code-review.md` | 🔍 |
+| **errorAuditAgent** | **סורק כל הקוד** → מדווח היכן חסר error handling (asyncHandler, ErrorBoundary, catch). **לא מתקן** — מדווח בלבד | backendDev + frontendDev + authAgent | `docs/audits/error-audit.md` | 🔍 |
+| **codeQualityAuditAgent** | **סורק כל הקוד** → מדווח כפילויות cross-squad, unused code, anti-patterns. **לא מתקן** — מדווח בלבד | backendDev + frontendDev + codeDeduplicationAgent | `docs/audits/code-quality-audit.md` | 🔍 |
+| **cmsQaAgent** *(opt, אם cmsAgent פעיל)* | **סורק CMS setup** → כפילויות במפתחות seed, keys חסרים, orphaned entries, cache/error handling בservice | cmsAgent + cmsIntegratorAgent + frontendDev | `docs/audits/cms-audit.md` | 🔍 |
 | **performanceAgent** *(opt)* | profiling מלא של האפליקציה: startup, memory, 60fps | frontendDev + frontendArchitect | `docs/performance-report.md` | 🔍 |
 | **webPerformanceAgent** *(opt)* | Core Web Vitals, bundle analysis, code splitting | frontendDev + frontendArchitect + renderingStrategyAgent | `docs/web-performance-report.md` | 🔍 |
 | **accessibilityAgent** *(opt)* | WCAG 2.1 review גלובלי | frontendDev | `docs/accessibility-report.md` | 🔍 |
@@ -303,14 +301,17 @@ Sonnet 4.6 מחלק לצוותים: 2-3 קטן, 3-5 בינוני, 5-6 גדול.
 ```
 runAllSquads() — כל squads במקביל
   runSquad(squad):
-    Phase 1: Squad PM Spec   → docs/squads/{id}-spec.md          📋
-    Phase 2: squadDesigner   → docs/squads/{id}-design.md        📋
-    Phase 3: dev agents      → backend + frontend code           💻
-    Phase 4: squadCleanup    → error handling + code cleanup      💻
-    Phase 5: squadQa         → tests + accessibility              💻 + 🔍
-    Phase 6: squadSecurity   → security review                    🔍 + 💻
-    Phase 7: Squad PM Review → VERDICT: ACCEPTED / GAPS           🔍
-    Phase 8: fix round if GAPS → re-review
+    Phase 1:  Squad PM Spec          → docs/squads/{id}-spec.md          📋
+    Phase 2:  squadDesignerAgent     → docs/squads/{id}-design.md        📋
+    Phase 3:  dev agents             → backend + frontend code           💻
+    Phase 4a: squadErrorHandlingAgent→ error handling per-squad           💻
+    Phase 4b: squadCodeCleanupAgent  → code cleanup per-squad            💻
+    Phase 4c: squadDeduplicationAgent→ within-squad dedup                💻
+    Phase 5:  cmsIntegratorAgent *(opt)* → apply CMS migration           💻
+    Phase 6:  squadQaAgent           → tests + accessibility + QA fix loop (max 2)
+    Phase 7:  squadSecurityAgent     → security review                   🔍 + 💻
+    Phase 8:  Squad PM Review        → VERDICT: ACCEPTED / GAPS          🔍
+    Phase 9:  PM fix round if GAPS   → dev fix → QA re-check → PM re-review
 
 _mergeOutputsToContext(): merges per-squad outputs for global Layer 4
 ```
@@ -320,10 +321,11 @@ _mergeOutputsToContext(): merges per-squad outputs for global Layer 4
 Leaders Team writes → docs/guidelines/
                               ↓
                      injected via GUIDELINE_MAP in context.js:
-  vpPmAgent       → Squad PM + platformPmAgent
-  techLeadAgent   → backendDev + frontendDev + authAgent + squadCleanupAgent
-  designLeadAgent → squadDesignerAgent + uiPrimitivesAgent + uiCompositeAgent
-  qaLeadAgent     → squadQaAgent + platformQaAgent
+  vpPmAgent         → Squad PM + platformPmAgent
+  techLeadAgent     → backendDev + frontendDev + authAgent
+                       + squadErrorHandlingAgent + squadCodeCleanupAgent + squadDeduplicationAgent
+  designLeadAgent   → squadDesignerAgent + uiPrimitivesAgent + uiCompositeAgent
+  qaLeadAgent       → squadQaAgent + platformQaAgent
   securityLeadAgent → squadSecurityAgent
 ```
 
@@ -331,7 +333,7 @@ Leaders Team writes → docs/guidelines/
 ```
 Every code-writing agent (backendDev, frontendDev, authAgent, integrationAgent,
 uiPrimitivesAgent, uiCompositeAgent, apiClientAgent, dbSchemaAgent,
-squadCleanupAgent, squadQaAgent):
+squadErrorHandlingAgent, squadCodeCleanupAgent, squadDeduplicationAgent, squadQaAgent):
 
   Step 0: write docs/agent-plans/{agentName}-{squadId}.md
           → list every file to create/modify + execution order
@@ -416,11 +418,12 @@ index.js — כשנמצא checkpoint:
 | agents שמייצרים מסמכי הנחיות (📋) | ~15 |
 | agents שמייצרים דוחות (🔍) | ~12 |
 | agents שמייצרים קונפיג (⚙️) | ~5 |
-| agents שמשנים קבצים קיימים | cmsIntegratorAgent, errorHandlingAgent, codeDeduplicationAgent, codeCleanupAgent, testFixer, squadCleanupAgent, squadSecurityAgent (HIGH findings) |
+| agents שמשנים קבצים קיימים | cmsIntegratorAgent, codeDeduplicationAgent, testFixer, squadErrorHandlingAgent, squadCodeCleanupAgent, squadDeduplicationAgent, squadSecurityAgent (HIGH findings) |
+| **Audit agents (דוח בלבד, אין שינוי קוד)** | errorAuditAgent, codeQualityAuditAgent, cmsQaAgent |
 | **Leaders Team agents** | vpPmAgent, techLeadAgent, qaLeadAgent, securityLeadAgent |
 | **Platform Team agents** | platformPmAgent, uiPrimitivesAgent, uiCompositeAgent, apiClientAgent, dbSchemaAgent, platformQaAgent |
-| **Per-squad agents** | squadDesignerAgent, squadCleanupAgent, squadQaAgent, squadSecurityAgent |
-| שלבים per-squad | 8 (PM spec → designer → devs → cleanup → QA → security → PM review → fix) |
+| **Per-squad agents** | squadDesignerAgent, squadErrorHandlingAgent, squadCodeCleanupAgent, squadDeduplicationAgent, squadQaAgent, squadSecurityAgent |
+| שלבים per-squad | 9 (PM spec → designer → devs → error handling → cleanup → dedup → CMS → QA+loop → security → PM review+loop) |
 | מודל לפיתוח | Claude Opus 4.7 (timeout: 20 דקות) |
 | מודל לתכנון | Claude Sonnet 4.6 (timeout: 10 דקות) |
 | agents עם גישת shell | testRunner, devops, squadQaAgent |

@@ -12,23 +12,25 @@ const FIX_ROUND_AGENTS = new Set(['backendDev', 'frontendDev', 'authAgent']);
 const SELF_PLANNING_AGENTS = new Set([
   'backendDev', 'frontendDev', 'authAgent', 'integrationAgent',
   'uiPrimitivesAgent', 'uiCompositeAgent', 'apiClientAgent', 'dbSchemaAgent',
-  'squadCleanupAgent', 'squadQaAgent',
+  'squadErrorHandlingAgent', 'squadCodeCleanupAgent', 'squadDeduplicationAgent', 'squadQaAgent',
 ]);
 
 // Guidelines injected per agent role from the Leaders Team
 const GUIDELINE_MAP = {
-  backendDev:         'docs/guidelines/tech-guidelines.md',
-  frontendDev:        'docs/guidelines/tech-guidelines.md',
-  authAgent:          'docs/guidelines/tech-guidelines.md',
-  integrationAgent:   'docs/guidelines/tech-guidelines.md',
-  squadDesignerAgent: 'docs/guidelines/design-guidelines.md',
-  squadQaAgent:       'docs/guidelines/qa-guidelines.md',
-  squadSecurityAgent: 'docs/guidelines/security-guidelines.md',
-  squadCleanupAgent:  'docs/guidelines/tech-guidelines.md',
-  uiPrimitivesAgent:  'docs/guidelines/design-guidelines.md',
-  uiCompositeAgent:   'docs/guidelines/design-guidelines.md',
-  platformPmAgent:    'docs/guidelines/pm-guidelines.md',
-  platformQaAgent:    'docs/guidelines/qa-guidelines.md',
+  backendDev:                'docs/guidelines/tech-guidelines.md',
+  frontendDev:               'docs/guidelines/tech-guidelines.md',
+  authAgent:                 'docs/guidelines/tech-guidelines.md',
+  integrationAgent:          'docs/guidelines/tech-guidelines.md',
+  squadDesignerAgent:        'docs/guidelines/design-guidelines.md',
+  squadQaAgent:              'docs/guidelines/qa-guidelines.md',
+  squadSecurityAgent:        'docs/guidelines/security-guidelines.md',
+  squadErrorHandlingAgent:   'docs/guidelines/tech-guidelines.md',
+  squadCodeCleanupAgent:     'docs/guidelines/tech-guidelines.md',
+  squadDeduplicationAgent:   'docs/guidelines/tech-guidelines.md',
+  uiPrimitivesAgent:         'docs/guidelines/design-guidelines.md',
+  uiCompositeAgent:          'docs/guidelines/design-guidelines.md',
+  platformPmAgent:           'docs/guidelines/pm-guidelines.md',
+  platformQaAgent:           'docs/guidelines/qa-guidelines.md',
 };
 
 function _injectSelfPlanningPrompt(lines, agentName, squadId) {

@@ -8,8 +8,8 @@ const { createSquadPmSpecAgent, createSquadPmReviewAgent, createSquadPmUpdateSpe
 // Dev agents eligible to run inside a squad
 const SQUAD_DEV_AGENTS = new Set(['backendDev', 'frontendDev', 'authAgent', 'integrationAgent']);
 
-// New per-squad specialist agents (run after dev agents)
-const SQUAD_SPECIALIST_AGENTS = ['squadDesignerAgent', 'squadCleanupAgent', 'squadQaAgent', 'squadSecurityAgent'];
+// Max QA fix rounds per squad
+const MAX_QA_FIX_ROUNDS = 2;
 
 // ── Single-agent runner with retry ───────────────────────────────────────────
 async function _runSingleAgent(agentName, contextStr, squad, context, toolSets, agentRegistry) {
@@ -35,7 +35,17 @@ async function _runSingleAgent(agentName, contextStr, squad, context, toolSets, 
   }
 }
 
-// Run one squad: PM spec → designer → dev agents → cleanup → QA → security → PM review
+// ── Check if QA report indicates issues ──────────────────────────────────────
+function _qaHasIssues(context, squad) {
+  const qaReportPath = path.join(context.outputDir, 'docs', 'squads', `${squad.id}-qa-report.md`);
+  if (!fs.existsSync(qaReportPath)) return false;
+  const content = fs.readFileSync(qaReportPath, 'utf8');
+  // QA found issues if the report mentions failures, errors, or issues
+  return /FAIL|FAILING|ERROR|ISSUE|BUG|BROKEN|❌|✗/i.test(content) &&
+         !/ALL PASS|ALL TESTS PASS|NO ISSUES|0 FAILING/i.test(content);
+}
+
+// Run one squad: PM spec → designer → devs → error handling → cleanup → dedup → CMS → QA loop → security → PM review loop
 async function runSquad(squad, context, toolSets, agentRegistry, activeAgents) {
   const devAgents = (squad.agents || ['backendDev', 'frontendDev'])
     .filter(name => SQUAD_DEV_AGENTS.has(name))
@@ -67,23 +77,66 @@ async function runSquad(squad, context, toolSets, agentRegistry, activeAgents) {
   // ── Phase 3: Dev agents implement ────────────────────────────────────────
   const squadResults = await _runDevAgents(squad, devAgents, context, toolSets, agentRegistry);
 
-  // ── Phase 4: Squad Cleanup (error handling + code cleanup) ───────────────
-  if (agentRegistry['squadCleanupAgent']) {
-    console.log(chalk.bold.yellow(`    [${squad.name}] Cleanup: error handling + code cleanup...`));
-    await _runSingleAgent('squadCleanupAgent',
-      context.buildSquadScopedContext('squadCleanupAgent', squad),
+  // ── Phase 4a: Squad Error Handling ───────────────────────────────────────
+  if (agentRegistry['squadErrorHandlingAgent']) {
+    console.log(chalk.bold.yellow(`    [${squad.name}] Error handling...`));
+    await _runSingleAgent('squadErrorHandlingAgent',
+      context.buildSquadScopedContext('squadErrorHandlingAgent', squad),
       squad, context, toolSets, agentRegistry);
   }
 
-  // ── Phase 5: Squad QA (tests + review + accessibility) ───────────────────
+  // ── Phase 4b: Squad Code Cleanup ─────────────────────────────────────────
+  if (agentRegistry['squadCodeCleanupAgent']) {
+    console.log(chalk.bold.yellow(`    [${squad.name}] Code cleanup...`));
+    await _runSingleAgent('squadCodeCleanupAgent',
+      context.buildSquadScopedContext('squadCodeCleanupAgent', squad),
+      squad, context, toolSets, agentRegistry);
+  }
+
+  // ── Phase 4c: Squad Deduplication ────────────────────────────────────────
+  if (agentRegistry['squadDeduplicationAgent']) {
+    console.log(chalk.bold.yellow(`    [${squad.name}] Within-squad deduplication...`));
+    await _runSingleAgent('squadDeduplicationAgent',
+      context.buildSquadScopedContext('squadDeduplicationAgent', squad),
+      squad, context, toolSets, agentRegistry);
+  }
+
+  // ── Phase 5: CMS Integrator (per-squad) ──────────────────────────────────
+  if (agentRegistry['cmsIntegratorAgent'] && activeAgents.has('cmsIntegratorAgent')) {
+    console.log(chalk.bold.yellow(`    [${squad.name}] CMS integration...`));
+    await _runSingleAgent('cmsIntegratorAgent',
+      context.buildSquadScopedContext('cmsIntegratorAgent', squad),
+      squad, context, toolSets, agentRegistry);
+  }
+
+  // ── Phase 6: Squad QA with fix loop (max MAX_QA_FIX_ROUNDS) ──────────────
   if (agentRegistry['squadQaAgent']) {
     console.log(chalk.bold.yellow(`    [${squad.name}] QA: writing + running tests...`));
     await _runSingleAgent('squadQaAgent',
       context.buildSquadScopedContext('squadQaAgent', squad),
       squad, context, toolSets, agentRegistry);
+
+    // QA fix loop
+    for (let round = 1; round <= MAX_QA_FIX_ROUNDS; round++) {
+      if (!_qaHasIssues(context, squad)) {
+        console.log(chalk.green(`    [${squad.name}] QA: all tests passing ✅`));
+        break;
+      }
+      console.log(chalk.yellow(`    [${squad.name}] QA found issues — fix round ${round}/${MAX_QA_FIX_ROUNDS}...`));
+      await _runDevAgents(squad, devAgents, context, toolSets, agentRegistry);
+
+      console.log(chalk.bold.yellow(`    [${squad.name}] QA re-check after fix round ${round}...`));
+      await _runSingleAgent('squadQaAgent',
+        context.buildSquadScopedContext('squadQaAgent', squad),
+        squad, context, toolSets, agentRegistry);
+
+      if (round >= MAX_QA_FIX_ROUNDS && _qaHasIssues(context, squad)) {
+        console.log(chalk.gray(`    [${squad.name}] Max QA fix rounds reached — continuing.`));
+      }
+    }
   }
 
-  // ── Phase 6: Squad Security review ───────────────────────────────────────
+  // ── Phase 7: Squad Security review ───────────────────────────────────────
   if (agentRegistry['squadSecurityAgent']) {
     console.log(chalk.bold.yellow(`    [${squad.name}] Security review...`));
     await _runSingleAgent('squadSecurityAgent',
@@ -91,15 +144,23 @@ async function runSquad(squad, context, toolSets, agentRegistry, activeAgents) {
       squad, context, toolSets, agentRegistry);
   }
 
-  // ── Phase 7: Squad PM reviews the output ─────────────────────────────────
+  // ── Phase 8: Squad PM reviews the output ─────────────────────────────────
   console.log(chalk.bold.yellow(`    [${squad.name}] PM reviewing implementation...`));
   const verdict = await _runPmReview(squad, context, toolSets);
 
-  // ── Phase 8: One fix round if PM found gaps ───────────────────────────────
+  // ── Phase 9: One fix round if PM found gaps (dev → QA re-check → PM re-review) ──
   if (verdict === 'GAPS') {
     console.log(chalk.yellow(`    [${squad.name}] PM found gaps — running fix round...`));
     await _runDevAgents(squad, devAgents, context, toolSets, agentRegistry);
     context.setSquadGaps(squad.id, null);
+
+    // QA re-check after dev fix
+    if (agentRegistry['squadQaAgent']) {
+      console.log(chalk.bold.yellow(`    [${squad.name}] QA re-check after PM fix round...`));
+      await _runSingleAgent('squadQaAgent',
+        context.buildSquadScopedContext('squadQaAgent', squad),
+        squad, context, toolSets, agentRegistry);
+    }
 
     console.log(chalk.bold.yellow(`    [${squad.name}] PM re-reviewing after fix...`));
     await _runPmReview(squad, context, toolSets);
@@ -108,7 +169,7 @@ async function runSquad(squad, context, toolSets, agentRegistry, activeAgents) {
   return squadResults;
 }
 
-// ── Dev agents (shared by initial run + fix round) ────────────────────────────
+// ── Dev agents (shared by initial run + fix rounds) ───────────────────────────
 async function _runDevAgents(squad, agents, context, toolSets, agentRegistry) {
   const results = {};
   for (const agentName of agents) {
@@ -214,8 +275,8 @@ async function runSquadUpdate(squad, changeDescription, context, toolSets, agent
   // Phase 2: Dev agents apply the change
   const squadResults = await _runDevAgentsUpdate(squad, devAgents, changeDescription, context, toolSets, agentRegistry);
 
-  // Phase 3: Cleanup + QA + Security on updated code
-  for (const agentName of ['squadCleanupAgent', 'squadQaAgent', 'squadSecurityAgent']) {
+  // Phase 3: Error handling + Cleanup + Dedup on updated code
+  for (const agentName of ['squadErrorHandlingAgent', 'squadCodeCleanupAgent', 'squadDeduplicationAgent']) {
     if (agentRegistry[agentName]) {
       console.log(chalk.bold.yellow(`    [${squad.name}] ${agentName} on updated code...`));
       await _runSingleAgent(agentName,
@@ -224,7 +285,35 @@ async function runSquadUpdate(squad, changeDescription, context, toolSets, agent
     }
   }
 
-  // Phase 4: PM reviews
+  // Phase 4: QA with fix loop
+  if (agentRegistry['squadQaAgent']) {
+    console.log(chalk.bold.yellow(`    [${squad.name}] QA on updated code...`));
+    await _runSingleAgent('squadQaAgent',
+      context.buildSquadUpdateContext('squadQaAgent', squad, changeDescription),
+      squad, context, toolSets, agentRegistry);
+
+    for (let round = 1; round <= MAX_QA_FIX_ROUNDS; round++) {
+      if (!_qaHasIssues(context, squad)) break;
+      console.log(chalk.yellow(`    [${squad.name}] QA fix round ${round}/${MAX_QA_FIX_ROUNDS}...`));
+      await _runDevAgentsUpdate(squad, devAgents, changeDescription, context, toolSets, agentRegistry);
+      await _runSingleAgent('squadQaAgent',
+        context.buildSquadUpdateContext('squadQaAgent', squad, changeDescription),
+        squad, context, toolSets, agentRegistry);
+      if (round >= MAX_QA_FIX_ROUNDS && _qaHasIssues(context, squad)) {
+        console.log(chalk.gray(`    [${squad.name}] Max QA fix rounds reached — continuing.`));
+      }
+    }
+  }
+
+  // Phase 5: Security
+  if (agentRegistry['squadSecurityAgent']) {
+    console.log(chalk.bold.yellow(`    [${squad.name}] Security review on updated code...`));
+    await _runSingleAgent('squadSecurityAgent',
+      context.buildSquadUpdateContext('squadSecurityAgent', squad, changeDescription),
+      squad, context, toolSets, agentRegistry);
+  }
+
+  // Phase 6: PM reviews
   console.log(chalk.bold.yellow(`    [${squad.name}] PM reviewing update...`));
   const verdict = await _runPmReview(squad, context, toolSets);
 
@@ -232,6 +321,14 @@ async function runSquadUpdate(squad, changeDescription, context, toolSets, agent
     console.log(chalk.yellow(`    [${squad.name}] PM found gaps — running fix round...`));
     await _runDevAgentsUpdate(squad, devAgents, changeDescription, context, toolSets, agentRegistry);
     context.setSquadGaps(squad.id, null);
+
+    if (agentRegistry['squadQaAgent']) {
+      console.log(chalk.bold.yellow(`    [${squad.name}] QA re-check after PM fix round...`));
+      await _runSingleAgent('squadQaAgent',
+        context.buildSquadUpdateContext('squadQaAgent', squad, changeDescription),
+        squad, context, toolSets, agentRegistry);
+    }
+
     console.log(chalk.bold.yellow(`    [${squad.name}] PM re-reviewing after fix...`));
     await _runPmReview(squad, context, toolSets);
   }

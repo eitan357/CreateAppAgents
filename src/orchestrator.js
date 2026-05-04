@@ -78,10 +78,16 @@ const { createUiCompositeAgent }         = require('./agents/uiCompositeAgent');
 const { createApiClientAgent }           = require('./agents/apiClientAgent');
 const { createDbSchemaAgent }            = require('./agents/dbSchemaAgent');
 
-// ── Quality agents ────────────────────────────────────────────────────────────
-const { createErrorHandlingAgent }       = require('./agents/errorHandlingAgent');
+// ── Per-squad specialist agents ───────────────────────────────────────────────
+const { createSquadErrorHandlingAgent }  = require('./agents/squadErrorHandlingAgent');
+const { createSquadCodeCleanupAgent }    = require('./agents/squadCodeCleanupAgent');
+const { createSquadDeduplicationAgent }  = require('./agents/squadDeduplicationAgent');
+
+// ── Quality / Audit agents ────────────────────────────────────────────────────
 const { createCodeDeduplicationAgent }   = require('./agents/codeDeduplicationAgent');
-const { createCodeCleanupAgent }         = require('./agents/codeCleanupAgent');
+const { createErrorAuditAgent }          = require('./agents/errorAuditAgent');
+const { createCodeQualityAuditAgent }    = require('./agents/codeQualityAuditAgent');
+const { createCmsQaAgent }               = require('./agents/cmsQaAgent');
 const { createPerformanceAgent }         = require('./agents/performanceAgent');
 const { createAccessibilityAgent }       = require('./agents/accessibilityAgent');
 const { createLoadTestingAgent }         = require('./agents/loadTestingAgent');
@@ -159,10 +165,15 @@ const AGENT_REGISTRY = {
   arVrAgent:                createARVRAgent,
   widgetsExtensionsAgent:   createWidgetsExtensionsAgent,
   otaUpdatesAgent:          createOTAUpdatesAgent,
-  // Quality
-  errorHandlingAgent:       createErrorHandlingAgent,
+  // Per-squad specialist agents (run inside squadRunner, registered here for lookup)
+  squadErrorHandlingAgent:  createSquadErrorHandlingAgent,
+  squadCodeCleanupAgent:    createSquadCodeCleanupAgent,
+  squadDeduplicationAgent:  createSquadDeduplicationAgent,
+  // Quality / Audit
   codeDeduplicationAgent:   createCodeDeduplicationAgent,
-  codeCleanupAgent:         createCodeCleanupAgent,
+  errorAuditAgent:          createErrorAuditAgent,
+  codeQualityAuditAgent:    createCodeQualityAuditAgent,
+  cmsQaAgent:               createCmsQaAgent,
   performanceAgent:         createPerformanceAgent,
   accessibilityAgent:       createAccessibilityAgent,
   loadTestingAgent:         createLoadTestingAgent,
@@ -238,22 +249,21 @@ const LAYER_DEFINITIONS = [
     agents: ['cmsIntegratorAgent'],
   },
   {
-    id: '3e',
-    name: 'Error Handling',
-    parallel: false,
-    agents: ['errorHandlingAgent'],
-  },
-  {
     id: '3f',
-    name: 'Code Refinement',
+    name: 'Global Deduplication',
     parallel: false,
-    agents: ['codeDeduplicationAgent', 'codeCleanupAgent'],
+    agents: ['codeDeduplicationAgent'],
   },
   {
     id: 4,
     name: 'Quality',
     parallel: true,
-    agents: ['testWriter', 'security', 'reviewer', 'performanceAgent', 'accessibilityAgent', 'loadTestingAgent', 'dependencyManagementAgent', 'webPerformanceAgent', 'userTestingAgent', 'privacyEthicsAgent'],
+    agents: [
+      'testWriter', 'security', 'reviewer',
+      'performanceAgent', 'accessibilityAgent', 'loadTestingAgent',
+      'dependencyManagementAgent', 'webPerformanceAgent', 'userTestingAgent', 'privacyEthicsAgent',
+      'errorAuditAgent', 'codeQualityAuditAgent', 'cmsQaAgent',
+    ],
   },
   {
     id: '4b',
@@ -454,10 +464,20 @@ function getActiveAgents(plan) {
     names.add('apiClientAgent');
   }
 
-  // Always-included implementation agents (run after core implementation)
-  names.add('errorHandlingAgent');
-  names.add('codeDeduplicationAgent');
-  names.add('codeCleanupAgent');
+  // Always-included post-implementation agents
+  names.add('codeDeduplicationAgent');   // global cross-squad dedup (Layer 3f)
+  names.add('errorAuditAgent');          // global error handling audit (Layer 4)
+  names.add('codeQualityAuditAgent');    // global code quality audit (Layer 4)
+
+  // Per-squad agents (run inside squadRunner — must be in activeAgents for registry lookup)
+  names.add('squadErrorHandlingAgent');
+  names.add('squadCodeCleanupAgent');
+  names.add('squadDeduplicationAgent');
+
+  // CMS QA only if CMS was included
+  if ((plan.optionalAgents || []).includes('cmsAgent')) {
+    names.add('cmsQaAgent');
+  }
 
   return names;
 }
@@ -538,11 +558,11 @@ function formatPlan(plan) {
     lines.push(`    Layer 3d — CMS Integration : cmsIntegratorAgent`);
   }
 
-  lines.push(`    Layer 3e — Error Handling  : errorHandlingAgent`);
-  lines.push(`    Layer 3f — Code Refinement : codeDeduplicationAgent → codeCleanupAgent`);
+  lines.push(`    Layer 3f — Global Dedup    : codeDeduplicationAgent`);
 
   const extraQuality = optional.filter(a => ['performanceAgent','webPerformanceAgent','accessibilityAgent','loadTestingAgent','dependencyManagementAgent','userTestingAgent','privacyEthicsAgent'].includes(a));
-  lines.push(`    Layer 4  — Quality        : testWriter, security, reviewer${extraQuality.length > 0 ? ', ' + extraQuality.join(', ') : ''}`);
+  const cmsQa = optional.includes('cmsAgent') ? ', cmsQaAgent' : '';
+  lines.push(`    Layer 4  — Quality        : testWriter, security, reviewer, errorAuditAgent, codeQualityAuditAgent${cmsQa}${extraQuality.length > 0 ? ', ' + extraQuality.join(', ') : ''}`);
   lines.push(`    Layer 4b — Test Run       : testRunner`);
   lines.push(`    Layer 4c — Test Fix       : testFixer`);
 
