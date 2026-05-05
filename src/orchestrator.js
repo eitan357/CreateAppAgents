@@ -5,6 +5,7 @@ const chalk = require('chalk');
 
 const { ProjectContext } = require('./context');
 const { approveStep, approveLayer } = require('./approval');
+const { t } = require('./lang');
 const { createSquadPlan, formatSquadPlan } = require('./squadPlanner');
 const { createFileSystemTools } = require('./tools/fileSystem');
 const { createShellTools } = require('./tools/shell');
@@ -612,12 +613,12 @@ async function orchestrate(requirements, projectName, outputDir, checkpoint = nu
 
   if (checkpoint) {
     // ── Resume from checkpoint ──────────────────────────────────────────────
-    console.log(chalk.bold.green('♻️   Resuming from previous checkpoint...'));
-    console.log(chalk.gray(`    Completed layers: ${[...new Set(checkpoint.completedLayers)].join(', ')}`));
+    console.log(chalk.bold.green(t('resuming')));
+    console.log(chalk.gray(`    ${t('completedLayers')} ${[...new Set(checkpoint.completedLayers)].join(', ')}`));
     context = ProjectContext.fromCheckpoint({ ...checkpoint, outputDir });
   } else {
     // ── Fresh build ─────────────────────────────────────────────────────────
-    console.log(chalk.yellow('⏳  Generating project plan...'));
+    console.log(chalk.yellow(t('generatingPlan')));
     const plan = await createPlan(requirements, projectName);
     // plan is block-scoped to this else branch intentionally — context.plan is the source of truth
 
@@ -634,7 +635,7 @@ async function orchestrate(requirements, projectName, outputDir, checkpoint = nu
     context = new ProjectContext(requirements, plan, outputDir);
 
     // ── Squad planning ────────────────────────────────────────────────────────
-    console.log(chalk.yellow('⏳  Generating squad breakdown...'));
+    console.log(chalk.yellow(t('generatingSquads')));
     try {
       const squadPlan = await createSquadPlan(requirements, plan);
       const squadApproved = await approveStep(
@@ -733,8 +734,8 @@ async function orchestrate(requirements, projectName, outputDir, checkpoint = nu
           `Failed: ${criticalFailed.map(f => `${f.name} — ${f.error}`).join('\n')}`,
         );
         if (!proceed) {
-          console.log(chalk.yellow('\n⏹️   Stopped by user.'));
-          console.log(chalk.gray('💾  Progress saved — you can resume from this point in the next run.'));
+          console.log(chalk.yellow(`\n${t('stoppedByUser')}`));
+          console.log(chalk.gray(t('progressSaved')));
           saveCheckpoint(`Layer ${layerDef.id} — ${layerDef.name} (aborted)`);
           return;
         }
@@ -745,8 +746,8 @@ async function orchestrate(requirements, projectName, outputDir, checkpoint = nu
     if (!layerDef.skipApprovalGate) {
       const proceed = await approveLayer(`Layer ${layerDef.id} — ${layerDef.name}`, layerResults);
       if (!proceed) {
-        console.log(chalk.yellow('\n⏹️   Stopped by user.'));
-        console.log(chalk.gray(`💾  Progress saved — you can resume from this point in the next run.`));
+        console.log(chalk.yellow(`\n${t('stoppedByUser')}`));
+        console.log(chalk.gray(t('progressSaved')));
         context.markLayerComplete(layerDef.id);
         saveCheckpoint(`Layer ${layerDef.id} — ${layerDef.name}`);
         return;
@@ -793,7 +794,7 @@ async function orchestrate(requirements, projectName, outputDir, checkpoint = nu
 
         const proceed = await approveLayer(`Quality Re-check — after Fix Round ${round}`, rerunResults);
         if (!proceed) {
-          console.log(chalk.yellow('\n⏹️   Stopped by user.'));
+          console.log(chalk.yellow(`\n${t('stoppedByUser')}`));
           return;
         }
 
@@ -875,7 +876,7 @@ async function orchestrate(requirements, projectName, outputDir, checkpoint = nu
   }
 
   // 7. Done
-  console.log(chalk.bold.green('\n✅  Build complete!'));
+  console.log(chalk.bold.green(`\n${t('buildComplete')}`));
   console.log(chalk.white(`📂  Files at: ${outputDir}`));
   if (githubRepo) console.log(chalk.white(`🐙  GitHub: https://github.com/${githubRepo.full}`));
   console.log(chalk.white(`📊  Total files: ${context.allFilesCreated.length}`));

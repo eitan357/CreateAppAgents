@@ -1,6 +1,7 @@
 'use strict';
 
 const Anthropic = require('@anthropic-ai/sdk');
+const { t } = require('./lang');
 
 const SQUAD_SCHEMA = `{
   "squads": [
@@ -58,15 +59,15 @@ function formatSquadPlan(squadPlan) {
 
   squadPlan.squads.forEach((squad, i) => {
     lines.push(`  Squad ${i + 1} — ${squad.name}`);
-    lines.push(`    🎯  Domain    : ${squad.userFacingArea}`);
-    lines.push(`    📋  Description: ${squad.description}`);
-    lines.push(`    ⚙️   Backend  : backend/src/modules/${squad.backendModule}/`);
-    lines.push(`    🖥️   Frontend : frontend/src/${squad.frontendModule}/ (or mobile/src/${squad.frontendModule}/)`);
-    lines.push(`    🔑  Features : ${squad.keyFeatures.join(', ')}`);
+    lines.push(`    🎯  ${t('squadDomain')}: ${squad.userFacingArea}`);
+    lines.push(`    📋  ${t('squadDescription')}: ${squad.description}`);
+    lines.push(`    ⚙️   ${t('squadBackend')}: backend/src/modules/${squad.backendModule}/`);
+    lines.push(`    🖥️   ${t('squadFrontend')}: frontend/src/${squad.frontendModule}/ (or mobile/src/${squad.frontendModule}/)`);
+    lines.push(`    🔑  ${t('squadFeatures')}: ${squad.keyFeatures.join(', ')}`);
     lines.push('');
   });
 
-  lines.push(`  🏗️   Platform Team (runs across all squads)`);
+  lines.push(`  ${t('squadPlatformTeam')}`);
   lines.push(`    ${squadPlan.platformNotes}`);
 
   return lines.join('\n');

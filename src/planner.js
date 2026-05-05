@@ -2,15 +2,17 @@
 
 const Anthropic = require('@anthropic-ai/sdk');
 const chalk = require('chalk');
+const { getLangInstruction, t } = require('./lang');
 
 const REQUIREMENTS_START = '---REQUIREMENTS_START---';
 const REQUIREMENTS_END   = '---REQUIREMENTS_END---';
 
-const SYSTEM_PROMPT = `You are a senior product advisor and UX strategist helping a client plan their application before development begins.
+function getSystemPrompt() {
+  return `You are a senior product advisor and UX strategist helping a client plan their application before development begins.
 Your goal: gather comprehensive requirements through a natural, intelligent conversation.
 
 ## Conversation Principles:
-- Communicate in English
+- ${getLangInstruction()}
 - Ask 2-3 focused questions per turn — don't overwhelm the user
 - Listen to answers and ask smart follow-up questions based on context
 - Suggest options when the user is unsure ("for example: Google OAuth, email/password, or guest access")
@@ -32,8 +34,9 @@ Your goal: gather comprehensive requirements through a natural, intelligent conv
 12. Design and branding — style? Brand colors? Dark mode? Is there a Figma?
 13. Constraints — budget, timeline, preferred technology?
 
-## When the user is ready (says "ready", "let's build", "start development", "yes", or similar, or when you offer and they agree):
-Produce a detailed requirements document in this exact format (including the markers):
+## When the user is ready (says "ready", "let's build", "start development", or similar, or when you offer and they agree):
+Produce a detailed requirements document in this exact format (including the markers).
+Write the section headers in the conversation language as instructed above.
 
 ---REQUIREMENTS_START---
 ## App Description
@@ -73,16 +76,16 @@ Produce a detailed requirements document in this exact format (including the mar
 ## Constraints
 [Budget, time, technology]
 ---REQUIREMENTS_END---`;
+}
 
 async function runPlanningSession(ask) {
   const client = new Anthropic();
   const history = [];
 
   console.log(chalk.bold.cyan('\n╔══════════════════════════════════════════╗'));
-  console.log(chalk.bold.cyan('║       🧠  Interactive Planning Mode       ║'));
+  console.log(chalk.bold.cyan(`║   ${t('planningTitle').padEnd(39)}║`));
   console.log(chalk.bold.cyan('╚══════════════════════════════════════════╝'));
-  console.log(chalk.gray('Chat with the AI to plan your application.'));
-  console.log(chalk.gray('When you are ready to move to development — type "ready" or "let\'s build".\n'));
+  console.log(chalk.gray(t('planningHelp') + '\n'));
 
   // First turn: AI opens the conversation
   const opening = await callClaude(client, history, '(Start the conversation — greet the user and ask them about the application they want to build)');
@@ -92,7 +95,7 @@ async function runPlanningSession(ask) {
 
   // Conversation loop
   while (true) {
-    const userInput = (await ask(chalk.bold.white('\nYou: '))).trim();
+    const userInput = (await ask(chalk.bold.white(`\n${t('youPrompt')}`))).trim();
     if (!userInput) continue;
 
     history.push({ role: 'user', content: userInput });
@@ -100,12 +103,11 @@ async function runPlanningSession(ask) {
     const response = await callClaude(client, history, null);
     history.push({ role: 'assistant', content: response.text });
 
-    // Check if requirements were produced
     if (response.text.includes(REQUIREMENTS_START)) {
       printAI(response.text.split(REQUIREMENTS_START)[0].trim());
       const requirements = extractRequirements(response.text);
       if (requirements) {
-        console.log(chalk.bold.green('\n✅  Requirements document generated successfully!\n'));
+        console.log(chalk.bold.green(`\n${t('reqsGenerated')}\n`));
         return requirements;
       }
     }
@@ -122,7 +124,7 @@ async function callClaude(client, history, overrideUserMessage) {
   const response = await client.messages.create({
     model: 'claude-sonnet-4-6',
     max_tokens: 2048,
-    system: [{ type: 'text', text: SYSTEM_PROMPT, cache_control: { type: 'ephemeral' } }],
+    system: [{ type: 'text', text: getSystemPrompt(), cache_control: { type: 'ephemeral' } }],
     messages,
   });
 
@@ -138,7 +140,6 @@ function extractRequirements(text) {
 }
 
 function printAI(text) {
-  // Strip the requirements block from display if present
   const displayText = text.includes(REQUIREMENTS_START)
     ? text.split(REQUIREMENTS_START)[0].trim()
     : text;

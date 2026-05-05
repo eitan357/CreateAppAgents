@@ -11,23 +11,12 @@ const { runDesignPicker } = require('./designPicker');
 const { setModelConfig } = require('./agents/base');
 const { ProjectContext } = require('./context');
 const { parseGithubRepo, checkGithubAccess, createGithubRepo } = require('./github');
+const { SUPPORTED, setLanguage, t } = require('./lang');
 
 const TIERS = {
-  '1': {
-    label: 'Economy  — no extended thinking, faster and cheaper',
-    thinking: null,
-    max_tokens: 4000,
-  },
-  '2': {
-    label: 'Balanced — adaptive extended thinking (Claude decides when to think)',
-    thinking: { type: 'adaptive' },
-    max_tokens: 6000,
-  },
-  '3': {
-    label: 'Maximum  — full extended thinking, highest quality',
-    thinking: { type: 'adaptive' },
-    max_tokens: 8096,
-  },
+  '1': { thinking: null,                  max_tokens: 4000 },
+  '2': { thinking: { type: 'adaptive' },  max_tokens: 6000 },
+  '3': { thinking: { type: 'adaptive' },  max_tokens: 8096 },
 };
 
 const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
@@ -36,13 +25,22 @@ function ask(question) {
   return new Promise(resolve => rl.question(question, resolve));
 }
 
-// Returns { owner, repo, full } after validating token + access.
-// Loops until the user provides a valid repo or exits.
+async function selectLanguage() {
+  console.log(chalk.bold.cyan('\n━━━  Language / שפה / Langue / Idioma  ━━━'));
+  SUPPORTED.forEach((l, i) => {
+    console.log(chalk.white(`  ${i + 1}.  ${l.label}`));
+  });
+  console.log('');
+  const input = (await ask(chalk.bold.green(`▶  Select (1-${SUPPORTED.length}) [default: 1]: `))).trim();
+  const index = parseInt(input, 10) - 1;
+  const chosen = SUPPORTED[index] || SUPPORTED[0];
+  setLanguage(chosen.code);
+}
+
 async function askForGithubRepo() {
-  console.log(chalk.bold.cyan('\n━━━  GitHub Repository  ━━━'));
+  console.log(chalk.bold.cyan(`\n━━━  ${t('githubTitle')}  ━━━`));
   console.log(chalk.gray('The generated code will be saved to this repository at the end of the build.\n'));
 
-  // Check token
   let token = process.env.GITHUB_TOKEN || process.env.GH_TOKEN || '';
   if (!token) {
     console.log(chalk.yellow('⚠️   No GITHUB_TOKEN found in environment.'));
@@ -55,7 +53,6 @@ async function askForGithubRepo() {
       console.log(chalk.yellow('⚠️  Skipping GitHub — code will be generated locally only.\n'));
       return null;
     }
-    // Save to process.env for this session
     process.env.GITHUB_TOKEN = token;
   }
 
@@ -121,6 +118,24 @@ async function askForGithubRepo() {
   }
 }
 
+async function selectTier() {
+  console.log(chalk.bold.cyan(`\n━━━  ${t('qualityTitle')}  ━━━`));
+  console.log(chalk.gray('Select the level of Extended Thinking usage and tokens:\n'));
+  Object.entries(TIERS).forEach(([key, tier]) => {
+    const tokens = tier.max_tokens.toLocaleString();
+    console.log(chalk.white(`  ${key}️⃣   ${t(`tier${key}`)}  (max ${tokens} tokens)`));
+  });
+  console.log('');
+  let tier = '';
+  while (!Object.keys(TIERS).includes(tier)) {
+    tier = (await ask(chalk.bold.green(t('chooseLevel')))).trim() || '2';
+  }
+  const selected = TIERS[tier];
+  setModelConfig({ thinking: selected.thinking, max_tokens: selected.max_tokens });
+  console.log(chalk.green(`\n${t('tierSelected', t(`tier${tier}`))}\n`));
+  return selected;
+}
+
 async function main() {
   console.log(chalk.bold.cyan('\n╔══════════════════════════════════════════╗'));
   console.log(chalk.bold.cyan('║       App Builder — Multi-Agent System    ║'));
@@ -132,9 +147,12 @@ async function main() {
     process.exit(1);
   }
 
-  const projectName = (await ask(chalk.yellow('\n📦  Project name: '))).trim();
+  // Language selection — first step
+  await selectLanguage();
+
+  const projectName = (await ask(chalk.yellow(`\n${t('projectName')}`))).trim();
   if (!projectName) {
-    console.log(chalk.red('❌  Project name is required.'));
+    console.log(chalk.red(t('errNoProjectName')));
     process.exit(1);
   }
 
@@ -150,39 +168,22 @@ async function main() {
     const hasSquadPlan  = !!(checkpoint.squadPlan);
     const allDone       = completedList.includes('5');
 
-    console.log(chalk.bold.yellow(`\n♻️   Found a previous build for "${projectName}"`));
-    console.log(chalk.gray(`    Completed layers: ${completedList || 'none'}`));
+    console.log(chalk.bold.yellow(`\n${t('foundPrevBuild', projectName)}`));
+    console.log(chalk.gray(`    ${t('completedLayers')} ${completedList || 'none'}`));
     console.log('');
-    console.log(chalk.white('  1️⃣   Fresh build from scratch'));
-    if (!allDone) {
-      console.log(chalk.white('  2️⃣   Resume from checkpoint'));
-    }
-    if (hasSquadPlan) {
-      console.log(chalk.white('  3️⃣   Update / add a feature to the existing app'));
-    }
+    console.log(chalk.white(`  ${t('opt1Fresh')}`));
+    if (!allDone)      console.log(chalk.white(`  ${t('opt2Resume')}`));
+    if (hasSquadPlan)  console.log(chalk.white(`  ${t('opt3Update')}`));
     console.log('');
 
     const validOptions = ['1', ...(!allDone ? ['2'] : []), ...(hasSquadPlan ? ['3'] : [])];
     let choice = '';
     while (!validOptions.includes(choice)) {
-      choice = (await ask(chalk.bold.green(`▶  Choose (${validOptions.join('/')}): `))).trim();
+      choice = (await ask(chalk.bold.green(t('chooseOption', validOptions.join('/'))))).trim();
     }
 
     if (choice === '2') {
-      // Resume build
-      console.log(chalk.bold.cyan('\n━━━  Quality / Cost Level  ━━━'));
-      console.log(chalk.gray('Select a level for the remaining steps:\n'));
-      Object.entries(TIERS).forEach(([key, tier]) => {
-        console.log(chalk.white(`  ${key}️⃣   ${tier.label}  (max ${tier.max_tokens.toLocaleString()} tokens)`));
-      });
-      let tier = '';
-      while (!Object.keys(TIERS).includes(tier)) {
-        tier = (await ask(chalk.bold.green('▶  Select level (1, 2 or 3) [default: 2]: '))).trim() || '2';
-      }
-      const selectedTier = TIERS[tier];
-      setModelConfig({ thinking: selectedTier.thinking, max_tokens: selectedTier.max_tokens });
-      console.log(chalk.green(`\n✅  Selected level: ${selectedTier.label}\n`));
-
+      await selectTier();
       rl.close();
       try {
         await orchestrate(checkpoint.requirements, projectName, outputDir, checkpoint, githubRepo);
@@ -195,10 +196,8 @@ async function main() {
     }
 
     if (choice === '3') {
-      // Update mode
       console.log(chalk.bold.cyan('\n━━━  Update App  ━━━'));
-      console.log(chalk.gray('Describe the change you want to make. (Type END on a separate line when done)\n'));
-
+      console.log(chalk.gray(t('describeUpdate') + '\n'));
       const lines = [];
       while (true) {
         const line = await ask('');
@@ -207,22 +206,10 @@ async function main() {
       }
       const changeRequest = lines.join('\n').trim();
       if (!changeRequest) {
-        console.log(chalk.red('❌  Cannot continue without a description of the change.'));
+        console.log(chalk.red(t('errNoChange')));
         process.exit(1);
       }
-
-      console.log(chalk.bold.cyan('\n━━━  Quality / Cost Level  ━━━'));
-      Object.entries(TIERS).forEach(([key, tier]) => {
-        console.log(chalk.white(`  ${key}️⃣   ${tier.label}  (max ${tier.max_tokens.toLocaleString()} tokens)`));
-      });
-      let tier = '';
-      while (!Object.keys(TIERS).includes(tier)) {
-        tier = (await ask(chalk.bold.green('▶  Select level (1, 2 or 3) [default: 2]: '))).trim() || '2';
-      }
-      const selectedTier = TIERS[tier];
-      setModelConfig({ thinking: selectedTier.thinking, max_tokens: selectedTier.max_tokens });
-      console.log(chalk.green(`\n✅  Selected level: ${selectedTier.label}\n`));
-
+      await selectTier();
       rl.close();
       try {
         await orchestrateUpdate(changeRequest, checkpoint, outputDir, githubRepo);
@@ -234,18 +221,17 @@ async function main() {
       return;
     }
 
-    // choice === '1': fall through to fresh build
-    console.log(chalk.gray('Starting fresh build...\n'));
+    console.log(chalk.gray(t('freshBuild') + '\n'));
   }
 
   // ── Mode selection ──────────────────────────────────────────────────────────
-  console.log(chalk.bold.yellow('How would you like to start?\n'));
-  console.log(chalk.white('  1️⃣   AI Planning  — interactive conversation with a product advisor who will ask you questions'));
-  console.log(chalk.white('  2️⃣   Direct Input  — type your requirements yourself\n'));
+  console.log(chalk.bold.yellow(t('howStart') + '\n'));
+  console.log(chalk.white(`  ${t('mode1')}`));
+  console.log(chalk.white(`  ${t('mode2')}\n`));
 
   let mode = '';
   while (!['1', '2'].includes(mode)) {
-    mode = (await ask(chalk.bold.green('▶  Choose mode (1 or 2): '))).trim();
+    mode = (await ask(chalk.bold.green(t('chooseMode')))).trim();
   }
 
   let requirements = '';
@@ -254,65 +240,46 @@ async function main() {
   if (mode === '1') {
     requirements = await runPlanningSession(ask);
 
-    // Show the generated requirements and let user confirm
-    console.log(chalk.bold.cyan('\n━━━  Generated Requirements Document  ━━━'));
+    console.log(chalk.bold.cyan(`\n${t('reqsHeader')}`));
     console.log(chalk.gray(requirements));
-    console.log(chalk.bold.cyan('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n'));
+    console.log(chalk.bold.cyan(`${t('reqsFooter')}\n`));
 
-    const confirm = (await ask(chalk.bold.green('▶  Start development with these requirements? (y/n): '))).trim().toLowerCase();
+    const confirm = (await ask(chalk.bold.green(t('startDev')))).trim().toLowerCase();
     if (confirm !== 'y' && confirm !== 'yes' && confirm !== '') {
-      console.log(chalk.yellow('\n💡  You can re-run and continue refining the requirements in another conversation.'));
+      console.log(chalk.yellow(`\n${t('refineHint')}`));
       rl.close();
       return;
     }
 
   // ── Mode 2: Direct Input ────────────────────────────────────────────────────
   } else {
-    console.log(chalk.yellow('\n📝  Describe the application you want to build.'));
-    console.log(chalk.gray('    (Type your requirements, and when done type END on a separate line)\n'));
-
+    console.log(chalk.yellow(`\n${t('describeApp')}\n`));
     const lines = [];
     while (true) {
       const line = await ask('');
       if (line.trim() === 'END') break;
       lines.push(line);
     }
-
     requirements = lines.join('\n').trim();
     if (!requirements) {
-      console.log(chalk.red('❌  Cannot continue without requirements.'));
+      console.log(chalk.red(t('errNoRequirements')));
       process.exit(1);
     }
   }
 
   // ── Tier selection ────────────────────────────────────────────────────────
-  console.log(chalk.bold.cyan('\n━━━  Quality / Cost Level  ━━━'));
-  console.log(chalk.gray('Select the level of Extended Thinking usage and tokens:\n'));
-  Object.entries(TIERS).forEach(([key, tier]) => {
-    const tokens = tier.max_tokens.toLocaleString();
-    console.log(chalk.white(`  ${key}️⃣   ${tier.label}  (max ${tokens} tokens)`));
-  });
-  console.log('');
-
-  let tier = '';
-  while (!Object.keys(TIERS).includes(tier)) {
-    tier = (await ask(chalk.bold.green('▶  Select level (1, 2 or 3) [default: 2]: '))).trim() || '2';
-  }
-  const selectedTier = TIERS[tier];
-  setModelConfig({ thinking: selectedTier.thinking, max_tokens: selectedTier.max_tokens });
-  console.log(chalk.green(`\n✅  Selected level: ${selectedTier.label}\n`));
+  await selectTier();
 
   // ── Design Picker ─────────────────────────────────────────────────────────
   console.log(chalk.bold.cyan('\n━━━  Design Phase  ━━━'));
-  console.log(chalk.gray('Before we start building — let\'s choose the visual style of the application.\n'));
+  console.log(chalk.gray("Before we start building — let's choose the visual style of the application.\n"));
 
-  const skipDesign = (await ask(chalk.bold.green('▶  Design the app before development? (y/n): '))).trim().toLowerCase();
-
+  const skipDesign = (await ask(chalk.bold.green(t('designBeforeDev')))).trim().toLowerCase();
   if (skipDesign === 'y' || skipDesign === 'yes' || skipDesign === '') {
     const designSpec = await runDesignPicker(requirements, ask);
     if (designSpec) {
       requirements = requirements + '\n\n' + designSpec;
-      console.log(chalk.green('\n✅  Design spec added to project requirements.\n'));
+      console.log(chalk.green(`\n${t('designAdded')}\n`));
     }
   }
 

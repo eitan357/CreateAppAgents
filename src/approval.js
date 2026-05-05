@@ -2,6 +2,7 @@
 
 const readline = require('readline');
 const chalk = require('chalk');
+const { t } = require('./lang');
 
 function ask(question) {
   const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
@@ -21,25 +22,25 @@ async function approveStep(stepName, description, details = null) {
     console.log('\n' + chalk.gray(details));
   }
   console.log(chalk.cyan('─'.repeat(60)));
-  const answer = await ask(chalk.bold.green('▶  Continue? (y/n): '));
+  const answer = await ask(chalk.bold.green(t('continuePrompt')));
   return answer === 'y' || answer === 'yes' || answer === '';
 }
 
 async function showAgentOutput(agentName, summary, filesCreated) {
   console.log('\n' + chalk.cyan('═'.repeat(60)));
-  console.log(chalk.bold.blue(`✅  ${agentName} Agent — completed`));
+  console.log(chalk.bold.blue(t('agentDone', agentName)));
 
   const MAX = 600;
   const display = summary.length > MAX ? summary.slice(0, MAX) + '...' : summary;
   console.log('\n' + chalk.gray(display));
 
   if (filesCreated.length > 0) {
-    console.log(chalk.white('\nFiles created:'));
+    console.log(chalk.white('\n' + t('filesCreated')));
     filesCreated.forEach(f => console.log(chalk.green(`  ✓ ${f}`)));
   }
   console.log(chalk.cyan('═'.repeat(60)));
 
-  const answer = await ask(chalk.bold.green('▶  Continue to next step? (y/n): '));
+  const answer = await ask(chalk.bold.green(t('continueStep')));
   return answer === 'y' || answer === 'yes' || answer === '';
 }
 
@@ -50,7 +51,7 @@ async function approveLayer(layerName, layerResults) {
   );
 
   console.log('\n' + chalk.cyan('═'.repeat(70)));
-  console.log(chalk.bold.blue(`🏁  Layer Complete: ${layerName}`));
+  console.log(chalk.bold.blue(`🏁  ${t('layerComplete')} ${layerName}`));
   console.log(chalk.white(`   Agents: ${agentNames.join(', ')}`));
   console.log(chalk.white(`   Files created this layer: ${totalFiles}`));
 
@@ -67,7 +68,7 @@ async function approveLayer(layerName, layerResults) {
   }
 
   console.log(chalk.cyan('═'.repeat(70)));
-  const answer = await ask(chalk.bold.green('▶  Continue to next layer? (y/n): '));
+  const answer = await ask(chalk.bold.green(t('continueLayer')));
   return answer === 'y' || answer === 'yes' || answer === '';
 }
 
