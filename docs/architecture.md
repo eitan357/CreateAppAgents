@@ -40,6 +40,9 @@
 ## שלב 0 — הכנה (index.js)
 
 ```
+0. בחירת שפת ממשק: lang.js → selectLanguage() — 8 שפות: EN / HE / AR / ES / FR / DE / RU / ZH
+   כל הטקסטים שהמשתמש רואה לאורך הריצה מוצגים בשפה שנבחרה (t() calls)
+   getLangInstruction() מוזרק לפרומפטים של AI כדי שגם planner ייצר דרישות בשפה הנכונה
 1. בחירת מצב דרישות: planner.js (שיחה עם Sonnet) או הזנה ידנית
 2. GitHub Repository: validateGithubAccess() — או יצירת repo חדש
 3. בחירת tier: חסכוני / מאוזן / מקסימלי → setModelConfig()
@@ -94,8 +97,8 @@ ProjectContext נוצר (requirements, plan, squadPlan, outputDir)
 | Agent | משימה | קלט | פלט | סוג |
 |-------|-------|-----|-----|-----|
 | **vpPmAgent** | קורא דרישות + חלוקת צוותים → מגדיר לכל Squad PM: אילו user stories שלו, acceptance criteria, תלויות בין צוותים, priority (P0/P1/P2) | requirementsAnalyst + systemArchitect + dataArchitect + apiDesigner | `docs/guidelines/pm-guidelines.md` | 📋 |
-| **techLeadAgent** | מגדיר coding standards: module structure, naming conventions, שימוש חובה ב-shared/, error handling patterns, testing requirements | systemArchitect + apiDesigner + dataArchitect + frontendArchitect | `docs/guidelines/tech-guidelines.md` | 📋 |
-| **qaLeadAgent** | מגדיר testing strategy: unit vs integration, coverage requirements, test data, forbidden patterns, accessibility requirements | requirementsAnalyst + apiDesigner + systemArchitect | `docs/guidelines/qa-guidelines.md` | 📋 |
+| **techLeadAgent** | מגדיר coding standards: module structure, naming conventions, שימוש חובה ב-shared/, error handling patterns, testing requirements. **כולל כללי timezone:** store UTC everywhere, convert only at display layer — TIMESTAMPTZ בDB, Intl.DateTimeFormat בUI | systemArchitect + apiDesigner + dataArchitect + frontendArchitect | `docs/guidelines/tech-guidelines.md` | 📋 |
+| **qaLeadAgent** | מגדיר testing strategy: unit vs integration, coverage requirements, test data, forbidden patterns, accessibility requirements. **כולל תבניות בדיקת timezone:** UTC storage, client normalization, date range, local display, date picker UTC | requirementsAnalyst + apiDesigner + systemArchitect | `docs/guidelines/qa-guidelines.md` | 📋 |
 | **securityLeadAgent** | מנתח threat model לפרויקט הספציפי → מייצר OWASP checklist מותאם + הנחיות per-squad לפי מה שכל צוות מטפל בו | systemArchitect + apiDesigner + dataArchitect | `docs/guidelines/security-guidelines.md` | 📋 |
 | **designLeadAgent** | כותב שני מסמכים: (1) design system — tokens, variants, dark mode. (2) הנחיות עיצוב לכל Squad Designer | frontendArchitect + uxDesignerAgent | `docs/design-system.md`, `docs/guidelines/design-guidelines.md` | 📋 |
 | **renderingStrategyAgent** *(opt)* | מחליט CSR/SSR/SSG/ISR per-page ב-Next.js/Nuxt, מגדיר App Router ו-protected routes | systemArchitect + frontendArchitect | `docs/rendering-strategy.md` | 📋 |
@@ -225,33 +228,6 @@ docs/agent-plans/{agentName}-{squadId}.md:
 `auth:backendDev` + `listings:backendDev` → `agentOutputs['backendDev']`
 
 ---
-
-## LAYER 3b — Mobile Features (מקביל, אופציונלי)
-
-| Agent | משימה | קלט | פלט | סוג |
-|-------|-------|-----|-----|-----|
-| **notificationsAgent** | FCM/APNs setup, notification service, local reminders | frontendDev + backendDev + integrationAgent | push service, reminder utils | 💻 |
-| **deepLinksAgent** | Universal Links, App Links, deep link handlers, QR utils | frontendDev + backendDev | link config, handler router | 💻 |
-| **offlineFirstAgent** | WatermelonDB/TanStack persistence, offline queue, sync logic | frontendDev + dataArchitect + apiDesigner | offline db, sync service | 💻 |
-| **realtimeAgent** | Socket.io server + client hooks, live updates, chat | backendDev + frontendDev + integrationAgent | socket server, real-time hooks | 💻 |
-| **animationsAgent** | Lottie animations, shared transitions, micro-interactions | frontendDev + frontendArchitect | animation components | 💻 |
-| **onboardingAgent** | First-run experience, splash, permission rationale, empty states | frontendDev + frontendArchitect | onboarding screens | 💻 |
-| **monetizationAgent** | RevenueCat, IAP flows, subscription screens | frontendDev + backendDev + integrationAgent | IAP service, subscription screens | 💻 |
-| **mlMobileAgent** | ML Kit/TFLite, OCR, face detection, on-device ML | frontendDev + systemArchitect | ML utilities | 💻 |
-| **arVrAgent** | ARKit/ARCore, 3D placement components | frontendDev + systemArchitect | AR components | 💻 |
-| **widgetsExtensionsAgent** | Home screen widgets, Apple Watch, Share extension | frontendDev | widget targets | 💻 |
-| **otaUpdatesAgent** | Expo EAS Update / CodePush config, update check logic | frontendDev + devops | OTA config, update service | 💻 + ⚙️ |
-
----
-
-## LAYER 3c — Web Features (מקביל, אופציונלי)
-
-| Agent | משימה | קלט | פלט | סוג |
-|-------|-------|-----|-----|-----|
-| **responsiveDesignAgent** | Mobile-first CSS breakpoints, fluid typography, responsive images | frontendArchitect + frontendDev | responsive styles | 💻 |
-| **pwaAgent** | Service Worker, Web App Manifest, offline cache, install prompt | frontendDev + frontendArchitect | SW config, manifest | 💻 + ⚙️ |
-| **webMonetizationAgent** | Stripe Billing, checkout, customer portal, webhook handler, feature gating | backendDev + frontendDev + dataArchitect + apiDesigner | Stripe integration, billing screens | 💻 |
-| **cmsIntegratorAgent** *(per-squad, ראה Squad Phase 5)* | סוכן CMS per-squad — ראה LAYER 3 Squad Pipeline | — | — | — |
 
 ---
 
@@ -392,6 +368,29 @@ ALL 32 code-writing agents (no exceptions):
         ומזריק Step 0 לפרומפט של כל agent בנפרד.
 ```
 
+### Universal Rules Flow
+```
+כל agent (ללא יוצא מן הכלל) מקבל בתחילת ה-context:
+
+  ## Language
+  All code identifiers, function names, variable names, file names, comments
+  must be in English. User-facing strings match the language in the project spec.
+
+  ## Output quality
+  - No TODOs, no placeholder stubs, no empty function bodies
+  - No commented-out code blocks
+  - No console.log in production code — use a logger
+  - Every function, component, and endpoint must be fully implemented
+
+  ## File operations
+  - Use write_file to create or update files — never print code as markdown
+  - Before modifying an existing file: use read_file first
+  - Paths relative to output directory — never include the output dir prefix
+
+מנגנון: _injectUniversalRules() ב-context.js מוזרק ל-buildScopedContext,
+        buildSquadPmSpecContext, buildSquadScopedContext, buildSquadUpdateContext.
+```
+
 ### Update Mode (updatePlanner.js + orchestrateUpdate)
 ```
 analyzeUpdate(changeRequest, existingSquadPlan) → {
@@ -506,7 +505,8 @@ Feature infrastructure agents כמו `animationsAgent` (react-native-reanimated)
 | מודול | תפקיד |
 |-------|--------|
 | **base.js** | `BaseAgent` — Opus 4.7, thinking + max_tokens לפי tier. timeout: 20 דקות. |
-| **context.js** | `ProjectContext` — state משותף. `buildScopedContext()` + `buildSquadScopedContext()`. `_injectPlatformRules()`, `_injectLeadershipGuidelines()`, `_injectSelfPlanningPrompt()` מוזרקים אוטומטית לפי agent role. |
+| **lang.js** | בחירת שפת ממשק — `selectLanguage()`, 8 שפות נתמכות. `t(key)` לטקסטים המוצגים למשתמש. `getLangInstruction()` מוזרק לפרומפטים של AI (planner, designPicker וכו'). |
+| **context.js** | `ProjectContext` — state משותף. `buildScopedContext()` + `buildSquadScopedContext()`. `_injectUniversalRules()`, `_injectPlatformRules()`, `_injectLeadershipGuidelines()`, `_injectSelfPlanningPrompt()` מוזרקים אוטומטית לפי agent role. |
 | **agentDependencies.js** | DEPENDENCY_MAP — מה כל agent "רואה" מהagents שרצו לפניו. |
 | **layerRunner.js** | `runLayerInParallel` / `runLayerSequential` — retry x2 לכל agent. |
 | **squadRunner.js** | `runAllSquads`, `runSquadUpdate`, `runAllSquadsUpdate` — 9-phase squad pipeline. |
