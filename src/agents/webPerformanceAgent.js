@@ -89,30 +89,30 @@ Write .github/workflows/lighthouse.yml:
 Structure findings exactly like this:
 
 \`\`\`
-# ממצאי Web Performance
+# Web Performance Findings
 
-## 🔴 קריטי — Core Web Vitals נכשלים
+## 🔴 Critical — Core Web Vitals failing
 
-### 1. [שם הבעיה] — \`path/to/file.tsx:LINE\`
-**מדד נפגע:** LCP / CLS / INP
-**בעיה:** מה נמצא בקוד
-**תיקון נדרש:**
+### 1. [Issue name] — \`path/to/file.tsx:LINE\`
+**Affected metric:** LCP / CLS / INP
+**Issue:** What was found in the code
+**Fix required:**
 \`\`\`diff
 - <img src="/hero.jpg" />
 + <Image src="/hero.jpg" priority fetchPriority="high" width={1200} height={600} />
 \`\`\`
-**שיפור צפוי:** LCP -800ms
+**Expected improvement:** LCP -800ms
 
-## 🟡 חשוב
-## 🟢 שיפורים מינוריים
-## ✅ נמצא תקין
+## 🟡 Important
+## 🟢 Minor improvements
+## ✅ Found to be correct
 
-## שינויי קונפיגורציה נדרשים
-### next.config.js — יש להוסיף:
-[הצג את הקוד שצריך להוסיף, אבל אל תכתוב את הקובץ בעצמך]
+## Required configuration changes
+### next.config.js — add the following:
+[Show the code that needs to be added, but do not write the file yourself]
 
-### .github/workflows/lighthouse.yml — יש ליצור:
-[הצג את תוכן הקובץ המלא]
+### .github/workflows/lighthouse.yml — create:
+[Show the full file content]
 \`\`\`
 
 ### New utility files you CAN create:

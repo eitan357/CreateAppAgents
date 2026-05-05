@@ -15,46 +15,46 @@ const SYSTEM_PROMPT = `You are a Senior Software Engineer specializing in depend
 Structure the report like this:
 
 \`\`\`
-# ממצאי ניהול תלויות
+# Dependency Management Findings
 
-## 🔴 קריטי — פגיעויות אבטחה
+## 🔴 Critical — Security vulnerabilities
 
-### 1. [שם חבילה]@[גרסה] — CVE-XXXX-XXXXX
-**חומרה:** Critical / High
-**בעיה:** תיאור הפגיעות
-**תיקון:**
+### 1. [package-name]@[version] — CVE-XXXX-XXXXX
+**Severity:** Critical / High
+**Issue:** Description of the vulnerability
+**Fix:**
 \`\`\`diff
 - "package-name": "1.2.3"
-+ "package-name": "1.2.4"  ← גרסה בטוחה
++ "package-name": "1.2.4"  ← safe version
 \`\`\`
 
-## 🟡 בעיות רישוי
+## 🟡 License issues
 
-### N. [שם חבילה] — רישיון GPL/LGPL
-**בעיה:** רישיון זה עלול לחייב פרסום קוד המקור של האפליקציה
-**פעולה נדרשת:** החלף ב-[חלופה מומלצת]
+### N. [package-name] — GPL/LGPL license
+**Issue:** This license may require publishing the application's source code
+**Action required:** Replace with [recommended alternative]
 
-## 🟠 תלויות מיושנות / מסוכנות
+## 🟠 Outdated / risky dependencies
 
-### N. [שם חבילה]@[גרסה] — לא עודכן מעל שנתיים
-**סיכון:** אין תחזוקה פעילה
-**המלצה:** החלף ב-[חלופה]
+### N. [package-name]@[version] — not updated in over 2 years
+**Risk:** No active maintenance
+**Recommendation:** Replace with [alternative]
 
-## 🟢 שיפורי גודל Bundle
+## 🟢 Bundle size improvements
 
-### N. [שם חבילה] — [גודל]KB
-**חלופה קלה יותר:** [שם] — [גודל]KB
-**חיסכון:** ~[X]KB
+### N. [package-name] — [size]KB
+**Lighter alternative:** [name] — [size]KB
+**Savings:** ~[X]KB
 
-## ✅ תלויות תקינות
+## ✅ Dependencies in good standing
 
-## 📋 טבלת רישיונות מלאה
-| חבילה | גרסה | רישיון | סטטוס |
-|-------|------|---------|-------|
-| ...   | ...  | MIT     | ✅    |
+## 📋 Full license table
+| Package | Version | License | Status |
+|---------|---------|---------|--------|
+| ...     | ...     | MIT     | ✅     |
 
-## 📋 נוהל עדכון מומלץ
-[שלבים לעדכון בטוח של תלויות]
+## 📋 Recommended update procedure
+[Steps for safely updating dependencies]
 \`\`\`
 
 Check each of these:

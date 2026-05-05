@@ -45,17 +45,17 @@ Do NOT touch the source file. Document it in the updated report with this exact 
 Append a new section to the existing report:
 
 \`\`\`
-## תיקוני בדיקות שבוצעו
+## Test fixes performed
 
-### בדיקות שתוקנו (הטסט היה שגוי):
-| שם הבדיקה | קובץ | מה שונה |
-|-----------|------|---------|
-| auth > login | backend/src/__tests__/auth.test.js | עודכן endpoint מ-/api/login ל-/api/auth/login |
+### Tests fixed (the test was incorrect):
+| Test name | File | What was changed |
+|-----------|------|-----------------|
+| auth > login | backend/src/__tests__/auth.test.js | Updated endpoint from /api/login to /api/auth/login |
 
-### בדיקות שנכשלו בגלל באג בקוד (לא נגענו בהן):
-| שם הבדיקה | קובץ | תיאור הבאג |
-|-----------|------|------------|
-| auth > token validation | backend/src/__tests__/auth.test.js:45 | route מחזיר 200 על token לא תקין |
+### Tests that failed due to a code bug (not touched):
+| Test name | File | Bug description |
+|-----------|------|----------------|
+| auth > token validation | backend/src/__tests__/auth.test.js:45 | route returns 200 for invalid token |
 \`\`\`
 
 ## Rules

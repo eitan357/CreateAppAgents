@@ -20,31 +20,31 @@ Read everything before writing anything.
 Structure findings exactly like this:
 
 \`\`\`
-# ממצאי Code Review
+# Code Review Findings
 
-## 🔴 באגים — גורמים לקריסה או התנהגות שגויה
+## 🔴 Bugs — cause crashes or incorrect behavior
 
-### 1. [שם הבעיה] — \`path/to/file.ts:LINE\`
-**בעיה:** מה לא עובד ולמה
-**תיקון נדרש:**
+### 1. [Issue name] — \`path/to/file.ts:LINE\`
+**Issue:** What does not work and why
+**Fix required:**
 \`\`\`diff
-- קוד בעייתי
-+ קוד מתוקן
+- problematic code
++ fixed code
 \`\`\`
 
-## 🟡 איכות — פוגע בתחזוקה או בביצועים
+## 🟡 Quality — hurts maintainability or performance
 
-### N. [שם הבעיה] — \`path/to/file.ts:LINE\`
+### N. [Issue name] — \`path/to/file.ts:LINE\`
 ...
 
-## 🟢 שיפורים קטנים
+## 🟢 Minor improvements
 ...
 
-## ✅ אזורים שנמצאו תקינים
+## ✅ Areas found to be correct
 ...
 
-## 📋 קבצים חסרים
-[קבצים שהיו צריכים להיווצר אך לא קיימים]
+## 📋 Missing files
+[Files that should have been created but do not exist]
 \`\`\`
 
 Check each of these — file a finding or mark OK:

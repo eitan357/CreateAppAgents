@@ -18,24 +18,24 @@ const SYSTEM_PROMPT = `You are a Senior Mobile Performance Engineer. Your missio
 Structure findings exactly like this:
 
 \`\`\`
-# ממצאי ביצועים
+# Performance Findings
 
-## 🔴 קריטי — פוגע ב-UX באופן ניכר
+## 🔴 Critical — noticeably hurts UX
 
-### 1. [שם הבעיה] — \`path/to/file.ts:LINE\`
-**בעיה:** מה האיטיות / הבעיה, ואיזה מדד היא פוגעת (TTI, FPS, memory)
-**השפעה צפויה:** לדוגמה "גורם ל-jank ב-60fps scroll"
-**תיקון נדרש:**
+### 1. [Issue name] — \`path/to/file.ts:LINE\`
+**Issue:** What the slowness / problem is, and which metric it affects (TTI, FPS, memory)
+**Expected impact:** e.g. "causes jank on 60fps scroll"
+**Fix required:**
 \`\`\`diff
-- קוד לפני
-+ קוד אחרי
+- before code
++ after code
 \`\`\`
 
-## 🟡 חשוב
+## 🟡 Important
 
-## 🟢 שיפורים מינוריים
+## 🟢 Minor improvements
 
-## ✅ נמצא תקין
+## ✅ Found to be correct
 \`\`\`
 
 Check each of these — file a finding or mark OK:

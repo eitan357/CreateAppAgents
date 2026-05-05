@@ -58,15 +58,15 @@ function formatSquadPlan(squadPlan) {
 
   squadPlan.squads.forEach((squad, i) => {
     lines.push(`  Squad ${i + 1} — ${squad.name}`);
-    lines.push(`    🎯  תחום    : ${squad.userFacingArea}`);
-    lines.push(`    📋  תיאור   : ${squad.description}`);
-    lines.push(`    ⚙️   Backend : backend/src/modules/${squad.backendModule}/`);
-    lines.push(`    🖥️   Frontend: frontend/src/${squad.frontendModule}/ (or mobile/src/${squad.frontendModule}/)`);
-    lines.push(`    🔑  פיצ'רים: ${squad.keyFeatures.join(', ')}`);
+    lines.push(`    🎯  Domain    : ${squad.userFacingArea}`);
+    lines.push(`    📋  Description: ${squad.description}`);
+    lines.push(`    ⚙️   Backend  : backend/src/modules/${squad.backendModule}/`);
+    lines.push(`    🖥️   Frontend : frontend/src/${squad.frontendModule}/ (or mobile/src/${squad.frontendModule}/)`);
+    lines.push(`    🔑  Features : ${squad.keyFeatures.join(', ')}`);
     lines.push('');
   });
 
-  lines.push(`  🏗️   Platform Team (רץ מעל כל הצוותים)`);
+  lines.push(`  🏗️   Platform Team (runs across all squads)`);
   lines.push(`    ${squadPlan.platformNotes}`);
 
   return lines.join('\n');

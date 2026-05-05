@@ -111,10 +111,10 @@ export class ErrorBoundary extends Component<Props, State> {
     if (this.state.hasError) {
       return this.props.fallback ?? (
         <div role="alert" style={{ padding: 24, textAlign: 'center' }}>
-          <h2>משהו השתבש</h2>
+          <h2>Something went wrong</h2>
           <p>{this.state.error?.message}</p>
           <button onClick={() => this.setState({ hasError: false, error: null })}>
-            נסה שוב
+            Try again
           </button>
         </div>
       );
@@ -174,7 +174,7 @@ export async function apiFetch<T>(url: string, options?: RequestInit): Promise<T
   } catch (err) {
     if (err instanceof ApiError) throw err;
     console.error('[ApiClient] Network error:', err);
-    throw new ApiError(0, 'בעיית תקשורת — בדוק את החיבור לאינטרנט');
+    throw new ApiError(0, 'Network error — check your internet connection');
   }
 }
 \`\`\`
@@ -207,9 +207,9 @@ export class ErrorBoundary extends Component<Props, State> {
     if (this.state.hasError) {
       return (
         <View style={styles.container}>
-          <Text style={styles.title}>משהו השתבש</Text>
+          <Text style={styles.title}>Something went wrong</Text>
           <Text style={styles.message}>{this.state.error?.message}</Text>
-          <Button title="נסה שוב" onPress={() => this.setState({ hasError: false, error: null })} />
+          <Button title="Try again" onPress={() => this.setState({ hasError: false, error: null })} />
         </View>
       );
     }
@@ -273,7 +273,7 @@ export async function apiFetch<T>(url: string, options?: RequestInit): Promise<T
   } catch (err) {
     if (err instanceof ApiError) throw err;
     console.error('[ApiClient] Network error:', err);
-    throw new ApiError(0, 'אין חיבור לשרת — בדוק את האינטרנט');
+    throw new ApiError(0, 'No server connection — check your internet');
   }
 }
 \`\`\`

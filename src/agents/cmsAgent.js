@@ -67,9 +67,9 @@ Use **Strapi v5** as a standalone CMS.
 **cms/seed-data.json** — pre-populate with all strings you found in Step 1:
 \`\`\`json
 [
-  { "key": "home.hero.title",      "value": "ברוכים הבאים",   "page": "Home",    "notes": "כותרת ראשית בדף הבית" },
-  { "key": "auth.login.button",    "value": "התחבר",           "page": "Login",   "notes": "כפתור שליחת טופס התחברות" },
-  { "key": "auth.login.emailPlaceholder", "value": "כתובת מייל", "page": "Login", "notes": "" }
+  { "key": "home.hero.title",      "value": "Welcome",        "page": "Home",    "notes": "Main heading on the home page" },
+  { "key": "auth.login.button",    "value": "Sign In",        "page": "Login",   "notes": "Submit button for the login form" },
+  { "key": "auth.login.emailPlaceholder", "value": "Email address", "page": "Login", "notes": "" }
 ]
 \`\`\`
 
@@ -131,7 +131,7 @@ export function useContent() {
 Usage in components:
 \`\`\`typescript
 const { t } = useContent();
-return <h1>{t('home.hero.title', 'ברוכים הבאים')}</h1>;
+return <h1>{t('home.hero.title', 'Welcome')}</h1>;
 \`\`\`
 
 ### For mobile (React Native / Expo):
@@ -173,52 +173,52 @@ List every file + line where you found hardcoded text, with:
 Format:
 \`\`\`
 ### frontend/src/screens/HomeScreen.tsx:24
-Current:  <Text>ברוכים הבאים</Text>
+Current:  <Text>Welcome</Text>
 CMS key:  home.hero.title
-Replace:  <Text>{t('home.hero.title', 'ברוכים הבאים')}</Text>
+Replace:  <Text>{t('home.hero.title', 'Welcome')}</Text>
 \`\`\`
 
 ## Step 5 — Write docs/cms-guide.md (for non-technical editors)
 
-Write a simple, clear guide in Hebrew for the business owner / content editor:
+Write a simple, clear guide in English for the business owner / content editor:
 
 \`\`\`markdown
-# מדריך עריכת תוכן — ללא קוד
+# Content Editing Guide — No Code Required
 
-## כניסה לפאנל הניהול
-1. פתח את הדפדפן ועבור לכתובת: [CMS_ADMIN_URL]
-2. הכנס את שם המשתמש והסיסמה שקיבלת
-3. לחץ על "Content Strings" בתפריט השמאלי
+## Accessing the Admin Panel
+1. Open your browser and go to: [CMS_ADMIN_URL]
+2. Enter the username and password you received
+3. Click "Content Strings" in the left menu
 
-## עריכת טקסט קיים
-1. חפש את המפתח הרצוי (לדוגמה: home.hero.title)
-2. לחץ על הרשומה
-3. שנה את שדה "Value" לטקסט החדש
-4. לחץ "Save" — השינוי יופיע באפליקציה תוך 5 דקות
+## Editing Existing Text
+1. Search for the desired key (e.g. home.hero.title)
+2. Click on the record
+3. Change the "Value" field to the new text
+4. Click "Save" — the change will appear in the app within 5 minutes
 
-## הוספת טקסט חדש
-1. לחץ "Create New"
-2. מלא:
-   - Key: שם ייחודי באנגלית (לדוגמה: about.team.title)
-   - Value: הטקסט בעברית
-   - Page: שם המסך שבו הטקסט מופיע
-   - Notes: הסבר לשימוש עתידי
-3. לחץ "Save"
+## Adding New Text
+1. Click "Create New"
+2. Fill in:
+   - Key: unique name in English (e.g. about.team.title)
+   - Value: the text to display
+   - Page: the screen name where the text appears
+   - Notes: explanation for future use
+3. Click "Save"
 
-## שדות שמומלץ לנהל דרך ה-CMS
-- כל הכותרות הראשיות
-- טקסטי כפתורים
-- הודעות שגיאה וולידציה
-- תוכן דפי onboarding
-- מסרים שיווקיים
+## Fields Recommended to Manage via the CMS
+- All main headings
+- Button labels
+- Error and validation messages
+- Onboarding page content
+- Marketing messages
 \`\`\`
 
 ## Step 6 — Write environment variable documentation
 
 Add to docs/cms-guide.md:
 \`\`\`
-## משתני סביבה נדרשים
-PAYLOAD_SECRET=... (אקראי, לפחות 32 תווים)
+## Required Environment Variables
+PAYLOAD_SECRET=... (random, at least 32 characters)
 DATABASE_URI=postgresql://...
 NEXT_PUBLIC_CMS_URL=https://your-domain.com
 \`\`\`

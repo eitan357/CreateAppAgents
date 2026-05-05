@@ -31,7 +31,7 @@ Happy Path:
 
 Edge Cases:
   - What if the user is not logged in? → redirect to /login with return URL
-  - What if the network fails? → show inline error "שגיאת רשת, נסה שוב"
+  - What if the network fails? → show inline error "Network error, try again"
   - What if the list is empty? → show empty state (described below)
   - What if loading takes >3s? → show skeleton screen
 \`\`\`
@@ -44,7 +44,7 @@ For each screen, write a text wireframe using ASCII art:
 \`\`\`
 ## Screen: Dashboard
 Route: /dashboard
-Title: לוח בקרה
+Title: Dashboard
 
 ┌─────────────────────────────────────────────┐
 │ [Logo]        [Search bar]      [Avatar ▼]  │
@@ -60,8 +60,8 @@ Title: לוח בקרה
 
 States:
 - Loading: skeleton rows for stats cards and activity list
-- Empty (new user): illustration + "צור את הפרויקט הראשון שלך" + [כפתור ראשי]
-- Error: banner "שגיאה בטעינת הנתונים" + [נסה שוב]
+- Empty (new user): illustration + "Create your first project" + [Primary button]
+- Error: banner "Error loading data" + [Try again]
 \`\`\`
 
 Write a wireframe file for EVERY major screen. Name files after the screen:
@@ -71,26 +71,26 @@ docs/wireframes/01-login.md, docs/wireframes/02-dashboard.md, etc.
 
 **Forms UX:**
 - Validation timing: validate on blur (not on every keystroke), show errors inline below the field
-- Error message format: short, actionable, in the user's language ("סיסמה חייבת להכיל לפחות 8 תווים")
-- Required vs optional fields: mark optional with "(אופציונלי)", not required with *
+- Error message format: short, actionable, in the user's language ("Password must contain at least 8 characters")
+- Required vs optional fields: mark optional with "(optional)", not required with *
 - Submit button: disabled until form is valid; show spinner during submission; never double-submit
 - Multi-step forms: progress indicator at top, Back button always available, save draft on step change
 
 **Loading States:**
 - Skeleton screens for: lists, cards, profile sections, tables
 - Spinner only for: button actions, page-level navigation (not content loading)
-- Timeout message: if loading >8s, show "לוקח יותר זמן מהרגיל... " with cancel option
+- Timeout message: if loading >8s, show "Taking longer than usual..." with cancel option
 
 **Empty States:**
 - Every list/collection must have an empty state
 - Each empty state: illustration or icon + heading + description + primary CTA
-- Example: "אין עדיין פרויקטים | צור את הפרויקט הראשון שלך ותתחיל לעבוד | [+ פרויקט חדש]"
+- Example: "No projects yet | Create your first project and get started | [+ New Project]"
 
 **Error States:**
 - Network error: inline banner, retry button, don't block the whole page
 - 404: friendly message + link back home
-- 403: "אין לך הרשאה לצפות בדף זה" + link to request access
-- 500: "משהו השתבש אצלנו" + status page link
+- 403: "You don't have permission to view this page" + link to request access
+- 500: "Something went wrong on our end" + status page link
 
 **Feedback & Confirmation:**
 - Destructive actions (delete, cancel subscription): always show confirmation modal
@@ -108,9 +108,9 @@ docs/wireframes/01-login.md, docs/wireframes/02-dashboard.md, etc.
 
 ### docs/ux-copy.md — UI Copy & Microcopy
 For every button, label, placeholder, error message, empty state, and toast — define the exact copy:
-- Button labels: verbs in imperative ("שמור", "צור פרויקט", "מחק") not nouns
-- Placeholders: hints, not labels ("הזן כתובת אימייל" not "אימייל")
-- Error messages: specific, not generic ("כתובת האימייל כבר קיימת במערכת" not "שגיאה")
+- Button labels: verbs in imperative ("Save", "Create Project", "Delete") not nouns
+- Placeholders: hints, not labels ("Enter email address" not "Email")
+- Error messages: specific, not generic ("This email address is already registered" not "Error")
 
 ## Rules
 - Every screen must have: normal state, loading state, empty state, error state

@@ -612,8 +612,8 @@ async function orchestrate(requirements, projectName, outputDir, checkpoint = nu
 
   if (checkpoint) {
     // ── Resume from checkpoint ──────────────────────────────────────────────
-    console.log(chalk.bold.green('♻️   ממשיך מנקודת עצירה קודמת...'));
-    console.log(chalk.gray(`    Layers שהושלמו: ${[...new Set(checkpoint.completedLayers)].join(', ')}`));
+    console.log(chalk.bold.green('♻️   Resuming from previous checkpoint...'));
+    console.log(chalk.gray(`    Completed layers: ${[...new Set(checkpoint.completedLayers)].join(', ')}`));
     context = ProjectContext.fromCheckpoint({ ...checkpoint, outputDir });
   } else {
     // ── Fresh build ─────────────────────────────────────────────────────────
@@ -622,12 +622,12 @@ async function orchestrate(requirements, projectName, outputDir, checkpoint = nu
     // plan is block-scoped to this else branch intentionally — context.plan is the source of truth
 
     const planApproved = await approveStep(
-      'תוכנית הפרויקט',
-      'בדוק את התוכנית לפני שנתחיל לבנות:',
+      'Project Plan',
+      'Review the plan before we start building:',
       formatPlan(plan),
     );
     if (!planApproved) {
-      console.log(chalk.red('\n❌  הופסק על ידי המשתמש.'));
+      console.log(chalk.red('\n❌  Stopped by user.'));
       return;
     }
 
@@ -638,18 +638,18 @@ async function orchestrate(requirements, projectName, outputDir, checkpoint = nu
     try {
       const squadPlan = await createSquadPlan(requirements, plan);
       const squadApproved = await approveStep(
-        '🏢  חלוקה לצוותים',
-        'המערכת זיהתה את הדומיינים הבאים — כל צוות agents יהיה אחראי על תחום אחד:',
+        '🏢  Squad Division',
+        'The system identified the following domains — each squad of agents will be responsible for one area:',
         formatSquadPlan(squadPlan),
       );
       if (squadApproved) {
         context.setSquadPlan(squadPlan);
-        console.log(chalk.green(`✅  Squad plan אושר — ${squadPlan.squads.length} צוותים\n`));
+        console.log(chalk.green(`✅  Squad plan approved — ${squadPlan.squads.length} squads\n`));
       } else {
-        console.log(chalk.gray('  Squad plan דולג — agents יבנו את האפליקציה ללא חלוקה לצוותים.\n'));
+        console.log(chalk.gray('  Squad plan skipped — agents will build the app without squad division.\n'));
       }
     } catch (err) {
-      console.log(chalk.yellow(`  ⚠️  Squad planning נכשל: ${err.message} — ממשיך ללא חלוקה לצוותים.\n`));
+      console.log(chalk.yellow(`  ⚠️  Squad planning failed: ${err.message} — continuing without squad division.\n`));
     }
   }
   const fsTools = createFileSystemTools(outputDir);
@@ -667,9 +667,9 @@ async function orchestrate(requirements, projectName, outputDir, checkpoint = nu
     if (!githubRepo) return;
     const result = pushCheckpoint(outputDir, githubRepo.owner, githubRepo.repo, githubRepo.token, layerLabel);
     if (result.success) {
-      console.log(chalk.gray(`  ☁️   checkpoint נשמר ב-GitHub (${layerLabel})`));
+      console.log(chalk.gray(`  ☁️   checkpoint saved to GitHub (${layerLabel})`));
     } else {
-      console.log(chalk.yellow(`  ⚠️   push ל-GitHub נכשל (${layerLabel}): ${result.error}`));
+      console.log(chalk.yellow(`  ⚠️   GitHub push failed (${layerLabel}): ${result.error}`));
     }
   }
 
@@ -720,33 +720,33 @@ async function orchestrate(requirements, projectName, outputDir, checkpoint = nu
       const nonCriticalFailed = failed.filter(f => !CRITICAL_AGENTS.has(f.name));
 
       if (nonCriticalFailed.length > 0) {
-        console.log(chalk.yellow(`\n⚠️   agents שנכשלו (לא קריטיים): ${nonCriticalFailed.map(f => f.name).join(', ')}`));
+        console.log(chalk.yellow(`\n⚠️   Non-critical agents failed: ${nonCriticalFailed.map(f => f.name).join(', ')}`));
       }
 
       if (criticalFailed.length > 0) {
-        console.log(chalk.bold.red(`\n🚨  agents קריטיים נכשלו: ${criticalFailed.map(f => f.name).join(', ')}`));
+        console.log(chalk.bold.red(`\n🚨  Critical agents failed: ${criticalFailed.map(f => f.name).join(', ')}`));
         criticalFailed.forEach(f => console.log(chalk.red(`    ${f.name}: ${f.error}`)));
 
         const proceed = await approveStep(
-          '⚠️  כשלון קריטי',
-          'agent קריטי נכשל לאחר 2 ניסיונות. המשך עלול לייצר קוד חסר או שגוי.',
-          `נכשלו: ${criticalFailed.map(f => `${f.name} — ${f.error}`).join('\n')}`,
+          '⚠️  Critical Failure',
+          'A critical agent failed after 2 attempts. Continuing may produce incomplete or incorrect code.',
+          `Failed: ${criticalFailed.map(f => `${f.name} — ${f.error}`).join('\n')}`,
         );
         if (!proceed) {
-          console.log(chalk.yellow('\n⏹️   הופסק על ידי המשתמש.'));
-          console.log(chalk.gray('💾  התקדמות נשמרה — ניתן להמשיך מנקודה זו בהרצה הבאה.'));
+          console.log(chalk.yellow('\n⏹️   Stopped by user.'));
+          console.log(chalk.gray('💾  Progress saved — you can resume from this point in the next run.'));
           saveCheckpoint(`Layer ${layerDef.id} — ${layerDef.name} (aborted)`);
           return;
         }
-        console.log(chalk.gray('  ממשיך למרות הכשלון...'));
+        console.log(chalk.gray('  Continuing despite failure...'));
       }
     }
 
     if (!layerDef.skipApprovalGate) {
       const proceed = await approveLayer(`Layer ${layerDef.id} — ${layerDef.name}`, layerResults);
       if (!proceed) {
-        console.log(chalk.yellow('\n⏹️   הופסק על ידי המשתמש.'));
-        console.log(chalk.gray(`💾  התקדמות נשמרה — ניתן להמשיך מנקודה זו בהרצה הבאה.`));
+        console.log(chalk.yellow('\n⏹️   Stopped by user.'));
+        console.log(chalk.gray(`💾  Progress saved — you can resume from this point in the next run.`));
         context.markLayerComplete(layerDef.id);
         saveCheckpoint(`Layer ${layerDef.id} — ${layerDef.name}`);
         return;
@@ -769,7 +769,7 @@ async function orchestrate(requirements, projectName, outputDir, checkpoint = nu
 
         const runFix = await approveStep(
           `🔄  Fix Round ${round} / ${MAX_FIX_ROUNDS}`,
-          'ה-Quality agents סיימו. agents הפיתוח יקראו את הממצאים ויתקנו בעיות. להריץ סבב תיקונים?',
+          'Quality agents have finished. Development agents will read the findings and fix issues. Run a fix round?',
           currentQualityFeedback.slice(0, 1200) + (currentQualityFeedback.length > 1200 ? '\n...(truncated)' : ''),
         );
 
@@ -793,7 +793,7 @@ async function orchestrate(requirements, projectName, outputDir, checkpoint = nu
 
         const proceed = await approveLayer(`Quality Re-check — after Fix Round ${round}`, rerunResults);
         if (!proceed) {
-          console.log(chalk.yellow('\n⏹️   הופסק על ידי המשתמש.'));
+          console.log(chalk.yellow('\n⏹️   Stopped by user.'));
           return;
         }
 
@@ -823,7 +823,7 @@ async function orchestrate(requirements, projectName, outputDir, checkpoint = nu
     for (let round = 1; round <= MAX_PM_FIX_ROUNDS; round++) {
       const runFix = await approveStep(
         `🔴  PM Fix Round ${round} / ${MAX_PM_FIX_ROUNDS}`,
-        'מנהל המוצר מצא פערים בין הדרישות לבין המימוש. agents הפיתוח יקראו את הממצאים וישלימו את החסר. להריץ סבב תיקוני PM?',
+        'The Product Manager found gaps between the requirements and the implementation. Development agents will read the findings and fill in what is missing. Run a PM fix round?',
         pmFeedback.slice(0, 1400) + (pmFeedback.length > 1400 ? '\n...(truncated)' : ''),
       );
 
@@ -863,22 +863,22 @@ async function orchestrate(requirements, projectName, outputDir, checkpoint = nu
 
   // 6. Push to GitHub
   if (githubRepo) {
-    console.log(chalk.bold.cyan(`\n━━━  מעלה קוד ל-GitHub: ${githubRepo.full}  ━━━`));
+    console.log(chalk.bold.cyan(`\n━━━  Uploading code to GitHub: ${githubRepo.full}  ━━━`));
     try {
       pushToGithub(outputDir, githubRepo.owner, githubRepo.repo, githubRepo.token);
-      console.log(chalk.bold.green(`✅  הקוד הועלה בהצלחה → https://github.com/${githubRepo.full}`));
+      console.log(chalk.bold.green(`✅  Code uploaded successfully → https://github.com/${githubRepo.full}`));
     } catch (err) {
-      console.log(chalk.red(`❌  העלאה ל-GitHub נכשלה: ${err.message}`));
-      console.log(chalk.gray('    הקוד שמור מקומית ב: ' + outputDir));
-      console.log(chalk.gray('    לניסיון ידני: cd ' + outputDir + ' && git push -u origin main'));
+      console.log(chalk.red(`❌  GitHub upload failed: ${err.message}`));
+      console.log(chalk.gray('    Code is saved locally at: ' + outputDir));
+      console.log(chalk.gray('    For manual push: cd ' + outputDir + ' && git push -u origin main'));
     }
   }
 
   // 7. Done
-  console.log(chalk.bold.green('\n✅  הבנייה הושלמה!'));
-  console.log(chalk.white(`📂  קבצים ב: ${outputDir}`));
+  console.log(chalk.bold.green('\n✅  Build complete!'));
+  console.log(chalk.white(`📂  Files at: ${outputDir}`));
   if (githubRepo) console.log(chalk.white(`🐙  GitHub: https://github.com/${githubRepo.full}`));
-  console.log(chalk.white(`📊  סה"כ קבצים: ${context.allFilesCreated.length}`));
+  console.log(chalk.white(`📊  Total files: ${context.allFilesCreated.length}`));
   context.allFilesCreated.forEach(f => console.log(chalk.green(`   ✓ ${f}`)));
 }
 
@@ -889,28 +889,28 @@ async function orchestrateUpdate(changeRequest, checkpointData, outputDir, githu
   const context = ProjectContext.fromCheckpoint({ ...checkpointData, outputDir });
 
   if (!context.squadPlan) {
-    console.log(chalk.red('❌  לא נמצאה תוכנית צוותים. מצב עדכון דורש פרויקט שנבנה עם squad plan.'));
+    console.log(chalk.red('❌  No squad plan found. Update mode requires a project built with a squad plan.'));
     return;
   }
 
   // Analyze the change request
-  console.log(chalk.yellow('⏳  מנתח את בקשת השינוי...'));
+  console.log(chalk.yellow('⏳  Analyzing the change request...'));
   let updatePlan;
   try {
     updatePlan = await analyzeUpdate(changeRequest, context.squadPlan);
   } catch (err) {
-    console.log(chalk.red(`❌  ניתוח הבקשה נכשל: ${err.message}`));
+    console.log(chalk.red(`❌  Request analysis failed: ${err.message}`));
     return;
   }
 
   if (updatePlan.affectedSquads.length === 0 && updatePlan.newSquads.length === 0) {
-    console.log(chalk.yellow('⚠️  לא זוהו צוותים מושפעים. נסה לנסח את הבקשה בצורה יותר ספציפית.'));
+    console.log(chalk.yellow('⚠️  No affected squads identified. Try rephrasing the request more specifically.'));
     return;
   }
 
   const approved = await approveStep(
-    '🔄  תוכנית עדכון',
-    'ניתוח הבקשה — זה מה שישתנה:',
+    '🔄  Update Plan',
+    'Request analysis — here is what will change:',
     formatUpdatePlan(updatePlan),
   );
   if (!approved) return;
@@ -935,8 +935,8 @@ async function orchestrateUpdate(changeRequest, checkpointData, outputDir, githu
     context.saveCheckpoint();
     if (!githubRepo) return;
     const result = pushCheckpoint(outputDir, githubRepo.owner, githubRepo.repo, githubRepo.token, label);
-    if (!result.success) console.log(chalk.yellow(`  ⚠️   push ל-GitHub נכשל (${label}): ${result.error}`));
-    else console.log(chalk.gray(`  ☁️   checkpoint נשמר ב-GitHub (${label})`));
+    if (!result.success) console.log(chalk.yellow(`  ⚠️   GitHub push failed (${label}): ${result.error}`));
+    else console.log(chalk.gray(`  ☁️   checkpoint saved to GitHub (${label})`));
   }
 
   // Run platform agents that need updating (before squads so they can import new components)
@@ -964,7 +964,7 @@ async function orchestrateUpdate(changeRequest, checkpointData, outputDir, githu
   }
 
   // Run squads
-  console.log(chalk.bold.cyan('\n━━━  עדכון צוותים  ━━━'));
+  console.log(chalk.bold.cyan('\n━━━  Updating Squads  ━━━'));
   await runAllSquadsUpdate(updatePlan, context, toolSets, AGENT_REGISTRY, activeAgents);
   saveCheckpoint('Update — Squads');
 
@@ -986,7 +986,7 @@ async function orchestrateUpdate(changeRequest, checkpointData, outputDir, githu
   if (pmFeedback) {
     const runFix = await approveStep(
       '🔴  PM Fix Round',
-      'PM מצא פערים בין הדרישות למימוש. להריץ סבב תיקונים?',
+      'PM found gaps between the requirements and the implementation. Run a fix round?',
       pmFeedback.slice(0, 1400) + (pmFeedback.length > 1400 ? '\n...(truncated)' : ''),
     );
     if (runFix) {
@@ -1006,17 +1006,17 @@ async function orchestrateUpdate(changeRequest, checkpointData, outputDir, githu
   saveCheckpoint('Update — Complete');
 
   if (githubRepo) {
-    console.log(chalk.bold.cyan(`\n━━━  מעלה קוד ל-GitHub  ━━━`));
+    console.log(chalk.bold.cyan(`\n━━━  Uploading code to GitHub  ━━━`));
     try {
       pushToGithub(outputDir, githubRepo.owner, githubRepo.repo, githubRepo.token);
-      console.log(chalk.bold.green(`✅  הקוד הועלה → https://github.com/${githubRepo.full}`));
+      console.log(chalk.bold.green(`✅  Code uploaded → https://github.com/${githubRepo.full}`));
     } catch (err) {
-      console.log(chalk.red(`❌  העלאה נכשלה: ${err.message}`));
+      console.log(chalk.red(`❌  Upload failed: ${err.message}`));
     }
   }
 
-  console.log(chalk.bold.green('\n✅  העדכון הושלם!'));
-  console.log(chalk.white(`📂  קבצים ב: ${outputDir}`));
+  console.log(chalk.bold.green('\n✅  Update complete!'));
+  console.log(chalk.white(`📂  Files at: ${outputDir}`));
   if (githubRepo) console.log(chalk.white(`🐙  GitHub: https://github.com/${githubRepo.full}`));
 }
 

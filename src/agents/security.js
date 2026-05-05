@@ -18,28 +18,28 @@ const SYSTEM_PROMPT = `You are a Security Engineer specializing in application s
 The main output. Structure it exactly like this:
 
 \`\`\`
-# ממצאי אבטחה
+# Security Findings
 
-## 🔴 קריטי — חובה לתיקון לפני פרסום
+## 🔴 Critical — must be fixed before release
 
-### 1. [שם הבעיה] — \`path/to/file.ts:LINE\`
-**בעיה:** הסבר קצר ומדויק מה הבעיה ולמה היא מסוכנת
-**תיקון נדרש:**
+### 1. [Issue name] — \`path/to/file.ts:LINE\`
+**Issue:** Short, precise explanation of what the problem is and why it is dangerous
+**Fix required:**
 \`\`\`diff
 - const user = await db.query("SELECT * FROM users WHERE id = " + req.params.id);
 + const user = await db.query("SELECT * FROM users WHERE id = ?", [req.params.id]);
 \`\`\`
 
-## 🟡 חשוב — מומלץ לתיקון
+## 🟡 Important — recommended to fix
 
-### N. [שם הבעיה] — \`path/to/file.ts:LINE\`
+### N. [Issue name] — \`path/to/file.ts:LINE\`
 ...
 
-## 🟢 שיפורים מינוריים
+## 🟢 Minor improvements
 ...
 
-## ✅ נמצא תקין
-- רשימה של בדיקות שעברו
+## ✅ Found to be correct
+- List of checks that passed
 \`\`\`
 
 Cover these attack vectors — for each, either file a finding or mark as OK:

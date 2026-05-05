@@ -21,7 +21,7 @@ async function approveStep(stepName, description, details = null) {
     console.log('\n' + chalk.gray(details));
   }
   console.log(chalk.cyan('─'.repeat(60)));
-  const answer = await ask(chalk.bold.green('▶  להמשיך? (y/n): '));
+  const answer = await ask(chalk.bold.green('▶  Continue? (y/n): '));
   return answer === 'y' || answer === 'yes' || answer === '';
 }
 
@@ -39,7 +39,7 @@ async function showAgentOutput(agentName, summary, filesCreated) {
   }
   console.log(chalk.cyan('═'.repeat(60)));
 
-  const answer = await ask(chalk.bold.green('▶  להמשיך לשלב הבא? (y/n): '));
+  const answer = await ask(chalk.bold.green('▶  Continue to next step? (y/n): '));
   return answer === 'y' || answer === 'yes' || answer === '';
 }
 

@@ -207,27 +207,27 @@ async function main() {
       }
       const changeRequest = lines.join('\n').trim();
       if (!changeRequest) {
-        console.log(chalk.red('❌  לא ניתן להמשיך ללא תיאור השינוי.'));
+        console.log(chalk.red('❌  Cannot continue without a description of the change.'));
         process.exit(1);
       }
 
-      console.log(chalk.bold.cyan('\n━━━  רמת איכות / עלות  ━━━'));
+      console.log(chalk.bold.cyan('\n━━━  Quality / Cost Level  ━━━'));
       Object.entries(TIERS).forEach(([key, tier]) => {
         console.log(chalk.white(`  ${key}️⃣   ${tier.label}  (max ${tier.max_tokens.toLocaleString()} tokens)`));
       });
       let tier = '';
       while (!Object.keys(TIERS).includes(tier)) {
-        tier = (await ask(chalk.bold.green('▶  בחר רמה (1, 2 או 3) [ברירת מחדל: 2]: '))).trim() || '2';
+        tier = (await ask(chalk.bold.green('▶  Select level (1, 2 or 3) [default: 2]: '))).trim() || '2';
       }
       const selectedTier = TIERS[tier];
       setModelConfig({ thinking: selectedTier.thinking, max_tokens: selectedTier.max_tokens });
-      console.log(chalk.green(`\n✅  נבחרה רמה: ${selectedTier.label}\n`));
+      console.log(chalk.green(`\n✅  Selected level: ${selectedTier.label}\n`));
 
       rl.close();
       try {
         await orchestrateUpdate(changeRequest, checkpoint, outputDir, githubRepo);
       } catch (err) {
-        console.error(chalk.red('\n❌  שגיאה קריטית:'), err.message);
+        console.error(chalk.red('\n❌  Critical error:'), err.message);
         if (process.env.DEBUG) console.error(err.stack);
         process.exit(1);
       }
@@ -235,17 +235,17 @@ async function main() {
     }
 
     // choice === '1': fall through to fresh build
-    console.log(chalk.gray('מתחיל בנייה חדשה...\n'));
+    console.log(chalk.gray('Starting fresh build...\n'));
   }
 
   // ── Mode selection ──────────────────────────────────────────────────────────
-  console.log(chalk.bold.yellow('איך תרצה להתחיל?\n'));
-  console.log(chalk.white('  1️⃣   תכנון עם AI  — שיחה אינטראקטיבית עם יועץ מוצר שישאל אותך שאלות'));
-  console.log(chalk.white('  2️⃣   הזנה ישירה  — הקלד את הדרישות שלך בעצמך\n'));
+  console.log(chalk.bold.yellow('How would you like to start?\n'));
+  console.log(chalk.white('  1️⃣   AI Planning  — interactive conversation with a product advisor who will ask you questions'));
+  console.log(chalk.white('  2️⃣   Direct Input  — type your requirements yourself\n'));
 
   let mode = '';
   while (!['1', '2'].includes(mode)) {
-    mode = (await ask(chalk.bold.green('▶  בחר מצב (1 או 2): '))).trim();
+    mode = (await ask(chalk.bold.green('▶  Choose mode (1 or 2): '))).trim();
   }
 
   let requirements = '';
@@ -255,21 +255,21 @@ async function main() {
     requirements = await runPlanningSession(ask);
 
     // Show the generated requirements and let user confirm
-    console.log(chalk.bold.cyan('\n━━━  מסמך הדרישות שנוצר  ━━━'));
+    console.log(chalk.bold.cyan('\n━━━  Generated Requirements Document  ━━━'));
     console.log(chalk.gray(requirements));
-    console.log(chalk.bold.cyan('━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n'));
+    console.log(chalk.bold.cyan('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n'));
 
-    const confirm = (await ask(chalk.bold.green('▶  להתחיל בפיתוח עם הדרישות האלו? (y/n): '))).trim().toLowerCase();
+    const confirm = (await ask(chalk.bold.green('▶  Start development with these requirements? (y/n): '))).trim().toLowerCase();
     if (confirm !== 'y' && confirm !== 'yes' && confirm !== '') {
-      console.log(chalk.yellow('\n💡  תוכל להריץ מחדש ולהמשיך לשכלל את הדרישות בשיחה נוספת.'));
+      console.log(chalk.yellow('\n💡  You can re-run and continue refining the requirements in another conversation.'));
       rl.close();
       return;
     }
 
   // ── Mode 2: Direct Input ────────────────────────────────────────────────────
   } else {
-    console.log(chalk.yellow('\n📝  תאר את האפליקציה שתרצה לבנות.'));
-    console.log(chalk.gray('    (הקלד את הדרישות שלך, ובסיום הקלד END בשורה נפרדת)\n'));
+    console.log(chalk.yellow('\n📝  Describe the application you want to build.'));
+    console.log(chalk.gray('    (Type your requirements, and when done type END on a separate line)\n'));
 
     const lines = [];
     while (true) {
@@ -280,14 +280,14 @@ async function main() {
 
     requirements = lines.join('\n').trim();
     if (!requirements) {
-      console.log(chalk.red('❌  לא ניתן להמשיך ללא דרישות.'));
+      console.log(chalk.red('❌  Cannot continue without requirements.'));
       process.exit(1);
     }
   }
 
   // ── Tier selection ────────────────────────────────────────────────────────
-  console.log(chalk.bold.cyan('\n━━━  רמת איכות / עלות  ━━━'));
-  console.log(chalk.gray('בחר את רמת השימוש בחשיבה עמוקה (Extended Thinking) ו-tokens:\n'));
+  console.log(chalk.bold.cyan('\n━━━  Quality / Cost Level  ━━━'));
+  console.log(chalk.gray('Select the level of Extended Thinking usage and tokens:\n'));
   Object.entries(TIERS).forEach(([key, tier]) => {
     const tokens = tier.max_tokens.toLocaleString();
     console.log(chalk.white(`  ${key}️⃣   ${tier.label}  (max ${tokens} tokens)`));
@@ -296,23 +296,23 @@ async function main() {
 
   let tier = '';
   while (!Object.keys(TIERS).includes(tier)) {
-    tier = (await ask(chalk.bold.green('▶  בחר רמה (1, 2 או 3) [ברירת מחדל: 2]: '))).trim() || '2';
+    tier = (await ask(chalk.bold.green('▶  Select level (1, 2 or 3) [default: 2]: '))).trim() || '2';
   }
   const selectedTier = TIERS[tier];
   setModelConfig({ thinking: selectedTier.thinking, max_tokens: selectedTier.max_tokens });
-  console.log(chalk.green(`\n✅  נבחרה רמה: ${selectedTier.label}\n`));
+  console.log(chalk.green(`\n✅  Selected level: ${selectedTier.label}\n`));
 
   // ── Design Picker ─────────────────────────────────────────────────────────
-  console.log(chalk.bold.cyan('\n━━━  שלב עיצוב  ━━━'));
-  console.log(chalk.gray('לפני שנתחיל לבנות — נבחר את הסגנון הויזואלי של האפליקציה.\n'));
+  console.log(chalk.bold.cyan('\n━━━  Design Phase  ━━━'));
+  console.log(chalk.gray('Before we start building — let\'s choose the visual style of the application.\n'));
 
-  const skipDesign = (await ask(chalk.bold.green('▶  האם לעצב את האפליקציה לפני הפיתוח? (y/n): '))).trim().toLowerCase();
+  const skipDesign = (await ask(chalk.bold.green('▶  Design the app before development? (y/n): '))).trim().toLowerCase();
 
   if (skipDesign === 'y' || skipDesign === 'yes' || skipDesign === '') {
     const designSpec = await runDesignPicker(requirements, ask);
     if (designSpec) {
       requirements = requirements + '\n\n' + designSpec;
-      console.log(chalk.green('\n✅  מפרט העיצוב נוסף לדרישות הפרויקט.\n'));
+      console.log(chalk.green('\n✅  Design spec added to project requirements.\n'));
     }
   }
 
@@ -321,7 +321,7 @@ async function main() {
   try {
     await orchestrate(requirements, projectName, outputDir, null, githubRepo);
   } catch (err) {
-    console.error(chalk.red('\n❌  שגיאה קריטית:'), err.message);
+    console.error(chalk.red('\n❌  Critical error:'), err.message);
     if (process.env.DEBUG) console.error(err.stack);
     process.exit(1);
   }
