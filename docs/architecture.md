@@ -81,7 +81,6 @@ ProjectContext נוצר (requirements, plan, squadPlan, outputDir)
 | **frontendArchitect** | מגדיר folder structure, routing, state management, data fetching לצד הלקוח | requirementsAnalyst + systemArchitect | `docs/frontend-architecture.md` | 📋 |
 | **renderingStrategyAgent** *(opt)* | מחליט CSR/SSR/SSG/ISR per-page ב-Next.js/Nuxt, מגדיר App Router ו-protected routes | systemArchitect + frontendArchitect | `docs/rendering-strategy.md` | 📋 |
 | **uxDesignerAgent** *(opt)* | מצייר wireframes טקסטואליים לכל מסך, מגדיר user flows, empty/error/loading states | requirementsAnalyst + systemArchitect | `docs/ux-flows.md`, `docs/wireframes.md` | 📋 |
-| **designLeadAgent** | כותב שני מסמכים: (1) design system — tokens, variants, dark mode. (2) הנחיות עיצוב לכל Squad Designer | frontendArchitect + uxDesignerAgent | `docs/design-system.md`, `docs/guidelines/design-guidelines.md` | 📋 |
 | **localizationAgent** *(opt)* | מגדיר i18n setup ומייצר קבצי תרגום (עברית/ערבית/אנגלית כולל RTL) | requirementsAnalyst + frontendArchitect | `frontend/src/i18n/` | 💻 |
 | **inputPolicyAgent** | מייצר מדיניות ולידציה מלאה: max length, regex, file types/sizes, timing, error messages לכל שדה | requirementsAnalyst + uxDesignerAgent | `docs/input-policy.md` | 📋 |
 
@@ -98,6 +97,7 @@ ProjectContext נוצר (requirements, plan, squadPlan, outputDir)
 | **techLeadAgent** | מגדיר coding standards: module structure, naming conventions, שימוש חובה ב-shared/, error handling patterns, testing requirements | systemArchitect + apiDesigner + dataArchitect + frontendArchitect | `docs/guidelines/tech-guidelines.md` | 📋 |
 | **qaLeadAgent** | מגדיר testing strategy: unit vs integration, coverage requirements, test data, forbidden patterns, accessibility requirements | requirementsAnalyst + apiDesigner + systemArchitect | `docs/guidelines/qa-guidelines.md` | 📋 |
 | **securityLeadAgent** | מנתח threat model לפרויקט הספציפי → מייצר OWASP checklist מותאם + הנחיות per-squad לפי מה שכל צוות מטפל בו | systemArchitect + apiDesigner + dataArchitect | `docs/guidelines/security-guidelines.md` | 📋 |
+| **designLeadAgent** | כותב שני מסמכים: (1) design system — tokens, variants, dark mode. (2) הנחיות עיצוב לכל Squad Designer | frontendArchitect + uxDesignerAgent | `docs/design-system.md`, `docs/guidelines/design-guidelines.md` | 📋 |
 
 ---
 
