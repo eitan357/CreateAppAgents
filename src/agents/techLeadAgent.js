@@ -101,6 +101,30 @@ try {
 }
 \`\`\`
 
+## Timezone Handling
+
+**Rule: store UTC everywhere, convert only at the display layer.**
+
+### Backend
+- All timestamps stored and returned as UTC ISO-8601 strings (`2024-03-15T14:30:00Z`)
+- DB column type: `TIMESTAMPTZ` (Postgres) / `DATETIME` with explicit UTC offset (MySQL) — never bare `TIMESTAMP`
+- Never call `new Date()` without storing it as UTC — use `new Date().toISOString()` or an ORM `utcNow()` helper
+- When accepting timestamps from clients, always parse and normalize to UTC before persisting
+- Scheduled jobs (cron, queues): store the scheduled time in UTC; log the resolved local time only for debugging
+
+### Frontend / Mobile
+- Never display a raw UTC string directly — always convert using `Intl.DateTimeFormat` or a date library (date-fns-tz, dayjs with timezone plugin)
+- Detect user timezone from `Intl.DateTimeFormat().resolvedOptions().timeZone` — never hardcode a timezone
+- For React Native: use `expo-localization` (`Localization.timezone`) — same rule applies
+- Form inputs that accept date/time (date pickers, time pickers): emit UTC to the API, display in local time
+- If the app supports scheduling across timezones (e.g. a meeting at "9am Tokyo"), store both the UTC instant AND the original timezone string separately
+
+### Common mistakes to avoid
+- ❌ `new Date(dateString)` without specifying UTC — browser/Node may interpret as local time
+- ❌ Storing `TIMESTAMP WITHOUT TIME ZONE` in Postgres — loses timezone info on retrieval
+- ❌ Comparing dates as strings — always compare as Date objects or UTC epoch ms
+- ❌ Using `toLocaleDateString()` server-side — Node's locale may differ from the user's
+
 ## Testing Requirements
 - Unit test every service method
 - Integration test every route (using supertest or similar)
