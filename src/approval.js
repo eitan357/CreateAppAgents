@@ -27,14 +27,14 @@ async function approveStep(stepName, description, details = null) {
 
 async function showAgentOutput(agentName, summary, filesCreated) {
   console.log('\n' + chalk.cyan('═'.repeat(60)));
-  console.log(chalk.bold.blue(`✅  ${agentName} Agent — הסתיים`));
+  console.log(chalk.bold.blue(`✅  ${agentName} Agent — completed`));
 
   const MAX = 600;
   const display = summary.length > MAX ? summary.slice(0, MAX) + '...' : summary;
   console.log('\n' + chalk.gray(display));
 
   if (filesCreated.length > 0) {
-    console.log(chalk.white('\nקבצים שנוצרו:'));
+    console.log(chalk.white('\nFiles created:'));
     filesCreated.forEach(f => console.log(chalk.green(`  ✓ ${f}`)));
   }
   console.log(chalk.cyan('═'.repeat(60)));
@@ -67,7 +67,7 @@ async function approveLayer(layerName, layerResults) {
   }
 
   console.log(chalk.cyan('═'.repeat(70)));
-  const answer = await ask(chalk.bold.green('▶  להמשיך לשכבה הבאה? (y/n): '));
+  const answer = await ask(chalk.bold.green('▶  Continue to next layer? (y/n): '));
   return answer === 'y' || answer === 'yes' || answer === '';
 }
 

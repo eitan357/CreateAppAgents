@@ -14,17 +14,17 @@ const { parseGithubRepo, checkGithubAccess, createGithubRepo } = require('./gith
 
 const TIERS = {
   '1': {
-    label: 'חסכוני  — ללא חשיבה עמוקה, מהיר וזול יותר',
+    label: 'Economy  — no extended thinking, faster and cheaper',
     thinking: null,
     max_tokens: 4000,
   },
   '2': {
-    label: 'מאוזן   — חשיבה עמוקה אדפטיבית (Claude מחליט מתי לחשוב)',
+    label: 'Balanced — adaptive extended thinking (Claude decides when to think)',
     thinking: { type: 'adaptive' },
     max_tokens: 6000,
   },
   '3': {
-    label: 'מקסימלי — חשיבה עמוקה מלאה, איכות גבוהה ביותר',
+    label: 'Maximum  — full extended thinking, highest quality',
     thinking: { type: 'adaptive' },
     max_tokens: 8096,
   },
@@ -40,19 +40,19 @@ function ask(question) {
 // Loops until the user provides a valid repo or exits.
 async function askForGithubRepo() {
   console.log(chalk.bold.cyan('\n━━━  GitHub Repository  ━━━'));
-  console.log(chalk.gray('הקוד שייוצר יישמר ב-repository הזה בסוף הבנייה.\n'));
+  console.log(chalk.gray('The generated code will be saved to this repository at the end of the build.\n'));
 
   // Check token
   let token = process.env.GITHUB_TOKEN || process.env.GH_TOKEN || '';
   if (!token) {
-    console.log(chalk.yellow('⚠️   לא נמצא GITHUB_TOKEN בסביבה.'));
-    console.log(chalk.gray('    הוסף GITHUB_TOKEN=<personal access token> לקובץ .env'));
-    console.log(chalk.gray('    הטוקן צריך הרשאות: repo (read + write)\n'));
-    console.log(chalk.gray('    ליצירת טוקן: https://github.com/settings/tokens/new'));
-    console.log(chalk.gray('    בחר: repo → Full control of private repositories\n'));
-    token = (await ask(chalk.bold.green('▶  הדבק את ה-GitHub token כאן (או Enter לדלג): '))).trim();
+    console.log(chalk.yellow('⚠️   No GITHUB_TOKEN found in environment.'));
+    console.log(chalk.gray('    Add GITHUB_TOKEN=<personal access token> to your .env file'));
+    console.log(chalk.gray('    The token needs permissions: repo (read + write)\n'));
+    console.log(chalk.gray('    To create a token: https://github.com/settings/tokens/new'));
+    console.log(chalk.gray('    Select: repo → Full control of private repositories\n'));
+    token = (await ask(chalk.bold.green('▶  Paste your GitHub token here (or Enter to skip): '))).trim();
     if (!token) {
-      console.log(chalk.yellow('⚠️  דילוג על GitHub — הקוד ייוצר מקומית בלבד.\n'));
+      console.log(chalk.yellow('⚠️  Skipping GitHub — code will be generated locally only.\n'));
       return null;
     }
     // Save to process.env for this session
@@ -62,61 +62,61 @@ async function askForGithubRepo() {
   while (true) {
     const input = (await ask(chalk.bold.green('▶  GitHub repository (owner/repo): '))).trim();
     if (!input) {
-      console.log(chalk.yellow('⚠️  דילוג על GitHub — הקוד ייוצר מקומית בלבד.\n'));
+      console.log(chalk.yellow('⚠️  Skipping GitHub — code will be generated locally only.\n'));
       return null;
     }
 
     const parsed = parseGithubRepo(input);
     if (!parsed) {
-      console.log(chalk.red('❌  פורמט לא תקין. דוגמאות: myuser/my-app  או  https://github.com/myuser/my-app\n'));
+      console.log(chalk.red('❌  Invalid format. Examples: myuser/my-app  or  https://github.com/myuser/my-app\n'));
       continue;
     }
 
-    console.log(chalk.gray(`\n🔍  בודק גישה ל-${parsed.full}...`));
+    console.log(chalk.gray(`\n🔍  Checking access to ${parsed.full}...`));
     const access = await checkGithubAccess(parsed.owner, parsed.repo, token);
 
     if (access.networkError) {
-      console.log(chalk.red(`❌  שגיאת רשת: ${access.networkError}`));
-      console.log(chalk.gray('    בדוק חיבור לאינטרנט ונסה שוב.\n'));
+      console.log(chalk.red(`❌  Network error: ${access.networkError}`));
+      console.log(chalk.gray('    Check your internet connection and try again.\n'));
       continue;
     }
 
     if (access.authError) {
-      console.log(chalk.red('❌  שגיאת אימות — הטוקן לא תקין או פג תוקף.'));
-      console.log(chalk.gray('    צור טוקן חדש ב: https://github.com/settings/tokens/new'));
-      console.log(chalk.gray('    הרשאות נדרשות: repo → Full control\n'));
-      token = (await ask(chalk.bold.green('▶  הדבק טוקן חדש: '))).trim();
+      console.log(chalk.red('❌  Authentication error — token is invalid or expired.'));
+      console.log(chalk.gray('    Create a new token at: https://github.com/settings/tokens/new'));
+      console.log(chalk.gray('    Required permissions: repo → Full control\n'));
+      token = (await ask(chalk.bold.green('▶  Paste new token: '))).trim();
       if (!token) return null;
       process.env.GITHUB_TOKEN = token;
       continue;
     }
 
     if (!access.exists) {
-      console.log(chalk.yellow(`⚠️   Repository "${parsed.full}" לא קיים.`));
-      const create = (await ask(chalk.bold.green('▶  ליצור אותו עכשיו? (y/n) [ברירת מחדל: y]: '))).trim().toLowerCase();
+      console.log(chalk.yellow(`⚠️   Repository "${parsed.full}" does not exist.`));
+      const create = (await ask(chalk.bold.green('▶  Create it now? (y/n) [default: y]: '))).trim().toLowerCase();
       if (create === 'n') continue;
 
-      const isPrivate = (await ask(chalk.bold.green('▶  Repository פרטי? (y/n) [ברירת מחדל: y]: '))).trim().toLowerCase();
+      const isPrivate = (await ask(chalk.bold.green('▶  Private repository? (y/n) [default: y]: '))).trim().toLowerCase();
       try {
         await createGithubRepo(parsed.repo, token, isPrivate !== 'n');
-        console.log(chalk.green(`✅  Repository "${parsed.full}" נוצר בהצלחה.\n`));
+        console.log(chalk.green(`✅  Repository "${parsed.full}" created successfully.\n`));
         return { ...parsed, token };
       } catch (err) {
-        console.log(chalk.red(`❌  יצירת repository נכשלה: ${err.message}`));
-        console.log(chalk.gray('    ייתכן שהשם תפוס או שאין הרשאות ליצירה. נסה שם אחר.\n'));
+        console.log(chalk.red(`❌  Repository creation failed: ${err.message}`));
+        console.log(chalk.gray('    The name may be taken or you may lack creation permissions. Try a different name.\n'));
         continue;
       }
     }
 
     if (!access.canPush) {
-      console.log(chalk.red(`❌  אין הרשאת כתיבה ל-${parsed.full}.`));
-      console.log(chalk.gray('    ודא שהטוקן שייך למשתמש שיש לו הרשאת write/push ל-repository.'));
-      console.log(chalk.gray('    אם זה repository של ארגון — ודא שהטוקן כולל גישה לארגון.\n'));
+      console.log(chalk.red(`❌  No write access to ${parsed.full}.`));
+      console.log(chalk.gray('    Ensure the token belongs to a user with write/push permission to this repository.'));
+      console.log(chalk.gray('    If this is an organization repository — ensure the token includes org access.\n'));
       continue;
     }
 
-    const visibility = access.private ? 'פרטי' : 'ציבורי';
-    console.log(chalk.green(`✅  גישה אושרה — ${parsed.full} (${visibility})\n`));
+    const visibility = access.private ? 'private' : 'public';
+    console.log(chalk.green(`✅  Access confirmed — ${parsed.full} (${visibility})\n`));
     return { ...parsed, token };
   }
 }
@@ -132,9 +132,9 @@ async function main() {
     process.exit(1);
   }
 
-  const projectName = (await ask(chalk.yellow('\n📦  שם הפרויקט: '))).trim();
+  const projectName = (await ask(chalk.yellow('\n📦  Project name: '))).trim();
   if (!projectName) {
-    console.log(chalk.red('❌  שם הפרויקט הוא שדה חובה.'));
+    console.log(chalk.red('❌  Project name is required.'));
     process.exit(1);
   }
 
@@ -150,44 +150,44 @@ async function main() {
     const hasSquadPlan  = !!(checkpoint.squadPlan);
     const allDone       = completedList.includes('5');
 
-    console.log(chalk.bold.yellow(`\n♻️   נמצאה בנייה קודמת עבור "${projectName}"`));
-    console.log(chalk.gray(`    Layers שהושלמו: ${completedList || 'אין'}`));
+    console.log(chalk.bold.yellow(`\n♻️   Found a previous build for "${projectName}"`));
+    console.log(chalk.gray(`    Completed layers: ${completedList || 'none'}`));
     console.log('');
-    console.log(chalk.white('  1️⃣   בנייה חדשה מאפס'));
+    console.log(chalk.white('  1️⃣   Fresh build from scratch'));
     if (!allDone) {
-      console.log(chalk.white('  2️⃣   המשך מנקודת העצירה'));
+      console.log(chalk.white('  2️⃣   Resume from checkpoint'));
     }
     if (hasSquadPlan) {
-      console.log(chalk.white('  3️⃣   עדכון / הוספת פיצ\'ר לאפליקציה הקיימת'));
+      console.log(chalk.white('  3️⃣   Update / add a feature to the existing app'));
     }
     console.log('');
 
     const validOptions = ['1', ...(!allDone ? ['2'] : []), ...(hasSquadPlan ? ['3'] : [])];
     let choice = '';
     while (!validOptions.includes(choice)) {
-      choice = (await ask(chalk.bold.green(`▶  בחר (${validOptions.join('/')}): `))).trim();
+      choice = (await ask(chalk.bold.green(`▶  Choose (${validOptions.join('/')}): `))).trim();
     }
 
     if (choice === '2') {
       // Resume build
-      console.log(chalk.bold.cyan('\n━━━  רמת איכות / עלות  ━━━'));
-      console.log(chalk.gray('בחר רמה לשלבים הנותרים:\n'));
+      console.log(chalk.bold.cyan('\n━━━  Quality / Cost Level  ━━━'));
+      console.log(chalk.gray('Select a level for the remaining steps:\n'));
       Object.entries(TIERS).forEach(([key, tier]) => {
         console.log(chalk.white(`  ${key}️⃣   ${tier.label}  (max ${tier.max_tokens.toLocaleString()} tokens)`));
       });
       let tier = '';
       while (!Object.keys(TIERS).includes(tier)) {
-        tier = (await ask(chalk.bold.green('▶  בחר רמה (1, 2 או 3) [ברירת מחדל: 2]: '))).trim() || '2';
+        tier = (await ask(chalk.bold.green('▶  Select level (1, 2 or 3) [default: 2]: '))).trim() || '2';
       }
       const selectedTier = TIERS[tier];
       setModelConfig({ thinking: selectedTier.thinking, max_tokens: selectedTier.max_tokens });
-      console.log(chalk.green(`\n✅  נבחרה רמה: ${selectedTier.label}\n`));
+      console.log(chalk.green(`\n✅  Selected level: ${selectedTier.label}\n`));
 
       rl.close();
       try {
         await orchestrate(checkpoint.requirements, projectName, outputDir, checkpoint, githubRepo);
       } catch (err) {
-        console.error(chalk.red('\n❌  שגיאה קריטית:'), err.message);
+        console.error(chalk.red('\n❌  Critical error:'), err.message);
         if (process.env.DEBUG) console.error(err.stack);
         process.exit(1);
       }
@@ -196,8 +196,8 @@ async function main() {
 
     if (choice === '3') {
       // Update mode
-      console.log(chalk.bold.cyan('\n━━━  עדכון אפליקציה  ━━━'));
-      console.log(chalk.gray('תאר את השינוי שאתה רוצה לבצע. (הקלד END בשורה נפרדת לסיום)\n'));
+      console.log(chalk.bold.cyan('\n━━━  Update App  ━━━'));
+      console.log(chalk.gray('Describe the change you want to make. (Type END on a separate line when done)\n'));
 
       const lines = [];
       while (true) {
