@@ -207,7 +207,7 @@ const LAYER_DEFINITIONS = [
     id: 2,
     name: 'Design',
     parallel: true,
-    agents: ['dataArchitect', 'apiDesigner', 'frontendArchitect', 'renderingStrategyAgent', 'uxDesignerAgent', 'localizationAgent', 'inputPolicyAgent'],
+    agents: ['dataArchitect', 'apiDesigner', 'frontendArchitect', 'renderingStrategyAgent', 'uxDesignerAgent', 'inputPolicyAgent'],
   },
   {
     id: '2b',
@@ -327,8 +327,6 @@ const OPTIONAL_AGENTS_GUIDE = `
 ### UX & Design (Layer 2) — Include whenever project has a frontend (web or mobile):
 - uxDesignerAgent      : Include for ANY project with a UI — defines user flows, text wireframes for every screen, empty/error/loading states, form UX patterns, microcopy. Essential for consistent UX.
 - designSystemAgent    : Include when project needs a consistent visual language — design tokens (colors/typography/spacing), base components (Button/Input/Modal/Toast/Skeleton), dark mode, Storybook stories. Depends on uxDesignerAgent.
-- localizationAgent    : Include when app needs multiple languages OR Hebrew/Arabic (RTL). Runs in Layer 2 so frontendDev builds components with i18n hooks from the start — avoids retroactive refactor.
-
 ### Web Design (Layer 2) — ONLY for web projects:
 - renderingStrategyAgent: Include for Next.js/Nuxt/Remix projects — CSR/SSR/SSG/ISR per-page decisions, App Router structure, React Query setup, protected routes, loading/error states
 
@@ -352,6 +350,7 @@ const OPTIONAL_AGENTS_GUIDE = `
 - widgetsExtensionsAgent: Home screen widgets, Apple Watch, Android widgets, Share extensions
 - otaUpdatesAgent      : Over-the-air updates (Expo EAS Update / CodePush) without App Store review
 - socialSharingAgent   : Unified sharing infrastructure — Share Sheet, WhatsApp/Telegram/Instagram/Facebook/Twitter URL schemes, open-in-app utilities, clipboard, and native calendar integration. Squads import useShare() and OpenInApp from shared/sharing/
+- localizationAgent    : Include when app needs multiple languages OR Hebrew/Arabic RTL support. Runs in Platform Phase 3 so all squads get i18n infrastructure before coding — avoids retroactive refactor. Supports: LTR (en/es/fr/de/zh/ja/...) and RTL (he/ar/fa/ur) with automatic layout mirroring.
 
 ### Quality (Layer 4):
 - performanceAgent     : Mobile app startup optimization, memory leaks, 60fps animations, profiling
@@ -521,7 +520,7 @@ function formatPlan(plan) {
     '',
     '🤖  Layers:',
     `    Layer 1  — Discovery      : requirementsAnalyst, systemArchitect${optional.includes('mobileTechAdvisor') ? ', mobileTechAdvisor' : ''}${optional.includes('webTechAdvisor') ? ', webTechAdvisor' : ''}${optional.includes('businessPlanningAgent') ? ', businessPlanningAgent' : ''}`,
-    `    Layer 2  — Design         : dataArchitect, apiDesigner${l3.includeFrontend !== false ? ', frontendArchitect' : ''}${optional.includes('uxDesignerAgent') ? ', uxDesignerAgent' : ''}${optional.includes('renderingStrategyAgent') ? ', renderingStrategyAgent' : ''}${optional.includes('localizationAgent') ? ', localizationAgent' : ''}${l3.includeFrontend !== false ? ', inputPolicyAgent' : ''}`,
+    `    Layer 2  — Design         : dataArchitect, apiDesigner${l3.includeFrontend !== false ? ', frontendArchitect' : ''}${optional.includes('uxDesignerAgent') ? ', uxDesignerAgent' : ''}${optional.includes('renderingStrategyAgent') ? ', renderingStrategyAgent' : ''}${l3.includeFrontend !== false ? ', inputPolicyAgent' : ''}`,
     `    Layer 2b — Leaders Team      : vpPmAgent, techLeadAgent, qaLeadAgent, securityLeadAgent${l3.includeFrontend !== false ? ', designLeadAgent' : ''}`,
     `    Layer 2c — Platform (7-phase pipeline):`,
     `              Phase 1 : platformPmAgent (spec)`,

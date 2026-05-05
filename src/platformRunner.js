@@ -19,6 +19,8 @@ const PLATFORM_FEATURE_AGENTS = [
   'socialSharingAgent',
   // Web feature infrastructure
   'responsiveDesignAgent', 'pwaAgent', 'webMonetizationAgent',
+  // Cross-platform i18n infrastructure
+  'localizationAgent',
 ];
 
 const MAX_PLATFORM_QA_FIX_ROUNDS = 2;

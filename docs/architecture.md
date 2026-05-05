@@ -81,7 +81,6 @@ ProjectContext נוצר (requirements, plan, squadPlan, outputDir)
 | **frontendArchitect** | מגדיר folder structure, routing, state management, data fetching לצד הלקוח | requirementsAnalyst + systemArchitect | `docs/frontend-architecture.md` | 📋 |
 | **renderingStrategyAgent** *(opt)* | מחליט CSR/SSR/SSG/ISR per-page ב-Next.js/Nuxt, מגדיר App Router ו-protected routes | systemArchitect + frontendArchitect | `docs/rendering-strategy.md` | 📋 |
 | **uxDesignerAgent** *(opt)* | מצייר wireframes טקסטואליים לכל מסך, מגדיר user flows, empty/error/loading states | requirementsAnalyst + systemArchitect | `docs/ux-flows.md`, `docs/wireframes.md` | 📋 |
-| **localizationAgent** *(opt)* | מגדיר i18n setup ומייצר קבצי תרגום (עברית/ערבית/אנגלית כולל RTL) | requirementsAnalyst + frontendArchitect | `frontend/src/i18n/` | 💻 |
 | **inputPolicyAgent** | מייצר מדיניות ולידציה מלאה: max length, regex, file types/sizes, timing, error messages לכל שדה | requirementsAnalyst + uxDesignerAgent | `docs/input-policy.md` | 📋 |
 
 ---
@@ -152,6 +151,11 @@ ProjectContext נוצר (requirements, plan, squadPlan, outputDir)
 | **pwaAgent** | Service Worker, Web App Manifest, offline cache, install prompt hook | `public/sw.js`, `public/manifest.json` |
 | **webMonetizationAgent** | Stripe Billing, checkout, customer portal, webhook handler, feature gate | `shared/billing/` |
 
+#### Cross-platform
+| Agent | תשתית | פלט |
+|-------|--------|-----|
+| **localizationAgent** *(opt)* | i18n infrastructure — i18next setup, language detection מהdevice, runtime switching, RTL layout mirroring. שפות: LTR (en/es/fr/de/zh/ja/...) ו-RTL (he/ar/fa/ur) | `shared/i18n/` |
+
 **כל squad מקבל בcontext:**
 ```
 ⚠️ MANDATORY — import from platform, do NOT duplicate:
@@ -187,9 +191,9 @@ docs/agent-plans/{agentName}-{squadId}.md:
 | Core implementation | `backendDev`, `frontendDev`, `authAgent`, `integrationAgent` |
 | Platform build | `uiPrimitivesAgent`, `uiCompositeAgent`, `apiClientAgent`, `dbSchemaAgent` |
 | Per-squad specialists | `squadErrorHandlingAgent`, `squadCodeCleanupAgent`, `squadDeduplicationAgent`, `squadQaAgent`, `squadSecurityAgent` |
-| Layer 2 | `localizationAgent` |
-| Mobile features | `notificationsAgent`, `deepLinksAgent`, `offlineFirstAgent`, `realtimeAgent`, `animationsAgent`, `onboardingAgent`, `monetizationAgent`, `mlMobileAgent`, `arVrAgent`, `widgetsExtensionsAgent`, `otaUpdatesAgent` |
-| Web features | `responsiveDesignAgent`, `pwaAgent`, `webMonetizationAgent`, `cmsAgent`, `cmsIntegratorAgent` |
+| Mobile features (Platform Phase 3) | `notificationsAgent`, `deepLinksAgent`, `offlineFirstAgent`, `realtimeAgent`, `animationsAgent`, `onboardingAgent`, `monetizationAgent`, `mlMobileAgent`, `arVrAgent`, `widgetsExtensionsAgent`, `otaUpdatesAgent` |
+| Web features (Platform Phase 3) | `responsiveDesignAgent`, `pwaAgent`, `webMonetizationAgent`, `cmsAgent`, `cmsIntegratorAgent` |
+| Cross-platform (Platform Phase 3) | `localizationAgent`, `socialSharingAgent` |
 | Global refinement | `codeDeduplicationAgent` |
 | Quality | `testWriter`, `loadTestingAgent`, `testFixer` |
 | Operations | `devops`, `analyticsMonitoring`, `appStorePublisher` |
