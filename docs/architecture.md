@@ -12,8 +12,9 @@
 
 ```
 ┌─────────────────────────────────────────────────────────┐
-│  צוות Leaders (Layer 2b)                                │
+│  צוות Leaders (Layer 2b — מקביל)                        │
 │  VP PM · Tech Lead · QA Lead · Security Lead            │
+│  Design Lead · Rendering Strategy · Input Policy        │
 │  מוציאים מסמכי הנחיות לכל שאר הצוותים                  │
 └─────────────────────────────────────────────────────────┘
                           ↓
@@ -74,21 +75,21 @@ ProjectContext נוצר (requirements, plan, squadPlan, outputDir)
 
 ## LAYER 2 — Design (מקביל, parallel)
 
+> רק agents שאין להם תלות ב-outputs של Layer 2 אחרים — כולם יכולים להתחיל בו-זמנית.
+
 | Agent | משימה | קלט | פלט | סוג |
 |-------|-------|-----|-----|-----|
 | **dataArchitect** | מתכנן מודל נתונים מלא: entities, relations, indexes, constraints. Blueprint לdbSchemaAgent | requirementsAnalyst + systemArchitect | `docs/data-model.md` | 📋 |
 | **apiDesigner** | מגדיר כל endpoint: method, path, request/response schema, auth. Contract בין backend לfrontend | requirementsAnalyst + systemArchitect | `docs/api-design.md` | 📋 |
 | **frontendArchitect** | מגדיר folder structure, routing, state management, data fetching לצד הלקוח | requirementsAnalyst + systemArchitect | `docs/frontend-architecture.md` | 📋 |
-| **renderingStrategyAgent** *(opt)* | מחליט CSR/SSR/SSG/ISR per-page ב-Next.js/Nuxt, מגדיר App Router ו-protected routes | systemArchitect + frontendArchitect | `docs/rendering-strategy.md` | 📋 |
 | **uxDesignerAgent** *(opt)* | מצייר wireframes טקסטואליים לכל מסך, מגדיר user flows, empty/error/loading states | requirementsAnalyst + systemArchitect | `docs/ux-flows.md`, `docs/wireframes.md` | 📋 |
-| **inputPolicyAgent** | מייצר מדיניות ולידציה מלאה: max length, regex, file types/sizes, timing, error messages לכל שדה | requirementsAnalyst + uxDesignerAgent | `docs/input-policy.md` | 📋 |
 
 ---
 
-## LAYER 2b — Leaders Team (רצף, sequential)
+## LAYER 2b — Leaders Team (מקביל, parallel)
 
-> ראשי המקצועות. **כל agent כאן מוציא מסמך הנחיות** שצוותי הfeature קוראים לפני שמתחילים לעבוד.
-> רצים אחרי Design כדי שיוכלו לקרוא את כל המסמכים הארכיטקטוניים.
+> כל agent כאן קורא outputs של Layer 1+2 — אין תלויות בין agents בתוך Layer 2b עצמה, לכן רצים במקביל.
+> **כל agent מוציא מסמך הנחיות** שצוותי הfeature קוראים לפני שמתחילים לעבוד.
 
 | Agent | משימה | קלט | פלט | סוג |
 |-------|-------|-----|-----|-----|
@@ -97,6 +98,8 @@ ProjectContext נוצר (requirements, plan, squadPlan, outputDir)
 | **qaLeadAgent** | מגדיר testing strategy: unit vs integration, coverage requirements, test data, forbidden patterns, accessibility requirements | requirementsAnalyst + apiDesigner + systemArchitect | `docs/guidelines/qa-guidelines.md` | 📋 |
 | **securityLeadAgent** | מנתח threat model לפרויקט הספציפי → מייצר OWASP checklist מותאם + הנחיות per-squad לפי מה שכל צוות מטפל בו | systemArchitect + apiDesigner + dataArchitect | `docs/guidelines/security-guidelines.md` | 📋 |
 | **designLeadAgent** | כותב שני מסמכים: (1) design system — tokens, variants, dark mode. (2) הנחיות עיצוב לכל Squad Designer | frontendArchitect + uxDesignerAgent | `docs/design-system.md`, `docs/guidelines/design-guidelines.md` | 📋 |
+| **renderingStrategyAgent** *(opt)* | מחליט CSR/SSR/SSG/ISR per-page ב-Next.js/Nuxt, מגדיר App Router ו-protected routes | systemArchitect + frontendArchitect | `docs/rendering-strategy.md` | 📋 |
+| **inputPolicyAgent** | מייצר מדיניות ולידציה מלאה: max length, regex, file types/sizes, timing, error messages לכל שדה | requirementsAnalyst + uxDesignerAgent | `docs/input-policy.md` | 📋 |
 
 ---
 
@@ -528,7 +531,7 @@ Feature infrastructure agents כמו `animationsAgent` (react-native-reanimated)
 | agents שמייצרים קונפיג (⚙️) | ~5 |
 | agents שמשנים קבצים קיימים | cmsIntegratorAgent (per-squad, גם מגדיר תשתית), codeDeduplicationAgent, testFixer, squadErrorHandlingAgent, squadCodeCleanupAgent, squadDeduplicationAgent, squadSecurityAgent (HIGH findings) |
 | **Audit agents (דוח בלבד, אין שינוי קוד)** | errorAuditAgent, codeQualityAuditAgent, cmsQaAgent |
-| **Leaders Team agents** | vpPmAgent, techLeadAgent, qaLeadAgent, securityLeadAgent |
+| **Leaders Team agents** | vpPmAgent, techLeadAgent, qaLeadAgent, securityLeadAgent, designLeadAgent, renderingStrategyAgent *(opt)*, inputPolicyAgent |
 | **Platform Team agents** | platformPmAgent, uiPrimitivesAgent, uiCompositeAgent, apiClientAgent, dbSchemaAgent, platformQaAgent, platformSecurityAgent, socialSharingAgent (feature infra) |
 | **Per-squad agents** | squadDesignerAgent, squadErrorHandlingAgent, squadCodeCleanupAgent, squadDeduplicationAgent, squadQaAgent, squadSecurityAgent |
 | שלבים per-squad | 9 (PM spec → designer → devs → error handling → cleanup → dedup → CMS → QA+loop → security → PM review+loop) |
