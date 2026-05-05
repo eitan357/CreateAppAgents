@@ -5,7 +5,7 @@ require('dotenv').config();
 const readline = require('readline');
 const path = require('path');
 const chalk = require('chalk');
-const { orchestrate } = require('./orchestrator');
+const { orchestrate, orchestrateUpdate } = require('./orchestrator');
 const { runPlanningSession } = require('./planner');
 const { runDesignPicker } = require('./designPicker');
 const { setModelConfig } = require('./agents/base');
@@ -147,12 +147,29 @@ async function main() {
   const checkpoint = ProjectContext.loadCheckpoint(outputDir);
   if (checkpoint) {
     const completedList = (checkpoint.completedLayers || []).join(', ');
-    console.log(chalk.bold.yellow(`\n♻️   נמצאה בנייה חצויה עבור "${projectName}"`));
-    console.log(chalk.gray(`    Layers שהושלמו: ${completedList || 'אין'}`));
-    const resume = (await ask(chalk.bold.green('▶  האם להמשיך מנקודת העצירה? (y/n): '))).trim().toLowerCase();
+    const hasSquadPlan  = !!(checkpoint.squadPlan);
+    const allDone       = completedList.includes('5');
 
-    if (resume === 'y' || resume === 'yes' || resume === '') {
-      // Tier selection still needed for resumed build
+    console.log(chalk.bold.yellow(`\n♻️   נמצאה בנייה קודמת עבור "${projectName}"`));
+    console.log(chalk.gray(`    Layers שהושלמו: ${completedList || 'אין'}`));
+    console.log('');
+    console.log(chalk.white('  1️⃣   בנייה חדשה מאפס'));
+    if (!allDone) {
+      console.log(chalk.white('  2️⃣   המשך מנקודת העצירה'));
+    }
+    if (hasSquadPlan) {
+      console.log(chalk.white('  3️⃣   עדכון / הוספת פיצ\'ר לאפליקציה הקיימת'));
+    }
+    console.log('');
+
+    const validOptions = ['1', ...(!allDone ? ['2'] : []), ...(hasSquadPlan ? ['3'] : [])];
+    let choice = '';
+    while (!validOptions.includes(choice)) {
+      choice = (await ask(chalk.bold.green(`▶  בחר (${validOptions.join('/')}): `))).trim();
+    }
+
+    if (choice === '2') {
+      // Resume build
       console.log(chalk.bold.cyan('\n━━━  רמת איכות / עלות  ━━━'));
       console.log(chalk.gray('בחר רמה לשלבים הנותרים:\n'));
       Object.entries(TIERS).forEach(([key, tier]) => {
@@ -177,6 +194,47 @@ async function main() {
       return;
     }
 
+    if (choice === '3') {
+      // Update mode
+      console.log(chalk.bold.cyan('\n━━━  עדכון אפליקציה  ━━━'));
+      console.log(chalk.gray('תאר את השינוי שאתה רוצה לבצע. (הקלד END בשורה נפרדת לסיום)\n'));
+
+      const lines = [];
+      while (true) {
+        const line = await ask('');
+        if (line.trim() === 'END') break;
+        lines.push(line);
+      }
+      const changeRequest = lines.join('\n').trim();
+      if (!changeRequest) {
+        console.log(chalk.red('❌  לא ניתן להמשיך ללא תיאור השינוי.'));
+        process.exit(1);
+      }
+
+      console.log(chalk.bold.cyan('\n━━━  רמת איכות / עלות  ━━━'));
+      Object.entries(TIERS).forEach(([key, tier]) => {
+        console.log(chalk.white(`  ${key}️⃣   ${tier.label}  (max ${tier.max_tokens.toLocaleString()} tokens)`));
+      });
+      let tier = '';
+      while (!Object.keys(TIERS).includes(tier)) {
+        tier = (await ask(chalk.bold.green('▶  בחר רמה (1, 2 או 3) [ברירת מחדל: 2]: '))).trim() || '2';
+      }
+      const selectedTier = TIERS[tier];
+      setModelConfig({ thinking: selectedTier.thinking, max_tokens: selectedTier.max_tokens });
+      console.log(chalk.green(`\n✅  נבחרה רמה: ${selectedTier.label}\n`));
+
+      rl.close();
+      try {
+        await orchestrateUpdate(changeRequest, checkpoint, outputDir, githubRepo);
+      } catch (err) {
+        console.error(chalk.red('\n❌  שגיאה קריטית:'), err.message);
+        if (process.env.DEBUG) console.error(err.stack);
+        process.exit(1);
+      }
+      return;
+    }
+
+    // choice === '1': fall through to fresh build
     console.log(chalk.gray('מתחיל בנייה חדשה...\n'));
   }
 

@@ -16,38 +16,62 @@ const DEPENDENCY_MAP = {
   frontendArchitect:      ['requirementsAnalyst', 'systemArchitect'],
   renderingStrategyAgent: ['requirementsAnalyst', 'systemArchitect', 'frontendArchitect'],
   uxDesignerAgent:        ['requirementsAnalyst', 'systemArchitect'],
-  designSystemAgent:      ['requirementsAnalyst', 'frontendArchitect', 'uxDesignerAgent'],
+  designLeadAgent:        ['requirementsAnalyst', 'frontendArchitect', 'uxDesignerAgent'],
   localizationAgent:      ['requirementsAnalyst', 'frontendArchitect'],
+  inputPolicyAgent:       ['requirementsAnalyst', 'uxDesignerAgent'],
+
+  // ── Leaders Team ─────────────────────────────────────────────────────────
+  vpPmAgent:              ['requirementsAnalyst', 'systemArchitect', 'dataArchitect', 'apiDesigner'],
+  techLeadAgent:          ['systemArchitect', 'apiDesigner', 'dataArchitect', 'frontendArchitect'],
+  qaLeadAgent:            ['requirementsAnalyst', 'apiDesigner', 'systemArchitect'],
+  securityLeadAgent:      ['systemArchitect', 'apiDesigner', 'dataArchitect'],
+
+  // ── Platform Team ─────────────────────────────────────────────────────────
+  platformPmAgent:        ['vpPmAgent', 'designLeadAgent', 'apiDesigner', 'dataArchitect'],
+  platformQaAgent:        ['platformPmAgent', 'uiPrimitivesAgent', 'uiCompositeAgent', 'apiClientAgent', 'dbSchemaAgent',
+                           'notificationsAgent', 'offlineFirstAgent', 'realtimeAgent', 'animationsAgent',
+                           'responsiveDesignAgent', 'pwaAgent', 'webMonetizationAgent'],
+  platformSecurityAgent:  ['platformPmAgent', 'uiPrimitivesAgent', 'uiCompositeAgent', 'apiClientAgent', 'dbSchemaAgent'],
+
+  // ── Platform Build ────────────────────────────────────────────────────────
+  uiPrimitivesAgent:      ['designLeadAgent', 'uxDesignerAgent', 'frontendArchitect', 'inputPolicyAgent'],
+  uiCompositeAgent:       ['uiPrimitivesAgent', 'uxDesignerAgent', 'frontendArchitect'],
+  apiClientAgent:         ['apiDesigner', 'systemArchitect'],
+  dbSchemaAgent:          ['dataArchitect', 'systemArchitect'],
 
   // ── Core Implementation ───────────────────────────────────────────────────
-  backendDev:             ['systemArchitect', 'dataArchitect', 'apiDesigner'],
-  frontendDev:            ['systemArchitect', 'frontendArchitect', 'apiDesigner', 'uxDesignerAgent', 'designSystemAgent', 'localizationAgent'],
-  authAgent:              ['systemArchitect', 'apiDesigner', 'dataArchitect'],
-  integrationAgent:       ['systemArchitect', 'apiDesigner'],
+  backendDev:             ['systemArchitect', 'dataArchitect', 'apiDesigner', 'apiClientAgent', 'dbSchemaAgent'],
+  frontendDev:            ['systemArchitect', 'frontendArchitect', 'apiDesigner', 'uxDesignerAgent', 'designLeadAgent', 'localizationAgent', 'uiPrimitivesAgent', 'uiCompositeAgent', 'apiClientAgent', 'inputPolicyAgent'],
+  authAgent:              ['systemArchitect', 'apiDesigner', 'dataArchitect', 'apiClientAgent', 'dbSchemaAgent', 'inputPolicyAgent'],
+  integrationAgent:       ['systemArchitect', 'apiDesigner', 'apiClientAgent'],
 
-  // ── Mobile-Specific Features ──────────────────────────────────────────────
-  notificationsAgent:     ['frontendDev', 'backendDev', 'integrationAgent'],
-  deepLinksAgent:         ['frontendDev', 'backendDev'],
-  offlineFirstAgent:      ['frontendDev', 'dataArchitect', 'apiDesigner'],
-  onboardingAgent:        ['frontendDev', 'frontendArchitect'],
-  animationsAgent:        ['frontendDev', 'frontendArchitect'],
-  realtimeAgent:          ['backendDev', 'frontendDev', 'integrationAgent'],
-  otaUpdatesAgent:        ['frontendDev', 'devops'],
-  widgetsExtensionsAgent: ['frontendDev'],
-  mlMobileAgent:          ['frontendDev', 'systemArchitect'],
-  arVrAgent:              ['frontendDev', 'systemArchitect'],
+  // ── Mobile Feature Infrastructure (Layer 2d — run before squads) ──────────
+  notificationsAgent:     ['systemArchitect', 'apiDesigner', 'dbSchemaAgent'],
+  deepLinksAgent:         ['systemArchitect', 'frontendArchitect'],
+  offlineFirstAgent:      ['systemArchitect', 'dataArchitect', 'dbSchemaAgent'],
+  onboardingAgent:        ['uxDesignerAgent', 'uiPrimitivesAgent', 'uiCompositeAgent', 'frontendArchitect'],
+  animationsAgent:        ['uiPrimitivesAgent', 'designLeadAgent', 'frontendArchitect'],
+  realtimeAgent:          ['systemArchitect', 'apiDesigner'],
+  otaUpdatesAgent:        ['systemArchitect', 'frontendArchitect'],
+  widgetsExtensionsAgent: ['frontendArchitect', 'uiPrimitivesAgent'],
+  mlMobileAgent:          ['systemArchitect', 'frontendArchitect'],
+  arVrAgent:              ['systemArchitect', 'frontendArchitect'],
+  monetizationAgent:      ['systemArchitect', 'apiDesigner', 'dbSchemaAgent'],
 
-  // ── Web-Specific Features ─────────────────────────────────────────────────
-  responsiveDesignAgent:  ['frontendArchitect', 'frontendDev'],
-  pwaAgent:               ['frontendDev', 'frontendArchitect'],
-  webMonetizationAgent:   ['backendDev', 'frontendDev', 'dataArchitect', 'apiDesigner'],
-  cmsAgent:               ['frontendDev', 'backendDev', 'systemArchitect'],
-  cmsIntegratorAgent:     ['cmsAgent', 'frontendDev'],
+  // ── Social Sharing & External App Integration ─────────────────────────────
+  socialSharingAgent:     ['systemArchitect', 'frontendArchitect'],
+
+  // ── Web Feature Infrastructure (Layer 2d — run before squads) ─────────────
+  responsiveDesignAgent:  ['frontendArchitect', 'designLeadAgent'],
+  pwaAgent:               ['frontendArchitect', 'systemArchitect'],
+  webMonetizationAgent:   ['systemArchitect', 'apiDesigner', 'dataArchitect', 'dbSchemaAgent'],
+  cmsIntegratorAgent:     ['frontendDev', 'backendDev', 'systemArchitect'],
 
   // ── Quality & Hardening ───────────────────────────────────────────────────
-  errorHandlingAgent:        ['backendDev', 'frontendDev', 'authAgent'],
-  codeDeduplicationAgent:    ['backendDev', 'frontendDev', 'authAgent', 'errorHandlingAgent'],
-  codeCleanupAgent:          ['codeDeduplicationAgent'],
+  codeDeduplicationAgent:    ['backendDev', 'frontendDev', 'authAgent'],
+  errorAuditAgent:           ['backendDev', 'frontendDev', 'authAgent'],
+  codeQualityAuditAgent:     ['backendDev', 'frontendDev', 'authAgent', 'codeDeduplicationAgent'],
+  cmsQaAgent:                ['cmsIntegratorAgent', 'frontendDev'],
   security:               ['backendDev', 'authAgent', 'apiDesigner'],
   testWriter:             ['backendDev', 'frontendDev', 'authAgent', 'dataArchitect'],
   testRunner:             ['testWriter', 'backendDev', 'frontendDev', 'authAgent'],
@@ -75,8 +99,16 @@ const DEPENDENCY_MAP = {
   // ── Web Operations ────────────────────────────────────────────────────────
   seoAgent:               ['frontendDev', 'renderingStrategyAgent', 'frontendArchitect'],
 
+  // ── Per-squad specialist agents ───────────────────────────────────────────
+  squadDesignerAgent:        ['designLeadAgent', 'uxDesignerAgent'],
+  squadQaAgent:              ['qaLeadAgent', 'backendDev', 'frontendDev', 'authAgent'],
+  squadSecurityAgent:        ['securityLeadAgent', 'backendDev', 'frontendDev', 'authAgent'],
+  squadErrorHandlingAgent:   ['techLeadAgent', 'backendDev', 'frontendDev', 'authAgent'],
+  squadCodeCleanupAgent:     ['techLeadAgent', 'backendDev', 'frontendDev', 'authAgent'],
+  squadDeduplicationAgent:   ['backendDev', 'frontendDev', 'authAgent'],
+
   // ── PM Acceptance Review ──────────────────────────────────────────────────
-  pmReviewer:             ['requirementsAnalyst', 'systemArchitect', 'backendDev', 'frontendDev', 'authAgent', 'testFixer', 'reviewer', 'security', 'errorHandlingAgent', 'codeCleanupAgent'],
+  pmReviewer:             ['vpPmAgent', 'requirementsAnalyst', 'systemArchitect', 'backendDev', 'frontendDev', 'authAgent', 'squadQaAgent', 'squadSecurityAgent', 'squadErrorHandlingAgent', 'squadCodeCleanupAgent', 'uiPrimitivesAgent', 'uiCompositeAgent', 'apiClientAgent'],
 };
 
 module.exports = { DEPENDENCY_MAP };

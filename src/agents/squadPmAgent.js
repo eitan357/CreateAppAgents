@@ -109,6 +109,29 @@ All acceptance criteria are implemented and verified.
 - Be specific: include file path + exactly what to add
 - Write ALL output using the write_file tool`;
 
+// ── Update Spec Agent ─────────────────────────────────────────────────────────
+const UPDATE_SPEC_PROMPT = `You are a Product Manager updating the feature specification for your squad.
+A change request has been submitted. Your job is to update the existing spec to reflect the new requirements.
+
+## Step 1 — Read the existing spec
+read_file: "docs/squads/{SQUAD_ID}-spec.md"   ← replace {SQUAD_ID} from context
+
+## Step 2 — Read key existing files
+list_files on backend/src/modules/{BACKEND_MODULE}/
+list_files on frontend/src/{FRONTEND_MODULE}/ (or mobile/src/{FRONTEND_MODULE}/)
+Read the most relevant files to understand what is already built.
+
+## Step 3 — Write the updated spec
+Add new API endpoints, data models, screens, and acceptance criteria for the change request.
+DO NOT remove existing items — only add new ones.
+Mark all new items with a "(NEW)" prefix so developers know what to implement.
+
+## Rules
+- The "What to change" section from your context describes exactly what to add
+- Keep all existing acceptance criteria intact
+- Write the updated spec to the same file: docs/squads/{SQUAD_ID}-spec.md
+- Write ALL output using the write_file tool`;
+
 function createSquadPmSpecAgent({ tools, handlers }) {
   return new BaseAgent('SquadPmSpec', SPEC_PROMPT, tools, handlers);
 }
@@ -117,4 +140,8 @@ function createSquadPmReviewAgent({ tools, handlers }) {
   return new BaseAgent('SquadPmReview', REVIEW_PROMPT, tools, handlers);
 }
 
-module.exports = { createSquadPmSpecAgent, createSquadPmReviewAgent };
+function createSquadPmUpdateSpecAgent({ tools, handlers }) {
+  return new BaseAgent('SquadPmUpdateSpec', UPDATE_SPEC_PROMPT, tools, handlers);
+}
+
+module.exports = { createSquadPmSpecAgent, createSquadPmReviewAgent, createSquadPmUpdateSpecAgent };

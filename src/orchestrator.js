@@ -9,7 +9,9 @@ const { createSquadPlan, formatSquadPlan } = require('./squadPlanner');
 const { createFileSystemTools } = require('./tools/fileSystem');
 const { createShellTools } = require('./tools/shell');
 const { runLayerInParallel, runLayerSequential, getFailedAgents } = require('./layerRunner');
-const { runAllSquads } = require('./squadRunner');
+const { runAllSquads, runAllSquadsUpdate } = require('./squadRunner');
+const { runPlatformPipeline } = require('./platformRunner');
+const { analyzeUpdate, formatUpdatePlan } = require('./updatePlanner');
 const { pushCheckpoint, pushToGithub } = require('./github');
 
 // ── Core agents ───────────────────────────────────────────────────────────────
@@ -37,14 +39,25 @@ const { createWebTechAdvisorAgent }      = require('./agents/webTechAdvisorAgent
 
 // ── UX & Design System agents ─────────────────────────────────────────────────
 const { createUxDesignerAgent }          = require('./agents/uxDesignerAgent');
-const { createDesignSystemAgent }        = require('./agents/designSystemAgent');
+const { createDesignLeadAgent }          = require('./agents/designLeadAgent');
+const { createInputPolicyAgent }         = require('./agents/inputPolicyAgent');
+
+// ── Leaders Team agents ───────────────────────────────────────────────────────
+const { createVpPmAgent }                = require('./agents/vpPmAgent');
+const { createTechLeadAgent }            = require('./agents/techLeadAgent');
+const { createQaLeadAgent }              = require('./agents/qaLeadAgent');
+const { createSecurityLeadAgent }        = require('./agents/securityLeadAgent');
+
+// ── Platform Team agents ──────────────────────────────────────────────────────
+const { createPlatformPmAgent }          = require('./agents/platformPmAgent');
+const { createPlatformQaAgent }          = require('./agents/platformQaAgent');
+const { createPlatformSecurityAgent }    = require('./agents/platformSecurityAgent');
 
 // ── Web Feature agents ────────────────────────────────────────────────────────
 const { createRenderingStrategyAgent }   = require('./agents/renderingStrategyAgent');
 const { createResponsiveDesignAgent }    = require('./agents/responsiveDesignAgent');
 const { createPwaAgent }                 = require('./agents/pwaAgent');
 const { createWebMonetizationAgent }     = require('./agents/webMonetizationAgent');
-const { createCmsAgent }                 = require('./agents/cmsAgent');
 const { createCmsIntegratorAgent }       = require('./agents/cmsIntegratorAgent');
 
 // ── Mobile Feature agents ─────────────────────────────────────────────────────
@@ -59,11 +72,24 @@ const { createMLMobileAgent }            = require('./agents/mlMobileAgent');
 const { createARVRAgent }                = require('./agents/arVrAgent');
 const { createWidgetsExtensionsAgent }   = require('./agents/widgetsExtensionsAgent');
 const { createOTAUpdatesAgent }          = require('./agents/otaUpdatesAgent');
+const { createSocialSharingAgent }       = require('./agents/socialSharingAgent');
 
-// ── Quality agents ────────────────────────────────────────────────────────────
-const { createErrorHandlingAgent }       = require('./agents/errorHandlingAgent');
+// ── Platform Build agents ─────────────────────────────────────────────────────
+const { createUiPrimitivesAgent }        = require('./agents/uiPrimitivesAgent');
+const { createUiCompositeAgent }         = require('./agents/uiCompositeAgent');
+const { createApiClientAgent }           = require('./agents/apiClientAgent');
+const { createDbSchemaAgent }            = require('./agents/dbSchemaAgent');
+
+// ── Per-squad specialist agents ───────────────────────────────────────────────
+const { createSquadErrorHandlingAgent }  = require('./agents/squadErrorHandlingAgent');
+const { createSquadCodeCleanupAgent }    = require('./agents/squadCodeCleanupAgent');
+const { createSquadDeduplicationAgent }  = require('./agents/squadDeduplicationAgent');
+
+// ── Quality / Audit agents ────────────────────────────────────────────────────
 const { createCodeDeduplicationAgent }   = require('./agents/codeDeduplicationAgent');
-const { createCodeCleanupAgent }         = require('./agents/codeCleanupAgent');
+const { createErrorAuditAgent }          = require('./agents/errorAuditAgent');
+const { createCodeQualityAuditAgent }    = require('./agents/codeQualityAuditAgent');
+const { createCmsQaAgent }               = require('./agents/cmsQaAgent');
 const { createPerformanceAgent }         = require('./agents/performanceAgent');
 const { createAccessibilityAgent }       = require('./agents/accessibilityAgent');
 const { createLoadTestingAgent }         = require('./agents/loadTestingAgent');
@@ -101,19 +127,33 @@ const AGENT_REGISTRY = {
   reviewer:                 createReviewerAgent,
   devops:                   createDevOpsAgent,
   documentation:            createDocumentationAgent,
+  // Platform Build
+  uiPrimitivesAgent:        createUiPrimitivesAgent,
+  uiCompositeAgent:         createUiCompositeAgent,
+  apiClientAgent:           createApiClientAgent,
+  dbSchemaAgent:            createDbSchemaAgent,
   // Discovery & Planning
   mobileTechAdvisor:        createMobileTechAdvisorAgent,
   businessPlanningAgent:    createBusinessPlanningAgent,
   webTechAdvisor:           createWebTechAdvisorAgent,
-  // UX & Design System
+  // UX & Design
   uxDesignerAgent:          createUxDesignerAgent,
-  designSystemAgent:        createDesignSystemAgent,
+  designLeadAgent:          createDesignLeadAgent,
+  inputPolicyAgent:         createInputPolicyAgent,
+  // Leaders Team
+  vpPmAgent:                createVpPmAgent,
+  techLeadAgent:            createTechLeadAgent,
+  qaLeadAgent:              createQaLeadAgent,
+  securityLeadAgent:        createSecurityLeadAgent,
+  // Platform Team
+  platformPmAgent:          createPlatformPmAgent,
+  platformQaAgent:          createPlatformQaAgent,
+  platformSecurityAgent:    createPlatformSecurityAgent,
   // Web Features
   renderingStrategyAgent:   createRenderingStrategyAgent,
   responsiveDesignAgent:    createResponsiveDesignAgent,
   pwaAgent:                 createPwaAgent,
   webMonetizationAgent:     createWebMonetizationAgent,
-  cmsAgent:                 createCmsAgent,
   cmsIntegratorAgent:       createCmsIntegratorAgent,
   // Mobile Features
   notificationsAgent:       createNotificationsAgent,
@@ -127,10 +167,16 @@ const AGENT_REGISTRY = {
   arVrAgent:                createARVRAgent,
   widgetsExtensionsAgent:   createWidgetsExtensionsAgent,
   otaUpdatesAgent:          createOTAUpdatesAgent,
-  // Quality
-  errorHandlingAgent:       createErrorHandlingAgent,
+  socialSharingAgent:       createSocialSharingAgent,
+  // Per-squad specialist agents (run inside squadRunner, registered here for lookup)
+  squadErrorHandlingAgent:  createSquadErrorHandlingAgent,
+  squadCodeCleanupAgent:    createSquadCodeCleanupAgent,
+  squadDeduplicationAgent:  createSquadDeduplicationAgent,
+  // Quality / Audit
   codeDeduplicationAgent:   createCodeDeduplicationAgent,
-  codeCleanupAgent:         createCodeCleanupAgent,
+  errorAuditAgent:          createErrorAuditAgent,
+  codeQualityAuditAgent:    createCodeQualityAuditAgent,
+  cmsQaAgent:               createCmsQaAgent,
   performanceAgent:         createPerformanceAgent,
   accessibilityAgent:       createAccessibilityAgent,
   loadTestingAgent:         createLoadTestingAgent,
@@ -161,7 +207,22 @@ const LAYER_DEFINITIONS = [
     id: 2,
     name: 'Design',
     parallel: true,
-    agents: ['dataArchitect', 'apiDesigner', 'frontendArchitect', 'renderingStrategyAgent', 'uxDesignerAgent', 'designSystemAgent', 'localizationAgent'],
+    agents: ['dataArchitect', 'apiDesigner', 'frontendArchitect', 'renderingStrategyAgent', 'uxDesignerAgent', 'designLeadAgent', 'localizationAgent', 'inputPolicyAgent'],
+  },
+  {
+    id: '2b',
+    name: 'Leaders Team',
+    parallel: false,
+    agents: ['vpPmAgent', 'techLeadAgent', 'qaLeadAgent', 'securityLeadAgent'],
+  },
+  {
+    id: '2c',
+    name: 'Platform',
+    parallel: false,
+    // Agents listed here are used only for skip-detection and display.
+    // Execution is handled entirely by runPlatformPipeline() which runs all
+    // 7 phases: spec → build → feature infra → QA loop → security → PM review → PM fix.
+    agents: ['platformPmAgent', 'uiPrimitivesAgent', 'uiCompositeAgent', 'apiClientAgent', 'dbSchemaAgent'],
   },
   {
     id: 3,
@@ -170,46 +231,21 @@ const LAYER_DEFINITIONS = [
     agents: ['backendDev', 'frontendDev', 'authAgent', 'integrationAgent'],
   },
   {
-    id: '3b',
-    name: 'Mobile Features',
-    parallel: true,
-    agents: [
-      'notificationsAgent', 'deepLinksAgent', 'offlineFirstAgent', 'realtimeAgent',
-      'animationsAgent', 'onboardingAgent', 'monetizationAgent', 'mlMobileAgent',
-      'arVrAgent', 'widgetsExtensionsAgent', 'otaUpdatesAgent', 'cmsAgent',
-    ],
-  },
-  {
-    id: '3c',
-    name: 'Web Features',
-    parallel: true,
-    agents: [
-      'responsiveDesignAgent', 'pwaAgent', 'webMonetizationAgent', 'cmsAgent',
-    ],
-  },
-  {
-    id: '3d',
-    name: 'CMS Integration',
-    parallel: false,
-    agents: ['cmsIntegratorAgent'],
-  },
-  {
-    id: '3e',
-    name: 'Error Handling',
-    parallel: false,
-    agents: ['errorHandlingAgent'],
-  },
-  {
     id: '3f',
-    name: 'Code Refinement',
+    name: 'Global Deduplication',
     parallel: false,
-    agents: ['codeDeduplicationAgent', 'codeCleanupAgent'],
+    agents: ['codeDeduplicationAgent'],
   },
   {
     id: 4,
     name: 'Quality',
     parallel: true,
-    agents: ['testWriter', 'security', 'reviewer', 'performanceAgent', 'accessibilityAgent', 'loadTestingAgent', 'dependencyManagementAgent', 'webPerformanceAgent', 'userTestingAgent', 'privacyEthicsAgent'],
+    agents: [
+      'testWriter', 'security', 'reviewer',
+      'performanceAgent', 'accessibilityAgent', 'loadTestingAgent',
+      'dependencyManagementAgent', 'webPerformanceAgent', 'userTestingAgent', 'privacyEthicsAgent',
+      'errorAuditAgent', 'codeQualityAuditAgent', 'cmsQaAgent',
+    ],
   },
   {
     id: '4b',
@@ -300,12 +336,10 @@ const OPTIONAL_AGENTS_GUIDE = `
 - responsiveDesignAgent : Mobile-first CSS, breakpoints, fluid typography, responsive images, container queries, touch vs hover states
 - pwaAgent              : Progressive Web App — Service Worker, Web App Manifest, offline support, push notifications from browser, installability
 - webMonetizationAgent  : Stripe Billing + SaaS pricing — checkout, customer portal, webhook handler, feature gating, usage-based billing
-- cmsAgent              : Content Management System — discovers all hardcoded text, sets up CMS (Payload CMS for Next.js, Strapi for others), creates contentService + useContent() hook, seed data, and cms-migration.md plan. Pair with cmsIntegratorAgent to apply the migration automatically.
-- cmsIntegratorAgent    : Applies the CMS migration — reads cms-migration.md and replaces every hardcoded string in components with t('key', 'fallback') calls. Requires cmsAgent to have run first.
+- cmsIntegratorAgent    : Content Management System — each squad scans its own files for hardcoded text, sets up shared CMS infrastructure (Payload CMS for Next.js, Strapi for others) if not already done, adds seed data, and replaces every hardcoded string with t('key', 'fallback'). A global cmsQaAgent then audits the full CMS setup.
 
 ### Mobile Features (Layer 3b) — ONLY for React Native / Expo / Flutter frontends:
-- cmsAgent             : Content Management System — discovers all hardcoded text, sets up Strapi CMS with offline AsyncStorage cache, creates contentService + useContent() hook, seed data, and cms-migration.md plan. Pair with cmsIntegratorAgent.
-- cmsIntegratorAgent   : Applies the CMS migration — replaces every hardcoded string in screens/components with t('key', 'fallback') calls. Requires cmsAgent.
+- cmsIntegratorAgent   : Content Management System — each squad scans its own files, sets up shared Strapi CMS with offline AsyncStorage cache if not already done, adds seed data, and replaces every hardcoded string with t('key', 'fallback'). A global cmsQaAgent then audits the full CMS setup.
 - notificationsAgent   : Push notifications, local reminders, FCM/APNs
 - deepLinksAgent       : Deep links, Universal Links, QR codes, social sharing URLs
 - offlineFirstAgent    : Offline support, sync without internet, WatermelonDB/TanStack persistence
@@ -317,6 +351,7 @@ const OPTIONAL_AGENTS_GUIDE = `
 - arVrAgent            : Augmented reality (ARKit/ARCore), 3D object placement
 - widgetsExtensionsAgent: Home screen widgets, Apple Watch, Android widgets, Share extensions
 - otaUpdatesAgent      : Over-the-air updates (Expo EAS Update / CodePush) without App Store review
+- socialSharingAgent   : Unified sharing infrastructure — Share Sheet, WhatsApp/Telegram/Instagram/Facebook/Twitter URL schemes, open-in-app utilities, clipboard, and native calendar integration. Squads import useShare() and OpenInApp from shared/sharing/
 
 ### Quality (Layer 4):
 - performanceAgent     : Mobile app startup optimization, memory leaks, 60fps animations, profiling
@@ -364,7 +399,7 @@ ${OPTIONAL_AGENTS_GUIDE}`,
       },
     ],
     messages: [{ role: 'user', content: `Project Name: ${projectName}\n\nRequirements:\n${requirements}` }],
-  });
+  }, { timeout: 10 * 60 * 1000 });
 
   const text = response.content.find(b => b.type === 'text')?.text || '';
   const jsonMatch = text.match(/\{[\s\S]*\}/);
@@ -390,10 +425,47 @@ function getActiveAgents(plan) {
   // Optional agents selected by PM
   (plan.optionalAgents || []).forEach(n => names.add(n));
 
-  // Always-included implementation agents (run after core implementation)
-  names.add('errorHandlingAgent');
-  names.add('codeDeduplicationAgent');
-  names.add('codeCleanupAgent');
+  // Leaders Team — always run
+  names.add('vpPmAgent');
+  names.add('techLeadAgent');
+  names.add('qaLeadAgent');
+  names.add('securityLeadAgent');
+
+  // Platform Team — always run
+  names.add('platformPmAgent');
+  names.add('platformQaAgent');
+  names.add('platformSecurityAgent');
+  names.add('dbSchemaAgent');
+
+  // Frontend-dependent platform agents
+  if (l3.includeFrontend !== false) {
+    names.add('inputPolicyAgent');
+    names.add('designLeadAgent');
+    names.add('uiPrimitivesAgent');
+    names.add('uiCompositeAgent');
+    names.add('apiClientAgent');
+  }
+
+  // Always-included post-implementation agents
+  names.add('codeDeduplicationAgent');   // global cross-squad dedup (Layer 3f)
+  names.add('errorAuditAgent');          // global error handling audit (Layer 4)
+  names.add('codeQualityAuditAgent');    // global code quality audit (Layer 4)
+
+  // Per-squad agents (run inside squadRunner — must be in activeAgents for registry lookup)
+  names.add('squadErrorHandlingAgent');
+  names.add('squadCodeCleanupAgent');
+  names.add('squadDeduplicationAgent');
+
+  // CMS QA + per-squad integrator only if CMS was requested
+  if ((plan.optionalAgents || []).includes('cmsIntegratorAgent')) {
+    names.add('cmsIntegratorAgent');
+    names.add('cmsQaAgent');
+  }
+
+  // socialSharingAgent — any project with a frontend (mobile or web)
+  if (l3.includeFrontend !== false) {
+    names.add('socialSharingAgent');
+  }
 
   return names;
 }
@@ -449,34 +521,43 @@ function formatPlan(plan) {
     '',
     '🤖  Layers:',
     `    Layer 1  — Discovery      : requirementsAnalyst, systemArchitect${optional.includes('mobileTechAdvisor') ? ', mobileTechAdvisor' : ''}${optional.includes('webTechAdvisor') ? ', webTechAdvisor' : ''}${optional.includes('businessPlanningAgent') ? ', businessPlanningAgent' : ''}`,
-    `    Layer 2  — Design         : dataArchitect, apiDesigner${l3.includeFrontend !== false ? ', frontendArchitect' : ''}${optional.includes('uxDesignerAgent') ? ', uxDesignerAgent' : ''}${optional.includes('designSystemAgent') ? ', designSystemAgent' : ''}${optional.includes('renderingStrategyAgent') ? ', renderingStrategyAgent' : ''}${optional.includes('localizationAgent') ? ', localizationAgent' : ''}`,
-    `    Layer 3  — Implementation : backendDev, authAgent${l3.includeFrontend !== false ? ', frontendDev' : ''}${l3.includeIntegration ? ', integrationAgent' : ''}`,
+    `    Layer 2  — Design         : dataArchitect, apiDesigner${l3.includeFrontend !== false ? ', frontendArchitect' : ''}${optional.includes('uxDesignerAgent') ? ', uxDesignerAgent' : ''}${l3.includeFrontend !== false ? ', designLeadAgent' : ''}${optional.includes('renderingStrategyAgent') ? ', renderingStrategyAgent' : ''}${optional.includes('localizationAgent') ? ', localizationAgent' : ''}${l3.includeFrontend !== false ? ', inputPolicyAgent' : ''}`,
+    `    Layer 2b — Leaders Team      : vpPmAgent, techLeadAgent, qaLeadAgent, securityLeadAgent`,
+    `    Layer 2c — Platform (7-phase pipeline):`,
+    `              Phase 1 : platformPmAgent (spec)`,
+    `              Phase 2 : uiPrimitivesAgent → uiCompositeAgent → apiClientAgent → dbSchemaAgent`,
   ];
 
-  const mobileFeatures = optional.filter(a =>
+  const mobileInfra = optional.filter(a =>
     ['notificationsAgent','deepLinksAgent','offlineFirstAgent','realtimeAgent','animationsAgent',
-     'onboardingAgent','monetizationAgent','mlMobileAgent','arVrAgent','widgetsExtensionsAgent','otaUpdatesAgent','cmsAgent'].includes(a)
+     'onboardingAgent','monetizationAgent','mlMobileAgent','arVrAgent','widgetsExtensionsAgent',
+     'otaUpdatesAgent','socialSharingAgent'].includes(a)
   );
-  if (mobileFeatures.length > 0) {
-    lines.push(`    Layer 3b — Mobile Features : ${mobileFeatures.join(', ')}`);
+  const webInfra = optional.filter(a =>
+    ['responsiveDesignAgent','pwaAgent','webMonetizationAgent'].includes(a)
+  );
+  const allInfra = [...mobileInfra, ...webInfra];
+  if (allInfra.length > 0) {
+    lines.push(`              Phase 3 : ${allInfra.join(', ')} (parallel feature infra)`);
   }
 
-  const webFeatures = optional.filter(a =>
-    ['responsiveDesignAgent','pwaAgent','webMonetizationAgent','cmsAgent'].includes(a)
+  lines.push(
+    `              Phase 4 : platformQaAgent + fix loop (max 2)`,
+    `              Phase 5 : platformSecurityAgent`,
+    `              Phase 6 : Platform PM review`,
+    `              Phase 7 : fix round if GAPS (build → QA → PM re-review)`,
   );
-  if (webFeatures.length > 0) {
-    lines.push(`    Layer 3c — Web Features    : ${webFeatures.join(', ')}`);
-  }
+  lines.push(`    Layer 3  — Implementation    : backendDev, authAgent${l3.includeFrontend !== false ? ', frontendDev' : ''}${l3.includeIntegration ? ', integrationAgent' : ''}`);
 
   if (optional.includes('cmsIntegratorAgent')) {
-    lines.push(`    Layer 3d — CMS Integration : cmsIntegratorAgent`);
+    lines.push(`    Squad Phase 5 (per-squad)    — CMS : cmsIntegratorAgent`);
   }
 
-  lines.push(`    Layer 3e — Error Handling  : errorHandlingAgent`);
-  lines.push(`    Layer 3f — Code Refinement : codeDeduplicationAgent → codeCleanupAgent`);
+  lines.push(`    Layer 3f — Global Dedup      : codeDeduplicationAgent`);
 
   const extraQuality = optional.filter(a => ['performanceAgent','webPerformanceAgent','accessibilityAgent','loadTestingAgent','dependencyManagementAgent','userTestingAgent','privacyEthicsAgent'].includes(a));
-  lines.push(`    Layer 4  — Quality        : testWriter, security, reviewer${extraQuality.length > 0 ? ', ' + extraQuality.join(', ') : ''}`);
+  const cmsQa = optional.includes('cmsIntegratorAgent') ? ', cmsQaAgent' : '';
+  lines.push(`    Layer 4  — Quality        : testWriter, security, reviewer, errorAuditAgent, codeQualityAuditAgent${cmsQa}${extraQuality.length > 0 ? ', ' + extraQuality.join(', ') : ''}`);
   lines.push(`    Layer 4b — Test Run       : testRunner`);
   lines.push(`    Layer 4c — Test Fix       : testFixer`);
 
@@ -539,6 +620,7 @@ async function orchestrate(requirements, projectName, outputDir, checkpoint = nu
     // ── Fresh build ─────────────────────────────────────────────────────────
     console.log(chalk.yellow('⏳  Generating project plan...'));
     const plan = await createPlan(requirements, projectName);
+    // plan is block-scoped to this else branch intentionally — context.plan is the source of truth
 
     const planApproved = await approveStep(
       'תוכנית הפרויקט',
@@ -602,7 +684,7 @@ async function orchestrate(requirements, projectName, outputDir, checkpoint = nu
       continue;
     }
 
-    const agentConfigs = filterLayerAgents(layerDef, activeAgents, plan);
+    const agentConfigs = filterLayerAgents(layerDef, activeAgents, context.plan);
 
     if (agentConfigs.length === 0) {
       console.log(chalk.gray(`\nLayer ${layerDef.id} (${layerDef.name}): all agents skipped — moving on`));
@@ -614,7 +696,10 @@ async function orchestrate(requirements, projectName, outputDir, checkpoint = nu
     console.log(chalk.gray(`Mode  : ${layerDef.parallel ? 'parallel' : 'sequential'}`));
 
     let layerResults;
-    if (layerDef.id === 3 && context.squadPlan) {
+    if (layerDef.id === '2c') {
+      // Platform pipeline: spec → build → feature infra → QA loop → security → PM review → PM fix
+      layerResults = await runPlatformPipeline(context, toolSets, AGENT_REGISTRY, activeAgents);
+    } else if (layerDef.id === 3 && context.squadPlan) {
       // ── Squad mode: run each squad's agents in parallel, sequential within squad
       console.log(chalk.bold.cyan(`\n  Running ${context.squadPlan.squads.length} squads in parallel...`));
       layerResults = await runAllSquads(context.squadPlan, context, toolSets, AGENT_REGISTRY, activeAgents);
@@ -705,7 +790,7 @@ async function orchestrate(requirements, projectName, outputDir, checkpoint = nu
         context.setFeedbackNotes(null);
 
         console.log(chalk.green(`  ✅  Fix Round ${round} complete — re-running Quality to verify...`));
-        const rerunResults = await runQualityLayers(activeAgents, context, toolSets, plan);
+        const rerunResults = await runQualityLayers(activeAgents, context, toolSets, context.plan);
 
         const proceed = await approveLayer(`Quality Re-check — after Fix Round ${round}`, rerunResults);
         if (!proceed) {
@@ -759,7 +844,7 @@ async function orchestrate(requirements, projectName, outputDir, checkpoint = nu
       context.setPmFeedbackNotes(null);
 
       console.log(chalk.green(`  ✅  PM Fix Round ${round} complete — re-running Quality to verify...`));
-      await runQualityLayers(activeAgents, context, toolSets, plan);
+      await runQualityLayers(activeAgents, context, toolSets, context.plan);
 
       console.log(chalk.bold.cyan(`\n━━━  PM Re-check after Fix Round ${round}  ━━━`));
       pmReviewResult = await runPmReview(context, toolSets);
@@ -798,4 +883,142 @@ async function orchestrate(requirements, projectName, outputDir, checkpoint = nu
   context.allFilesCreated.forEach(f => console.log(chalk.green(`   ✓ ${f}`)));
 }
 
-module.exports = { orchestrate };
+// ── Update Mode orchestration ─────────────────────────────────────────────────
+async function orchestrateUpdate(changeRequest, checkpointData, outputDir, githubRepo = null) {
+  console.log(chalk.bold.cyan('\n🔄  App Builder Agents — Update Mode\n'));
+
+  const context = ProjectContext.fromCheckpoint({ ...checkpointData, outputDir });
+
+  if (!context.squadPlan) {
+    console.log(chalk.red('❌  לא נמצאה תוכנית צוותים. מצב עדכון דורש פרויקט שנבנה עם squad plan.'));
+    return;
+  }
+
+  // Analyze the change request
+  console.log(chalk.yellow('⏳  מנתח את בקשת השינוי...'));
+  let updatePlan;
+  try {
+    updatePlan = await analyzeUpdate(changeRequest, context.squadPlan);
+  } catch (err) {
+    console.log(chalk.red(`❌  ניתוח הבקשה נכשל: ${err.message}`));
+    return;
+  }
+
+  if (updatePlan.affectedSquads.length === 0 && updatePlan.newSquads.length === 0) {
+    console.log(chalk.yellow('⚠️  לא זוהו צוותים מושפעים. נסה לנסח את הבקשה בצורה יותר ספציפית.'));
+    return;
+  }
+
+  const approved = await approveStep(
+    '🔄  תוכנית עדכון',
+    'ניתוח הבקשה — זה מה שישתנה:',
+    formatUpdatePlan(updatePlan),
+  );
+  if (!approved) return;
+
+  // Add new squads to the squad plan
+  if (updatePlan.newSquads.length > 0) {
+    context.setSquadPlan({
+      ...context.squadPlan,
+      squads: [...context.squadPlan.squads, ...updatePlan.newSquads],
+    });
+  }
+
+  const fsTools = createFileSystemTools(outputDir);
+  const shellTools = createShellTools(outputDir);
+  const toolSets = {
+    fs:  fsTools,
+    all: { tools: [...fsTools.tools, ...shellTools.tools], handlers: { ...fsTools.handlers, ...shellTools.handlers } },
+  };
+  const activeAgents = getActiveAgents(context.plan);
+
+  function saveCheckpoint(label) {
+    context.saveCheckpoint();
+    if (!githubRepo) return;
+    const result = pushCheckpoint(outputDir, githubRepo.owner, githubRepo.repo, githubRepo.token, label);
+    if (!result.success) console.log(chalk.yellow(`  ⚠️   push ל-GitHub נכשל (${label}): ${result.error}`));
+    else console.log(chalk.gray(`  ☁️   checkpoint נשמר ב-GitHub (${label})`));
+  }
+
+  // Run platform agents that need updating (before squads so they can import new components)
+  const { platformUpdates } = updatePlan;
+  if (platformUpdates) {
+    const platformMap = {
+      uiPrimitives: 'uiPrimitivesAgent',
+      uiComposite:  'uiCompositeAgent',
+      apiClient:    'apiClientAgent',
+      dbSchema:     'dbSchemaAgent',
+      designLead:   'designLeadAgent',
+    };
+    for (const [key, agentName] of Object.entries(platformMap)) {
+      if (!platformUpdates[key] || !activeAgents.has(agentName)) continue;
+      console.log(chalk.bold.cyan(`\n━━━  Platform Update — ${agentName}  ━━━`));
+      context.setPlatformUpdateNote(agentName, platformUpdates[key]);
+      try {
+        const agentConfig = [{ name: agentName, needsShell: false }];
+        await runLayerSequential(agentConfig, context, toolSets, AGENT_REGISTRY);
+      } finally {
+        context.setPlatformUpdateNote(agentName, null);
+      }
+    }
+    saveCheckpoint('Update — Platform');
+  }
+
+  // Run squads
+  console.log(chalk.bold.cyan('\n━━━  עדכון צוותים  ━━━'));
+  await runAllSquadsUpdate(updatePlan, context, toolSets, AGENT_REGISTRY, activeAgents);
+  saveCheckpoint('Update — Squads');
+
+  // Quality re-run
+  console.log(chalk.bold.cyan('\n━━━  Quality Re-check  ━━━'));
+  const qualityResults = await runQualityLayers(activeAgents, context, toolSets, context.plan);
+
+  const proceed = await approveLayer('Quality after Update', qualityResults);
+  if (!proceed) {
+    saveCheckpoint('Update — Quality');
+    return;
+  }
+
+  // PM review
+  console.log(chalk.bold.cyan('\n━━━  PM Acceptance Review  ━━━'));
+  const pmResult = await runPmReview(context, toolSets);
+  const pmFeedback = pmResult ? buildPmFeedback(pmResult) : null;
+
+  if (pmFeedback) {
+    const runFix = await approveStep(
+      '🔴  PM Fix Round',
+      'PM מצא פערים בין הדרישות למימוש. להריץ סבב תיקונים?',
+      pmFeedback.slice(0, 1400) + (pmFeedback.length > 1400 ? '\n...(truncated)' : ''),
+    );
+    if (runFix) {
+      context.setPmFeedbackNotes(pmFeedback);
+      const fixConfigs = PM_FIX_ROUND_AGENTS
+        .filter(name => activeAgents.has(name))
+        .map(name => ({ name, needsShell: false }));
+      await runLayerInParallel(fixConfigs, context, toolSets, AGENT_REGISTRY);
+      context.setPmFeedbackNotes(null);
+      await runQualityLayers(activeAgents, context, toolSets, context.plan);
+      await runPmReview(context, toolSets);
+    }
+  } else {
+    console.log(chalk.bold.green('  ✅  PM Verdict: ACCEPTED'));
+  }
+
+  saveCheckpoint('Update — Complete');
+
+  if (githubRepo) {
+    console.log(chalk.bold.cyan(`\n━━━  מעלה קוד ל-GitHub  ━━━`));
+    try {
+      pushToGithub(outputDir, githubRepo.owner, githubRepo.repo, githubRepo.token);
+      console.log(chalk.bold.green(`✅  הקוד הועלה → https://github.com/${githubRepo.full}`));
+    } catch (err) {
+      console.log(chalk.red(`❌  העלאה נכשלה: ${err.message}`));
+    }
+  }
+
+  console.log(chalk.bold.green('\n✅  העדכון הושלם!'));
+  console.log(chalk.white(`📂  קבצים ב: ${outputDir}`));
+  if (githubRepo) console.log(chalk.white(`🐙  GitHub: https://github.com/${githubRepo.full}`));
+}
+
+module.exports = { orchestrate, orchestrateUpdate };

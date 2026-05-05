@@ -45,7 +45,7 @@ ${SQUAD_SCHEMA}`,
       role: 'user',
       content: `Project: ${plan.projectName}\n\nDescription: ${plan.description}\n\nRequirements:\n${requirements}\n\nTech Stack:\n${JSON.stringify(plan.techStack, null, 2)}`,
     }],
-  });
+  }, { timeout: 10 * 60 * 1000 });
 
   const text = response.content.find(b => b.type === 'text')?.text || '';
   const jsonMatch = text.match(/\{[\s\S]*\}/);
