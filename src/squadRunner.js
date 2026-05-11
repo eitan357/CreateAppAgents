@@ -194,15 +194,14 @@ async function runSquad(squad, context, toolSets, agentRegistry, activeAgents) {
 // Run all squads in parallel, then merge their outputs so global Layer 4 agents
 // can find 'backendDev' / 'frontendDev' outputs as if one agent built the whole app.
 async function runAllSquads(squadPlan, context, toolSets, agentRegistry, activeAgents) {
-  const STAGGER_MS = 5000;  // 5s between squad starts — avoids rate-limit bursts
-  const tasks = squadPlan.squads.map(async (squad, i) => {
-    await _sleep(i * STAGGER_MS);
+  // Squads run sequentially (not parallel) to avoid API rate limit bursts.
+  // Each squad's internal agents already run concurrently within the squad.
+  const allSquadResults = [];
+  for (const squad of squadPlan.squads) {
     console.log(chalk.bold.cyan(`\n  ▶  Squad: ${squad.name} — ${squad.userFacingArea}`));
     const results = await runSquad(squad, context, toolSets, agentRegistry, activeAgents);
-    return { squad, results };
-  });
-
-  const allSquadResults = await Promise.all(tasks);
+    allSquadResults.push({ squad, results });
+  }
   _mergeOutputsToContext(allSquadResults, context);
 
   const flatResults = {};
@@ -309,10 +308,11 @@ async function runAllSquadsUpdate(updatePlan, context, toolSets, agentRegistry, 
     }),
   ];
 
-  const STAGGER_MS = 5000;
-  const allResults = (await Promise.all(
-    tasks.map((t, i) => _sleep(i * STAGGER_MS).then(t))
-  )).filter(Boolean);
+  const allResults = [];
+  for (const task of tasks) {
+    const result = await task();
+    if (result) allResults.push(result);
+  }
   _mergeOutputsToContext(allResults, context);
 
   const flatResults = {};

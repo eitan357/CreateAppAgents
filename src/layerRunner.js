@@ -3,6 +3,10 @@
 const chalk = require('chalk');
 const { sleep } = require('./withRetry');
 
+// Max concurrent API calls — default 1 to stay under 30k input tokens/minute.
+// Increase via PARALLEL_AGENTS=3 in .env if your Anthropic account has higher rate limits.
+const MAX_PARALLEL_AGENTS = Math.max(1, parseInt(process.env.PARALLEL_AGENTS || '1', 10));
+
 function retryDelay(err) {
   if (err.message?.includes('529')) return 20000;
   if (err.message?.includes('429')) return 60000;
@@ -39,23 +43,52 @@ async function runAgentWithRetry(agentConfig, context, toolSets, agentRegistry) 
   }
 }
 
+// Runs agents with a concurrency cap to stay under API rate limits.
+// With the default cap of 1, agents run one at a time (safest for low-rate-limit accounts).
+// Agents that finish early allow the next queued agent to start immediately.
 async function runLayerInParallel(agentConfigs, context, toolSets, agentRegistry) {
-  const STAGGER_MS = 3000;  // 3s between starts — avoids rate-limit bursts
-  const tasks = agentConfigs.map(async (agentConfig, i) => {
-    await sleep(i * STAGGER_MS);
-    console.log(chalk.cyan(`  [parallel] Starting ${agentConfig.name}...`));
-    const result = await runAgentWithRetry(agentConfig, context, toolSets, agentRegistry);
-    if (!result) return [agentConfig.name, null];
+  const results = {};
+  const queue = [...agentConfigs];
+  let active = 0;
 
-    if (!result.error) {
-      context.addAgentOutput(agentConfig.name, result.summary, result.filesCreated);
-      console.log(chalk.green(`  [parallel] ${agentConfig.name} done — ${result.filesCreated.length} file(s)`));
+  if (MAX_PARALLEL_AGENTS > 1) {
+    console.log(chalk.gray(`  Rate limit mode: up to ${MAX_PARALLEL_AGENTS} concurrent agents (PARALLEL_AGENTS env var)`));
+  }
+
+  await new Promise((resolve) => {
+    function startNext() {
+      while (active < MAX_PARALLEL_AGENTS && queue.length > 0) {
+        const agentConfig = queue.shift();
+        active++;
+        console.log(chalk.cyan(`  [parallel] Starting ${agentConfig.name}...`));
+
+        runAgentWithRetry(agentConfig, context, toolSets, agentRegistry)
+          .then(result => {
+            if (!result) return;
+            if (!result.error) {
+              context.addAgentOutput(agentConfig.name, result.summary, result.filesCreated);
+              console.log(chalk.green(`  [parallel] ${agentConfig.name} done — ${result.filesCreated.length} file(s)`));
+            }
+            results[agentConfig.name] = result;
+          })
+          .catch(err => {
+            results[agentConfig.name] = { error: err.message, summary: `FAILED: ${err.message}`, filesCreated: [] };
+          })
+          .finally(() => {
+            active--;
+            if (queue.length > 0 || active > 0) {
+              startNext();
+            } else {
+              resolve();
+            }
+          });
+      }
+      if (active === 0 && queue.length === 0) resolve();
     }
-    return [agentConfig.name, result];
+    startNext();
   });
 
-  const results = await Promise.all(tasks);
-  return Object.fromEntries(results.filter(([, v]) => v !== null));
+  return Object.fromEntries(Object.entries(results).filter(([, v]) => v !== null));
 }
 
 async function runLayerSequential(agentConfigs, context, toolSets, agentRegistry) {
