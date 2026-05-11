@@ -1,13 +1,10 @@
 'use strict';
 
 const chalk = require('chalk');
-
-function sleep(ms) { return new Promise(resolve => setTimeout(resolve, ms)); }
+const { sleep } = require('./withRetry');
 
 function retryDelay(err) {
-  // 529 Overloaded — wait longer before retrying
-  if (err.message && err.message.includes('529')) return 20000;
-  return 5000;
+  return (err.message && err.message.includes('529')) ? 20000 : 5000;
 }
 
 // Run a single agent with one automatic retry on failure

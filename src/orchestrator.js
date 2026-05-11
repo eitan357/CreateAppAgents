@@ -11,6 +11,7 @@ const { createFileSystemTools } = require('./tools/fileSystem');
 const { createShellTools } = require('./tools/shell');
 const { runLayerInParallel, runLayerSequential, getFailedAgents } = require('./layerRunner');
 const { runAllSquads, runAllSquadsUpdate, runSquadUpdate } = require('./squadRunner');
+const { withRetry } = require('./withRetry');
 const { runPlatformPipeline } = require('./platformRunner');
 const { analyzeUpdate, formatUpdatePlan } = require('./updatePlanner');
 const { pushCheckpoint, pushToGithub } = require('./github');
@@ -374,7 +375,7 @@ const OPTIONAL_AGENTS_GUIDE = `
 async function createPlan(requirements, projectName) {
   const client = new Anthropic();
 
-  const response = await client.messages.create({
+  const response = await withRetry(() => client.messages.create({
     model: 'claude-sonnet-4-6',
     max_tokens: 2500,
     system: [
@@ -401,7 +402,7 @@ ${OPTIONAL_AGENTS_GUIDE}`,
       },
     ],
     messages: [{ role: 'user', content: `Project Name: ${projectName}\n\nRequirements:\n${requirements}` }],
-  }, { timeout: 10 * 60 * 1000 });
+  }, { timeout: 10 * 60 * 1000 }), 'createPlan');
 
   const text = response.content.find(b => b.type === 'text')?.text || '';
   const jsonMatch = text.match(/\{[\s\S]*\}/);

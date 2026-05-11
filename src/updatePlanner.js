@@ -1,6 +1,7 @@
 'use strict';
 
 const Anthropic = require('@anthropic-ai/sdk');
+const { withRetry } = require('./withRetry');
 
 const UPDATE_SCHEMA = `{
   "summary": "One sentence describing what this update does",
@@ -37,7 +38,7 @@ async function analyzeUpdate(changeRequest, existingSquadPlan) {
     `- ${s.id} (${s.name}): ${s.userFacingArea} — features: ${s.keyFeatures.join(', ')}`
   ).join('\n');
 
-  const response = await client.messages.create({
+  const response = await withRetry(() => client.messages.create({
     model: 'claude-sonnet-4-6',
     max_tokens: 2000,
     system: `You are a technical project manager analyzing a change request for an existing application.
@@ -65,7 +66,7 @@ ${UPDATE_SCHEMA}`,
       role: 'user',
       content: `Existing squads:\n${squadsDescription}\n\nPlatform: ${existingSquadPlan.platformNotes}\n\nChange request:\n${changeRequest}`,
     }],
-  }, { timeout: 10 * 60 * 1000 });
+  }, { timeout: 10 * 60 * 1000 }), 'updatePlanner');
 
   const text = response.content.find(b => b.type === 'text')?.text || '';
   const jsonMatch = text.match(/\{[\s\S]*\}/);

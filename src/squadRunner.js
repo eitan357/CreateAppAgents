@@ -10,7 +10,7 @@ const CLEANUP_AGENTS    = ['squadErrorHandlingAgent', 'squadCodeCleanupAgent', '
 const MAX_QA_FIX_ROUNDS = 2;
 
 // ── Single-agent runner with retry ───────────────────────────────────────────
-function _sleep(ms) { return new Promise(resolve => setTimeout(resolve, ms)); }
+const { sleep: _sleep } = require('./withRetry');
 function _retryDelay(err) {
   return (err.message && err.message.includes('529')) ? 20000 : 5000;
 }

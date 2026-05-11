@@ -1,6 +1,7 @@
 'use strict';
 
 const Anthropic = require('@anthropic-ai/sdk');
+const { withRetry } = require('../withRetry');
 
 // Global model config — set once before orchestrate() via setModelConfig()
 let _modelConfig = {
@@ -52,7 +53,7 @@ class BaseAgent {
         params.tools = this.tools;
       }
 
-      const response = await this.client.messages.create(params, { timeout: 20 * 60 * 1000 });
+      const response = await withRetry(() => this.client.messages.create(params, { timeout: 20 * 60 * 1000 }), this.name);
       messages.push({ role: 'assistant', content: response.content });
 
       if (response.stop_reason !== 'tool_use') {
