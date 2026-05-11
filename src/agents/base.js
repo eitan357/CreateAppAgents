@@ -5,6 +5,7 @@ const { withRetry } = require('../withRetry');
 
 // Global model config — set once before orchestrate() via setModelConfig()
 let _modelConfig = {
+  model: 'claude-sonnet-4-6',
   thinking: { type: 'adaptive' },
   max_tokens: 8096,
 };
@@ -33,7 +34,7 @@ class BaseAgent {
 
     while (true) {
       const params = {
-        model: 'claude-opus-4-7',
+        model: _modelConfig.model || 'claude-sonnet-4-6',
         max_tokens: _modelConfig.max_tokens,
         system: [
           {

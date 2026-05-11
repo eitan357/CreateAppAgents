@@ -14,9 +14,9 @@ const { parseGithubRepo, checkGithubAccess, createGithubRepo } = require('./gith
 const { SUPPORTED, setLanguage, t } = require('./lang');
 
 const TIERS = {
-  '1': { thinking: null,                  max_tokens: 16000 },
-  '2': { thinking: { type: 'adaptive' },  max_tokens: 16000 },
-  '3': { thinking: { type: 'adaptive' },  max_tokens: 32000 },
+  '1': { model: 'claude-sonnet-4-6', thinking: null,                  max_tokens: 16000 },
+  '2': { model: 'claude-sonnet-4-6', thinking: { type: 'adaptive' },  max_tokens: 16000 },
+  '3': { model: 'claude-opus-4-7',   thinking: { type: 'adaptive' },  max_tokens: 32000 },
 };
 
 const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
