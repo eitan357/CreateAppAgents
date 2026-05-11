@@ -10,6 +10,11 @@ const CLEANUP_AGENTS    = ['squadErrorHandlingAgent', 'squadCodeCleanupAgent', '
 const MAX_QA_FIX_ROUNDS = 2;
 
 // ── Single-agent runner with retry ───────────────────────────────────────────
+const { sleep: _sleep } = require('./withRetry');
+function _retryDelay(err) {
+  return (err.message && err.message.includes('529')) ? 20000 : 5000;
+}
+
 async function _runSingleAgent(agentName, contextStr, squad, context, toolSets, agentRegistry) {
   const createAgent = agentRegistry[agentName];
   if (!createAgent) return null;
@@ -28,7 +33,10 @@ async function _runSingleAgent(agentName, contextStr, squad, context, toolSets, 
         console.log(chalk.red(`    [${squad.name}] ${agentName} failed: ${err.message}`));
         return { error: err.message, summary: `FAILED: ${err.message}`, filesCreated: [] };
       }
-      console.log(chalk.yellow(`    [${squad.name}] ${agentName} failed (attempt 1) — retrying...`));
+      const delay = _retryDelay(err);
+      console.log(chalk.yellow(`    [${squad.name}] ${agentName} failed (attempt 1) — retrying in ${delay / 1000}s...`));
+      console.log(chalk.gray(`        Error: ${err.message}`));
+      await _sleep(delay);
     }
   }
 }

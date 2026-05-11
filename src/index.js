@@ -14,9 +14,9 @@ const { parseGithubRepo, checkGithubAccess, createGithubRepo } = require('./gith
 const { SUPPORTED, setLanguage, t } = require('./lang');
 
 const TIERS = {
-  '1': { thinking: null,                  max_tokens: 16000 },
-  '2': { thinking: { type: 'adaptive' },  max_tokens: 16000 },
-  '3': { thinking: { type: 'adaptive' },  max_tokens: 32000 },
+  '1': { model: 'claude-sonnet-4-6', thinking: null,                  max_tokens: 16000 },
+  '2': { model: 'claude-sonnet-4-6', thinking: { type: 'adaptive' },  max_tokens: 16000 },
+  '3': { model: 'claude-opus-4-7',   thinking: { type: 'adaptive' },  max_tokens: 32000 },
 };
 
 const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
@@ -113,7 +113,11 @@ async function askForGithubRepo() {
     }
 
     const visibility = access.private ? 'private' : 'public';
-    console.log(chalk.green(`✅  Access confirmed — ${parsed.full} (${visibility})\n`));
+    console.log(chalk.green(`✅  Access confirmed — ${parsed.full} (${visibility})`));
+    if (token.startsWith('github_pat_')) {
+      console.log(chalk.gray('    Note: fine-grained PAT detected. If push fails, ensure "Contents: Read and Write" is enabled in the token settings.'));
+    }
+    console.log('');
     return { ...parsed, token };
   }
 }

@@ -103,9 +103,9 @@ const TRANSLATIONS = {
     surfaceLabel:      'Surface',
     textLabel:         'Text',
     // Tier labels
-    tier1:             'Economy  — no extended thinking, faster and cheaper',
-    tier2:             'Balanced — adaptive extended thinking (Claude decides when to think)',
-    tier3:             'Maximum  — full extended thinking, highest quality',
+    tier1:             'Economy  — Sonnet, no extended thinking  (~$2–5 per build)',
+    tier2:             'Balanced — Sonnet, adaptive thinking     (~$5–15 per build)',
+    tier3:             'Maximum  — Opus, full extended thinking  (~$50–150 per build)',
     tierSelected:      (label) => `✅  Selected level: ${label}`,
     // Squad plan labels
     squadDomain:       'Domain    ',
@@ -203,9 +203,9 @@ const TRANSLATIONS = {
     surfaceLabel:      'משטח',
     textLabel:         'טקסט',
     // Tier labels
-    tier1:             'חסכוני  — ללא חשיבה עמוקה, מהיר וזול יותר',
-    tier2:             'מאוזן   — חשיבה עמוקה אדפטיבית (Claude מחליט מתי לחשוב)',
-    tier3:             'מקסימלי — חשיבה עמוקה מלאה, איכות גבוהה ביותר',
+    tier1:             'חסכוני  — Sonnet, ללא חשיבה עמוקה  (~$2–5 לבנייה)',
+    tier2:             'מאוזן   — Sonnet, חשיבה אדפטיבית   (~$5–15 לבנייה)',
+    tier3:             'מקסימלי — Opus,   חשיבה עמוקה מלאה (~$50–150 לבנייה)',
     tierSelected:      (label) => `✅  רמה נבחרה: ${label}`,
     // Squad plan labels
     squadDomain:       'תחום     ',

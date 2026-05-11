@@ -1,6 +1,11 @@
 'use strict';
 
 const chalk = require('chalk');
+const { sleep } = require('./withRetry');
+
+function retryDelay(err) {
+  return (err.message && err.message.includes('529')) ? 20000 : 5000;
+}
 
 // Run a single agent with one automatic retry on failure
 async function runAgentWithRetry(agentConfig, context, toolSets, agentRegistry) {
@@ -20,8 +25,10 @@ async function runAgentWithRetry(agentConfig, context, toolSets, agentRegistry) 
       return result;
     } catch (err) {
       if (attempt === 1) {
-        console.log(chalk.yellow(`  ⚠️  ${agentConfig.name} failed (attempt 1/2) — retrying automatically...`));
+        const delay = retryDelay(err);
+        console.log(chalk.yellow(`  ⚠️  ${agentConfig.name} failed (attempt 1/2) — retrying in ${delay / 1000}s...`));
         console.log(chalk.gray(`      Error: ${err.message}`));
+        await sleep(delay);
       } else {
         console.log(chalk.red(`  ✖  ${agentConfig.name} failed after 2 attempts: ${err.message}`));
         return { error: err.message, summary: `FAILED: ${err.message}`, filesCreated: [] };

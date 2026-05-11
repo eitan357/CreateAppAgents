@@ -3,6 +3,7 @@
 const Anthropic = require('@anthropic-ai/sdk');
 const chalk = require('chalk');
 const { getLangInstruction, t } = require('./lang');
+const { withRetry } = require('./withRetry');
 
 const GENERATOR_SYSTEM = `You are a senior UI/UX designer and brand strategist.
 Given application requirements, generate exactly 3 distinct design concepts as valid JSON.
@@ -134,12 +135,12 @@ async function generateConcepts(client, requirements, refinementHistory) {
     : [{ role: 'user', content:
         `Create 3 different design proposals for the following application.\n\nRequirements:\n${requirements}\n\nJSON schema:\n${CONCEPT_SCHEMA}` }];
 
-  const response = await client.messages.create({
+  const response = await withRetry(() => client.messages.create({
     model: 'claude-sonnet-4-6',
     max_tokens: 2000,
     system: [{ type: 'text', text: isRefinement ? getRefinerSystem() : GENERATOR_SYSTEM, cache_control: { type: 'ephemeral' } }],
     messages,
-  });
+  }), 'designPicker');
 
   const raw = response.content.find(b => b.type === 'text')?.text || '[]';
   const jsonMatch = raw.match(/\[[\s\S]*\]/);

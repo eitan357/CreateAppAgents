@@ -2,6 +2,7 @@
 
 const Anthropic = require('@anthropic-ai/sdk');
 const { t } = require('./lang');
+const { withRetry } = require('./withRetry');
 
 const SQUAD_SCHEMA = `{
   "squads": [
@@ -22,7 +23,7 @@ const SQUAD_SCHEMA = `{
 async function createSquadPlan(requirements, plan) {
   const client = new Anthropic();
 
-  const response = await client.messages.create({
+  const response = await withRetry(() => client.messages.create({
     model: 'claude-sonnet-4-6',
     max_tokens: 2000,
     system: `You are a technical project manager. Analyze app requirements and divide the application into feature squads — autonomous teams that each own a distinct, independent slice of the product.
@@ -46,7 +47,7 @@ ${SQUAD_SCHEMA}`,
       role: 'user',
       content: `Project: ${plan.projectName}\n\nDescription: ${plan.description}\n\nRequirements:\n${requirements}\n\nTech Stack:\n${JSON.stringify(plan.techStack, null, 2)}`,
     }],
-  }, { timeout: 10 * 60 * 1000 });
+  }, { timeout: 10 * 60 * 1000 }), 'squadPlanner');
 
   const text = response.content.find(b => b.type === 'text')?.text || '';
   const jsonMatch = text.match(/\{[\s\S]*\}/);

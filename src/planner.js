@@ -5,6 +5,7 @@ const path = require('path');
 const Anthropic = require('@anthropic-ai/sdk');
 const chalk = require('chalk');
 const { getLangInstruction, t } = require('./lang');
+const { withRetry } = require('./withRetry');
 
 const REQUIREMENTS_START = '---REQUIREMENTS_START---';
 const REQUIREMENTS_END   = '---REQUIREMENTS_END---';
@@ -130,12 +131,12 @@ async function callClaude(client, history, overrideUserMessage) {
     ? [{ role: 'user', content: overrideUserMessage }]
     : history;
 
-  const response = await client.messages.create({
+  const response = await withRetry(() => client.messages.create({
     model: 'claude-sonnet-4-6',
     max_tokens: 8192,
     system: [{ type: 'text', text: getSystemPrompt(), cache_control: { type: 'ephemeral' } }],
     messages,
-  });
+  }), 'planner');
 
   const text = response.content.find(b => b.type === 'text')?.text || '';
   return { text };
