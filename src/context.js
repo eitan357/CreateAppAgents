@@ -631,9 +631,6 @@ class ProjectContext {
     return lines.join('\n');
   }
 
-  buildContextMessage(agentName) {
-    return this.buildScopedContext(agentName);
-  }
 }
 
 module.exports = { ProjectContext };

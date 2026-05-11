@@ -190,21 +190,23 @@ docs/agent-plans/{agentName}-{squadId}.md:
   1. First: ...
 ```
 
-**כל 32 ה-agents שכותבים קוד** מחויבים בשלב זה:
+**כל 36 ה-agents שכותבים קוד** מחויבים בשלב זה:
 
 | קטגוריה | Agents |
 |---------|--------|
 | Core implementation | `backendDev`, `frontendDev`, `authAgent`, `integrationAgent` |
 | Platform build | `uiPrimitivesAgent`, `uiCompositeAgent`, `apiClientAgent`, `dbSchemaAgent` |
-| Per-squad specialists | `squadErrorHandlingAgent`, `squadCodeCleanupAgent`, `squadDeduplicationAgent`, `squadQaAgent`, `squadSecurityAgent` |
+| Per-squad specialists | `squadErrorHandlingAgent`, `squadCodeCleanupAgent`, `squadDeduplicationAgent`, `squadQaAgent` |
 | Mobile features (Platform Phase 3) | `notificationsAgent`, `deepLinksAgent`, `offlineFirstAgent`, `realtimeAgent`, `animationsAgent`, `onboardingAgent`, `monetizationAgent`, `mlMobileAgent`, `arVrAgent`, `widgetsExtensionsAgent`, `otaUpdatesAgent` |
-| Web features (Platform Phase 3) | `responsiveDesignAgent`, `pwaAgent`, `webMonetizationAgent`, `cmsAgent`, `cmsIntegratorAgent` |
+| Web features (Platform Phase 3) | `responsiveDesignAgent`, `pwaAgent`, `webMonetizationAgent`, `cmsIntegratorAgent` |
 | Cross-platform (Platform Phase 3) | `localizationAgent`, `socialSharingAgent` |
 | Global refinement | `codeDeduplicationAgent` |
 | Quality | `testWriter`, `loadTestingAgent`, `testFixer` |
 | Operations | `devops`, `analyticsMonitoring`, `appStorePublisher` |
 
-### עשרת השלבים של כל Squad
+> `squadSecurityAgent` — self-planning אופציונלי: מופעל רק כשנמצאות HIGH findings, לכן לא נכלל ברשימה.
+
+### 9 שלבי ה-Squad
 
 | שלב | Agent | משימה | קלט | פלט | סוג |
 |-----|-------|-------|-----|-----|-----|
@@ -226,8 +228,6 @@ docs/agent-plans/{agentName}-{squadId}.md:
 
 לאחר כל הsquads, `_mergeOutputsToContext()` ממזג פלטים:
 `auth:backendDev` + `listings:backendDev` → `agentOutputs['backendDev']`
-
----
 
 ---
 
@@ -253,7 +253,7 @@ docs/agent-plans/{agentName}-{squadId}.md:
 | **reviewer** | code review גלובלי: patterns, consistency בין squads | backendDev + frontendDev + authAgent + integrationAgent | `docs/code-review.md` | 🔍 |
 | **errorAuditAgent** | **סורק כל הקוד** → מדווח היכן חסר error handling (asyncHandler, ErrorBoundary, catch). **לא מתקן** — מדווח בלבד | backendDev + frontendDev + authAgent | `docs/audits/error-audit.md` | 🔍 |
 | **codeQualityAuditAgent** | **סורק כל הקוד** → מדווח כפילויות cross-squad, unused code, anti-patterns. **לא מתקן** — מדווח בלבד | backendDev + frontendDev + codeDeduplicationAgent | `docs/audits/code-quality-audit.md` | 🔍 |
-| **cmsQaAgent** *(opt, אם cmsAgent פעיל)* | **סורק CMS setup** → כפילויות במפתחות seed, keys חסרים, orphaned entries, cache/error handling בservice | cmsAgent + cmsIntegratorAgent + frontendDev | `docs/audits/cms-audit.md` | 🔍 |
+| **cmsQaAgent** *(opt, אם cmsIntegratorAgent פעיל)* | **סורק CMS setup** → כפילויות במפתחות seed, keys חסרים, orphaned entries, cache/error handling בservice | cmsIntegratorAgent + frontendDev | `docs/audits/cms-audit.md` | 🔍 |
 | **performanceAgent** *(opt)* | profiling מלא של האפליקציה: startup, memory, 60fps | frontendDev + frontendArchitect | `docs/performance-report.md` | 🔍 |
 | **webPerformanceAgent** *(opt)* | Core Web Vitals, bundle analysis, code splitting | frontendDev + frontendArchitect + renderingStrategyAgent | `docs/web-performance-report.md` | 🔍 |
 | **accessibilityAgent** *(opt)* | WCAG 2.1 review גלובלי | frontendDev | `docs/accessibility-report.md` | 🔍 |
@@ -349,7 +349,7 @@ Leaders Team writes → docs/guidelines/
                               ↓
                      injected via GUIDELINE_MAP in context.js:
   vpPmAgent         → Squad PM + platformPmAgent
-  techLeadAgent     → backendDev + frontendDev + authAgent
+  techLeadAgent     → backendDev + frontendDev + authAgent + integrationAgent
                        + squadErrorHandlingAgent + squadCodeCleanupAgent + squadDeduplicationAgent
   designLeadAgent   → squadDesignerAgent + uiPrimitivesAgent + uiCompositeAgent
   qaLeadAgent       → squadQaAgent + platformQaAgent
@@ -358,7 +358,7 @@ Leaders Team writes → docs/guidelines/
 
 ### Self-Planning Flow
 ```
-ALL 32 code-writing agents (no exceptions):
+ALL 36 code-writing agents (no exceptions):
 
   Step 0: write docs/agent-plans/{agentName}-{squadId}.md
           → list every file to create/modify + execution order
@@ -524,8 +524,8 @@ Feature infrastructure agents כמו `animationsAgent` (react-native-reanimated)
 
 | | |
 |-|-|
-| סה"כ agents | ~68 |
-| agents שמייצרים קוד (💻) | ~42 |
+| סה"כ agents | ~71 |
+| agents שמייצרים קוד (💻) | 36 |
 | agents שמייצרים מסמכי הנחיות (📋) | ~15 |
 | agents שמייצרים דוחות (🔍) | ~12 |
 | agents שמייצרים קונפיג (⚙️) | ~5 |

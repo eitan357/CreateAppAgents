@@ -273,7 +273,7 @@ const LAYER_DEFINITIONS = [
 ];
 
 // Agents that require shell access (run_command tool)
-const SHELL_AGENTS = new Set(['devops', 'testRunner']);
+const SHELL_AGENTS = new Set(['devops', 'testRunner', 'squadQaAgent']);
 
 // Agents whose failure should trigger a user decision (abort vs continue)
 const CRITICAL_AGENTS = new Set([
@@ -327,7 +327,6 @@ const OPTIONAL_AGENTS_GUIDE = `
 
 ### UX & Design (Layer 2) — Include whenever project has a frontend (web or mobile):
 - uxDesignerAgent      : Include for ANY project with a UI — defines user flows, text wireframes for every screen, empty/error/loading states, form UX patterns, microcopy. Essential for consistent UX.
-- designSystemAgent    : Include when project needs a consistent visual language — design tokens (colors/typography/spacing), base components (Button/Input/Modal/Toast/Skeleton), dark mode, Storybook stories. Depends on uxDesignerAgent.
 ### Web Design (Layer 2) — ONLY for web projects:
 - renderingStrategyAgent: Include for Next.js/Nuxt/Remix projects — CSR/SSR/SSG/ISR per-page decisions, App Router structure, React Query setup, protected routes, loading/error states
 

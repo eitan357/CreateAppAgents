@@ -2,7 +2,6 @@
 
 const DEPENDENCY_MAP = {
   // ── Planning & Discovery ──────────────────────────────────────────────────
-  pmAgent:                [],
   requirementsAnalyst:    [],
   mobileTechAdvisor:      ['requirementsAnalyst'],
   webTechAdvisor:         ['requirementsAnalyst'],
