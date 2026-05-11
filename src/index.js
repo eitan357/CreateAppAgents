@@ -238,7 +238,7 @@ async function main() {
 
   // ── Mode 1: AI Planning Session ─────────────────────────────────────────────
   if (mode === '1') {
-    requirements = await runPlanningSession(ask);
+    requirements = await runPlanningSession(ask, outputDir);
 
     console.log(chalk.bold.cyan(`\n${t('reqsHeader')}`));
     console.log(chalk.gray(requirements));

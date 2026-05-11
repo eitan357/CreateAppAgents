@@ -1,5 +1,7 @@
 'use strict';
 
+const fs   = require('fs');
+const path = require('path');
 const Anthropic = require('@anthropic-ai/sdk');
 const chalk = require('chalk');
 const { getLangInstruction, t } = require('./lang');
@@ -78,7 +80,7 @@ Write the section headers in the conversation language as instructed above.
 ---REQUIREMENTS_END---`;
 }
 
-async function runPlanningSession(ask) {
+async function runPlanningSession(ask, outputDir) {
   const client = new Anthropic();
   const history = [];
 
@@ -107,6 +109,13 @@ async function runPlanningSession(ask) {
       printAI(response.text.split(REQUIREMENTS_START)[0].trim());
       const requirements = extractRequirements(response.text);
       if (requirements) {
+        if (outputDir) {
+          fs.mkdirSync(outputDir, { recursive: true });
+          const draftPath = path.join(outputDir, 'requirements-draft.md');
+          fs.writeFileSync(draftPath, requirements, 'utf8');
+          console.log(chalk.bold.green(`\n📄  ${t('reqsDraftSaved')} ${draftPath}`));
+          console.log(chalk.gray(`    ${t('reqsDraftHint')}\n`));
+        }
         console.log(chalk.bold.green(`\n${t('reqsGenerated')}\n`));
         return requirements;
       }
@@ -123,7 +132,7 @@ async function callClaude(client, history, overrideUserMessage) {
 
   const response = await client.messages.create({
     model: 'claude-sonnet-4-6',
-    max_tokens: 2048,
+    max_tokens: 8192,
     system: [{ type: 'text', text: getSystemPrompt(), cache_control: { type: 'ephemeral' } }],
     messages,
   });
