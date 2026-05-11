@@ -16,8 +16,7 @@ const SELF_PLANNING_AGENTS = new Set([
   'uiPrimitivesAgent', 'uiCompositeAgent', 'apiClientAgent', 'dbSchemaAgent',
   // Per-squad specialists
   'squadErrorHandlingAgent', 'squadCodeCleanupAgent', 'squadDeduplicationAgent',
-  'squadQaAgent',
-  // squadSecurityAgent — self-planning is conditional (only on HIGH findings), handled in prompt
+  'squadQaAgent', 'squadSecurityAgent',
   // Layer 2
   'localizationAgent',
   // Mobile features (Layer 3b)
@@ -471,6 +470,13 @@ class ProjectContext {
     const spec = this.squadSpecs[squad.id];
     if (spec) {
       lines.push('# Squad Feature Spec (written by your Squad PM — implement exactly this)', spec, '');
+    }
+
+    // Squad design doc — injected so devs follow the screen-by-screen design
+    const designPath = path.join(this.outputDir, 'docs', 'squads', `${squad.id}-design.md`);
+    if (fs.existsSync(designPath)) {
+      lines.push('# Squad Design (written by your Squad Designer — follow this design exactly)',
+        fs.readFileSync(designPath, 'utf8'), '');
     }
 
     // Squad PM gaps — injected during fix rounds

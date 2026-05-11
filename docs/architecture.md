@@ -190,21 +190,19 @@ docs/agent-plans/{agentName}-{squadId}.md:
   1. First: ...
 ```
 
-**כל 36 ה-agents שכותבים קוד** מחויבים בשלב זה:
+**כל 37 ה-agents שכותבים קוד** מחויבים בשלב זה:
 
 | קטגוריה | Agents |
 |---------|--------|
 | Core implementation | `backendDev`, `frontendDev`, `authAgent`, `integrationAgent` |
 | Platform build | `uiPrimitivesAgent`, `uiCompositeAgent`, `apiClientAgent`, `dbSchemaAgent` |
-| Per-squad specialists | `squadErrorHandlingAgent`, `squadCodeCleanupAgent`, `squadDeduplicationAgent`, `squadQaAgent` |
+| Per-squad specialists | `squadErrorHandlingAgent`, `squadCodeCleanupAgent`, `squadDeduplicationAgent`, `squadQaAgent`, `squadSecurityAgent` |
 | Mobile features (Platform Phase 3) | `notificationsAgent`, `deepLinksAgent`, `offlineFirstAgent`, `realtimeAgent`, `animationsAgent`, `onboardingAgent`, `monetizationAgent`, `mlMobileAgent`, `arVrAgent`, `widgetsExtensionsAgent`, `otaUpdatesAgent` |
 | Web features (Platform Phase 3) | `responsiveDesignAgent`, `pwaAgent`, `webMonetizationAgent`, `cmsIntegratorAgent` |
 | Cross-platform (Platform Phase 3) | `localizationAgent`, `socialSharingAgent` |
 | Global refinement | `codeDeduplicationAgent` |
 | Quality | `testWriter`, `loadTestingAgent`, `testFixer` |
 | Operations | `devops`, `analyticsMonitoring`, `appStorePublisher` |
-
-> `squadSecurityAgent` — self-planning אופציונלי: מופעל רק כשנמצאות HIGH findings, לכן לא נכלל ברשימה.
 
 ### 9 שלבי ה-Squad
 
@@ -525,7 +523,7 @@ Feature infrastructure agents כמו `animationsAgent` (react-native-reanimated)
 | | |
 |-|-|
 | סה"כ agents | ~71 |
-| agents שמייצרים קוד (💻) | 36 |
+| agents שמייצרים קוד (💻) | 37 |
 | agents שמייצרים מסמכי הנחיות (📋) | ~15 |
 | agents שמייצרים דוחות (🔍) | ~12 |
 | agents שמייצרים קונפיג (⚙️) | ~5 |
