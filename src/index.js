@@ -14,9 +14,9 @@ const { parseGithubRepo, checkGithubAccess, createGithubRepo } = require('./gith
 const { SUPPORTED, setLanguage, t } = require('./lang');
 
 const TIERS = {
-  '1': { thinking: null,                  max_tokens: 4000 },
-  '2': { thinking: { type: 'adaptive' },  max_tokens: 6000 },
-  '3': { thinking: { type: 'adaptive' },  max_tokens: 8096 },
+  '1': { thinking: null,                  max_tokens: 16000 },
+  '2': { thinking: { type: 'adaptive' },  max_tokens: 16000 },
+  '3': { thinking: { type: 'adaptive' },  max_tokens: 32000 },
 };
 
 const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
@@ -120,7 +120,7 @@ async function askForGithubRepo() {
 
 async function selectTier() {
   console.log(chalk.bold.cyan(`\n━━━  ${t('qualityTitle')}  ━━━`));
-  console.log(chalk.gray('Select the level of Extended Thinking usage and tokens:\n'));
+  console.log(chalk.gray('Higher tiers use Extended Thinking for deeper reasoning and higher quality output:\n'));
   Object.entries(TIERS).forEach(([key, tier]) => {
     const tokens = tier.max_tokens.toLocaleString();
     console.log(chalk.white(`  ${key}️⃣   ${t(`tier${key}`)}  (max ${tokens} tokens)`));

@@ -147,11 +147,11 @@ END
 ▶  Select level (1, 2 or 3) [default: 2]:
 ```
 
-| Tier | Speed | Cost | Best for |
-|------|-------|------|----------|
-| 1 | Fastest | Lowest | Quick tests, simple APIs |
-| 2 | Medium | Medium | Most projects |
-| 3 | Slowest | Highest | Complex apps, production quality |
+| Tier | Thinking | Max tokens | Best for |
+|------|----------|------------|----------|
+| 1 | None | 16,000 | Quick tests, simple APIs |
+| 2 | Adaptive | 16,000 | Most projects (recommended) |
+| 3 | Full | 32,000 | Complex apps, highest quality |
 
 Press **Enter** to use the default (Balanced).
 
