@@ -540,7 +540,7 @@ Feature infrastructure agents כמו `animationsAgent` (react-native-reanimated)
 
 | | |
 |-|-|
-| סה"כ agents | ~71 |
+| סה"כ agents | ~73 |
 | agents שמייצרים קוד (💻) | 37 |
 | agents שמייצרים מסמכי הנחיות (📋) | ~15 |
 | agents שמייצרים דוחות (🔍) | ~12 |

@@ -85,6 +85,9 @@ const { createDbSchemaAgent }            = require('./agents/dbSchemaAgent');
 const { createSquadErrorHandlingAgent }  = require('./agents/squadErrorHandlingAgent');
 const { createSquadCodeCleanupAgent }    = require('./agents/squadCodeCleanupAgent');
 const { createSquadDeduplicationAgent }  = require('./agents/squadDeduplicationAgent');
+const { createSquadDesignerAgent }       = require('./agents/squadDesignerAgent');
+const { createSquadQaAgent }             = require('./agents/squadQaAgent');
+const { createSquadSecurityAgent }       = require('./agents/squadSecurityAgent');
 
 // ── Quality / Audit agents ────────────────────────────────────────────────────
 const { createCodeDeduplicationAgent }   = require('./agents/codeDeduplicationAgent');
@@ -173,6 +176,9 @@ const AGENT_REGISTRY = {
   squadErrorHandlingAgent:  createSquadErrorHandlingAgent,
   squadCodeCleanupAgent:    createSquadCodeCleanupAgent,
   squadDeduplicationAgent:  createSquadDeduplicationAgent,
+  squadDesignerAgent:       createSquadDesignerAgent,
+  squadQaAgent:             createSquadQaAgent,
+  squadSecurityAgent:       createSquadSecurityAgent,
   // Quality / Audit
   codeDeduplicationAgent:   createCodeDeduplicationAgent,
   errorAuditAgent:          createErrorAuditAgent,
@@ -282,12 +288,9 @@ const CRITICAL_AGENTS = new Set([
   'backendDev', 'frontendDev', 'authAgent',
 ]);
 
-// Agents re-run during quality fix rounds
-const FIX_ROUND_AGENTS = ['backendDev', 'frontendDev', 'authAgent'];
+// Dev agents re-run during fix rounds (quality fallback + PM fix rounds)
+const DEV_FIX_AGENTS = ['backendDev', 'frontendDev', 'authAgent'];
 const MAX_FIX_ROUNDS = 2;
-
-// Agents re-run during PM fix rounds (same dev team)
-const PM_FIX_ROUND_AGENTS = ['backendDev', 'frontendDev', 'authAgent'];
 const MAX_PM_FIX_ROUNDS = 2;
 
 // ── PM Plan schema ────────────────────────────────────────────────────────────
@@ -454,6 +457,9 @@ function getActiveAgents(plan) {
   names.add('squadErrorHandlingAgent');
   names.add('squadCodeCleanupAgent');
   names.add('squadDeduplicationAgent');
+  names.add('squadDesignerAgent');
+  names.add('squadQaAgent');
+  names.add('squadSecurityAgent');
 
   // CMS QA + per-squad integrator only if CMS was requested
   if ((plan.optionalAgents || []).includes('cmsIntegratorAgent')) {
@@ -856,7 +862,7 @@ async function orchestrate(requirements, projectName, outputDir, checkpoint = nu
           // No squad plan — fall back to global fix agents
           console.log(chalk.bold.cyan(`\n━━━  Fix Round ${round}: backendDev + frontendDev + authAgent  ━━━`));
           context.setFeedbackNotes(currentQualityFeedback);
-          const fixConfigs = FIX_ROUND_AGENTS
+          const fixConfigs = DEV_FIX_AGENTS
             .filter(name => activeAgents.has(name))
             .map(name => ({ name, needsShell: false }));
           await runLayerInParallel(fixConfigs, context, toolSets, AGENT_REGISTRY);
@@ -910,7 +916,7 @@ async function orchestrate(requirements, projectName, outputDir, checkpoint = nu
       console.log(chalk.bold.cyan(`\n━━━  PM Fix Round ${round}: backendDev + frontendDev + authAgent  ━━━`));
       context.setPmFeedbackNotes(pmFeedback);
 
-      const pmFixConfigs = PM_FIX_ROUND_AGENTS
+      const pmFixConfigs = DEV_FIX_AGENTS
         .filter(name => activeAgents.has(name))
         .map(name => ({ name, needsShell: false }));
 
@@ -1066,7 +1072,7 @@ async function orchestrateUpdate(changeRequest, checkpointData, outputDir, githu
     );
     if (runFix) {
       context.setPmFeedbackNotes(pmFeedback);
-      const fixConfigs = PM_FIX_ROUND_AGENTS
+      const fixConfigs = DEV_FIX_AGENTS
         .filter(name => activeAgents.has(name))
         .map(name => ({ name, needsShell: false }));
       await runLayerInParallel(fixConfigs, context, toolSets, AGENT_REGISTRY);
