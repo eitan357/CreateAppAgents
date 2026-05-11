@@ -130,8 +130,8 @@ it('should convert a local date-picker value to UTC before sending', () => {
 - Sorting a list of items by "newest first" — must use UTC epoch, not display string
 
 ## Forbidden Patterns
-- Never use `it.skip` or `xit` without a TODO comment explaining when it will be fixed
-- Never assert `toBeTruthy()` on objects — be specific (e.g., `toEqual({ id: '123', ... })`)
+- Never use \`it.skip\` or \`xit\` without a TODO comment explaining when it will be fixed
+- Never assert \`toBeTruthy()\` on objects — be specific (e.g., \`toEqual({ id: '123', ... })\`)
 - Never mock the module you are testing
 - Never write tests that depend on the order of execution
 ---

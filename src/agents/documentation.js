@@ -54,24 +54,24 @@ Initial entry:
 
 A step-by-step guide for a developer who just received this generated project and needs to get it running. This file is the **first thing they should read after cloning**.
 
-**How to write it:** First run `list_files` on the project root and `docs/` to discover which agents ran. Then read any existing docs (ARCHITECTURE.md, docs/deployment.md, docs/db-schema.md, .env.example) to gather the actual values before writing. Base the guide **only on what this specific project uses** — omit sections for services not present.
+**How to write it:** First run list_files on the project root and docs/ to discover which agents ran. Then read any existing docs (ARCHITECTURE.md, docs/deployment.md, docs/db-schema.md, .env.example) to gather the actual values before writing. Base the guide **only on what this specific project uses** — omit sections for services not present.
 
 Structure:
 
 #### ⚡ Minimum to run locally (always present)
 Step-by-step numbered list — the absolute minimum to see the app running:
-1. Copy `.env.example` → `.env` and fill in the values listed in the "Environment Variables" section below
-2. Start the database: `docker-compose up -d` (or manual DB setup if no Docker)
-3. Install dependencies: `bash scripts/install.sh` (or `npm install` in each folder)
+1. Copy .env.example to .env and fill in the values listed in the "Environment Variables" section below
+2. Start the database: run docker-compose up -d (or manual DB setup if no Docker)
+3. Install dependencies: run bash scripts/install.sh (or npm install in each folder)
 4. Run migrations + seed: exact commands for this project's ORM (prisma/sequelize/mongoose)
-5. Start backend: `npm run dev` (from `backend/`)
-6. Start frontend/mobile: `npm run dev` (from `frontend/`) or `npx expo start` (mobile)
+5. Start backend: run npm run dev from the backend/ folder
+6. Start frontend/mobile: run npm run dev from the frontend/ folder, or npx expo start for mobile
 
 #### 🔑 Environment Variables (always present)
 A table of **every** env var the project needs, grouped by service:
 | Variable | Where to get it | Example value | Required? |
 |----------|----------------|---------------|-----------|
-Read `.env.example` and all source files to find every `process.env.X` reference. Include ALL of them.
+Read .env.example and all source files to find every process.env.X reference. Include ALL of them.
 
 #### 🗄️ Database Setup (always present)
 - Which database is used and why
@@ -83,16 +83,16 @@ Read `.env.example` and all source files to find every `process.env.X` reference
 #### 🔥 Firebase Setup (include ONLY if project uses Firebase)
 Step-by-step:
 1. Go to https://console.firebase.google.com → Create project
-2. Add Android app (package: `com.yourcompany.appname`) → download `google-services.json` → place in `mobile/android/app/`
-3. Add iOS app (bundle ID from `app.json`) → download `GoogleService-Info.plist` → place in `mobile/ios/`
+2. Add Android app (package name: com.yourcompany.appname) → download google-services.json → place in mobile/android/app/
+3. Add iOS app (bundle ID from app.json) → download GoogleService-Info.plist → place in mobile/ios/
 4. Enable the services the project uses (list them: Authentication / FCM / Analytics / Dynamic Links)
-5. Copy keys to `.env`: which exact variables and where to find them in the Firebase console
+5. Copy keys to .env: which exact variables and where to find them in the Firebase console
 
 #### 💳 Stripe Setup (include ONLY if project uses Stripe)
 1. Create account at stripe.com → copy Secret Key and Publishable Key
 2. Create Products and Prices in dashboard → copy Price IDs (list exact IDs needed)
-3. Register webhook: Dashboard → Webhooks → Add endpoint → URL: `https://yourdomain.com/api/billing/webhook` → copy Signing Secret
-4. Test locally: `stripe listen --forward-to localhost:3001/api/billing/webhook`
+3. Register webhook: Dashboard → Webhooks → Add endpoint → URL: https://yourdomain.com/api/billing/webhook → copy Signing Secret
+4. Test locally: run stripe listen --forward-to localhost:3001/api/billing/webhook
 Env vars: which exact variables
 
 #### 💰 RevenueCat Setup (include ONLY if project uses RevenueCat)
@@ -104,7 +104,7 @@ Env vars: which exact variables
 
 #### 📊 Sentry Setup (include ONLY if project uses Sentry)
 1. Create account at sentry.io → New Project (choose platform)
-2. Copy DSN → add to `.env`
+2. Copy DSN → add to .env
 Steps for multiple DSNs if backend + mobile both use Sentry
 
 #### 🔐 Social Authentication Setup (include ONLY if project uses OAuth)
@@ -117,34 +117,34 @@ For each provider actually used (Google / Apple / Facebook):
 **iOS:**
 1. Apple Developer account ($99/year) — https://developer.apple.com
 2. Register bundle ID → create App ID in Identifiers
-3. Fastlane Match: `fastlane match init` → `fastlane match development`
-4. Env vars: `FASTLANE_USER`, `MATCH_GIT_URL`, `MATCH_KEYCHAIN_PASSWORD`
+3. Fastlane Match: run fastlane match init, then fastlane match development
+4. Env vars: FASTLANE_USER, MATCH_GIT_URL, MATCH_KEYCHAIN_PASSWORD
 
 **Android:**
-1. Generate keystore: `keytool -genkey -v -keystore release.keystore -alias release -keyalg RSA -keysize 2048 -validity 10000`
-2. Place in `android/app/` (DO NOT commit to git)
-3. Env vars: `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS`, `ANDROID_KEY_PASSWORD`
+1. Generate keystore: keytool -genkey -v -keystore release.keystore -alias release -keyalg RSA -keysize 2048 -validity 10000
+2. Place in android/app/ (DO NOT commit to git)
+3. Env vars: ANDROID_KEYSTORE_PASSWORD, ANDROID_KEY_ALIAS, ANDROID_KEY_PASSWORD
 
 #### 🏪 App Store & Google Play (include ONLY if appStorePublisher ran)
 **App Store Connect:**
 - Create app at https://appstoreconnect.apple.com
 - Fill: name, bundle ID, SKU, primary language, category
 - Upload screenshots (use Fastlane Snapshot or manual)
-- Submit: `fastlane ios release`
+- Submit: run fastlane ios release
 
 **Google Play Console:**
 - Create app at https://play.google.com/console
 - Complete: content rating questionnaire, data safety section, privacy policy URL
-- Submit: `fastlane android release`
+- Submit: run fastlane android release
 
 #### 🐳 Docker Deployment (include ONLY if docker-compose.yml exists)
-```bash
+\`\`\`bash
 docker-compose build
 docker-compose up -d
 docker-compose exec backend npm run db:migrate
 docker-compose exec backend npm run db:seed
-```
-For production: `docker-compose -f docker-compose.prod.yml up -d`
+\`\`\`
+For production: docker-compose -f docker-compose.prod.yml up -d
 
 #### ⚙️ GitHub Actions Secrets (include ONLY if .github/workflows/ exists)
 List every secret that must be added to Settings → Secrets → Actions, with a one-line description of where to get each one.
@@ -153,7 +153,7 @@ List every secret that must be added to Settings → Secrets → Actions, with a
 - Which languages are supported
 - Where locale files live
 - How to add a new translation key
-- RTL testing: `I18nManager.forceRTL(true)` in dev menu
+- RTL testing: call I18nManager.forceRTL(true) in dev menu
 
 ---
 
