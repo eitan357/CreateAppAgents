@@ -4,7 +4,9 @@ const chalk = require('chalk');
 const { sleep } = require('./withRetry');
 
 function retryDelay(err) {
-  return (err.message && err.message.includes('529')) ? 20000 : 5000;
+  if (err.message?.includes('529')) return 20000;
+  if (err.message?.includes('429')) return 60000;
+  return 5000;
 }
 
 // Run a single agent with one automatic retry on failure
@@ -38,7 +40,9 @@ async function runAgentWithRetry(agentConfig, context, toolSets, agentRegistry) 
 }
 
 async function runLayerInParallel(agentConfigs, context, toolSets, agentRegistry) {
-  const tasks = agentConfigs.map(async (agentConfig) => {
+  const STAGGER_MS = 3000;  // 3s between starts — avoids rate-limit bursts
+  const tasks = agentConfigs.map(async (agentConfig, i) => {
+    await sleep(i * STAGGER_MS);
     console.log(chalk.cyan(`  [parallel] Starting ${agentConfig.name}...`));
     const result = await runAgentWithRetry(agentConfig, context, toolSets, agentRegistry);
     if (!result) return [agentConfig.name, null];
