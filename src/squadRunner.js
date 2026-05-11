@@ -12,7 +12,9 @@ const MAX_QA_FIX_ROUNDS = 2;
 // ── Single-agent runner with retry ───────────────────────────────────────────
 const { sleep: _sleep } = require('./withRetry');
 function _retryDelay(err) {
-  return (err.message && err.message.includes('529')) ? 20000 : 5000;
+  if (err.message?.includes('529')) return 20000;
+  if (err.message?.includes('429')) return 60000;
+  return 5000;
 }
 
 async function _runSingleAgent(agentName, contextStr, squad, context, toolSets, agentRegistry) {
@@ -192,7 +194,9 @@ async function runSquad(squad, context, toolSets, agentRegistry, activeAgents) {
 // Run all squads in parallel, then merge their outputs so global Layer 4 agents
 // can find 'backendDev' / 'frontendDev' outputs as if one agent built the whole app.
 async function runAllSquads(squadPlan, context, toolSets, agentRegistry, activeAgents) {
-  const tasks = squadPlan.squads.map(async (squad) => {
+  const STAGGER_MS = 5000;  // 5s between squad starts — avoids rate-limit bursts
+  const tasks = squadPlan.squads.map(async (squad, i) => {
+    await _sleep(i * STAGGER_MS);
     console.log(chalk.bold.cyan(`\n  ▶  Squad: ${squad.name} — ${squad.userFacingArea}`));
     const results = await runSquad(squad, context, toolSets, agentRegistry, activeAgents);
     return { squad, results };
@@ -305,7 +309,10 @@ async function runAllSquadsUpdate(updatePlan, context, toolSets, agentRegistry, 
     }),
   ];
 
-  const allResults = (await Promise.all(tasks.map(t => t()))).filter(Boolean);
+  const STAGGER_MS = 5000;
+  const allResults = (await Promise.all(
+    tasks.map((t, i) => _sleep(i * STAGGER_MS).then(t))
+  )).filter(Boolean);
   _mergeOutputsToContext(allResults, context);
 
   const flatResults = {};
