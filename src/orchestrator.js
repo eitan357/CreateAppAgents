@@ -841,15 +841,14 @@ async function orchestrate(requirements, projectName, outputDir, checkpoint = nu
           const mapping = mapFindingsToSquads(currentQualityFeedback, context.squadPlan);
           console.log(chalk.bold.cyan(`\n━━━  Fix Round ${round}: routing findings to ${mapping.squadFindings.size} squad(s)  ━━━`));
 
-          const fixTasks = context.squadPlan.squads
-            .filter(squad => mapping.squadFindings.has(squad.id))
-            .map(async (squad) => {
-              const findings = mapping.squadFindings.get(squad.id).join('\n\n');
-              console.log(chalk.cyan(`  ▶  Routing quality findings to squad: ${squad.name}`));
-              await runSquadUpdate(squad, findings, context, toolSets, AGENT_REGISTRY, activeAgents);
-            });
+          const affectedSquads = context.squadPlan.squads
+            .filter(squad => mapping.squadFindings.has(squad.id));
 
-          await Promise.all(fixTasks);
+          for (const squad of affectedSquads) {
+            const findings = mapping.squadFindings.get(squad.id).join('\n\n');
+            console.log(chalk.cyan(`  ▶  Routing quality findings to squad: ${squad.name}`));
+            await runSquadUpdate(squad, findings, context, toolSets, AGENT_REGISTRY, activeAgents);
+          }
 
           if (mapping.platformAffected) {
             console.log(chalk.bold.cyan(`\n━━━  Fix Round ${round}: routing findings to platform team  ━━━`));
