@@ -48,7 +48,7 @@ Based on what you read, identify:
 ### A03 — Injection
 - [ ] No raw SQL string concatenation — use ORM query builders or parameterized queries
 - [ ] All user input passed to shell commands is escaped (prefer avoiding shell entirely)
-- [ ] MongoDB: no `$where` queries with user input; use $eq for equality checks
+- [ ] MongoDB: no \`$where\` queries with user input; use $eq for equality checks
 
 ### A04 — Insecure Design
 - [ ] Rate limiting on auth endpoints (login, register, forgot-password): max 10 req/15min
