@@ -482,7 +482,7 @@ function filterLayerAgents(layerDef, activeAgents, plan) {
 
 // ── Feedback loop helpers ─────────────────────────────────────────────────────
 function buildQualityFeedback(layerResults) {
-  const qualityAgents = ['testWriter', 'testRunner', 'testFixer', 'reviewer', 'security', 'performanceAgent', 'accessibilityAgent', 'dependencyManagementAgent'];
+  const qualityAgents = ['testWriter', 'testRunner', 'testFixer', 'reviewer', 'security', 'performanceAgent', 'webPerformanceAgent', 'accessibilityAgent', 'dependencyManagementAgent'];
   const sections = [];
 
   for (const agentName of qualityAgents) {

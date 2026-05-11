@@ -281,14 +281,20 @@ docs/agent-plans/{agentName}-{squadId}.md:
 ## 🔄 Quality Fix Loop (עד 2 סבבים, גלובלי)
 
 ```
-אם דוחות Quality מכילים בעיות → approval gate
+אחרי Layer 4c — buildQualityFeedback() אוסף סיכומים מ:
+  testWriter, testRunner, testFixer, reviewer, security,
+  performanceAgent, webPerformanceAgent, accessibilityAgent, dependencyManagementAgent
 
-  backendDev + frontendDev + authAgent
-    קוראים דוחות (feedbackNotes) — dependencies מדולגות
+אם יש בעיות → approval gate למשתמש
+
+  backendDev + frontendDev + authAgent (במקביל)
+    מקבלים את כל הדוחות דרך context.setFeedbackNotes()
     מתקנים קוד קיים (read_file → fix → write_file)
 
   Quality Re-run: Layer 4 → 4b → 4c
   approval gate → סבב נוסף אם נדרש (עד max 2)
+
+מימוש: orchestrator.js — לאחר layerDef.id === '4c'
 ```
 
 ---
@@ -298,7 +304,7 @@ docs/agent-plans/{agentName}-{squadId}.md:
 | Agent | משימה | קלט | פלט | סוג |
 |-------|-------|-----|-----|-----|
 | **devops** | **Step 0**: קורא את כל ה-`package.json` files, מזהה Expo native modules, מייצר `scripts/install.sh` חכם. אח"כ: Dockerfile, docker-compose, GitHub Actions CI/CD, nginx, env vars | systemArchitect + backendDev + frontendDev | `scripts/install.sh`, `Dockerfile`, `docker-compose.yml`, `.github/workflows/`, `nginx.conf` | ⚙️ |
-| **documentation** | README, API reference, setup guide, CONTRIBUTING | requirementsAnalyst + apiDesigner + backendDev + frontendDev + devops | `README.md`, `docs/api-reference.md`, `CONTRIBUTING.md` | 📋 |
+| **documentation** | README, developer guide, API reference, CONTRIBUTING, mobile dev guide (if RN). **גם כותב `docs/INDEX.md`** — מדריך ניווט לכל המסמכים האנושיים שנוצרו בbuild | requirementsAnalyst + apiDesigner + backendDev + frontendDev + devops | `README.md`, `docs/developer-guide.md`, `docs/api-reference.md`, `docs/INDEX.md` | 📋 |
 | **analyticsMonitoring** *(opt)* | Sentry, GA4/Plausible, RUM, feature flags | frontendDev + backendDev | Sentry config, analytics setup | 💻 + ⚙️ |
 | **seoAgent** *(opt)* | meta tags, Open Graph, JSON-LD, sitemap.xml, robots.txt | frontendDev + renderingStrategyAgent + frontendArchitect | SEO components, sitemap | 💻 |
 | **appStorePublisher** *(opt)* | Fastlane, code signing, App Store Connect + Google Play | systemArchitect + frontendDev + devops | Fastlane config, `docs/release-checklist.md` | ⚙️ + 📋 |
