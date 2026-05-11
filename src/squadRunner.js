@@ -309,4 +309,4 @@ async function runAllSquadsUpdate(updatePlan, context, toolSets, agentRegistry, 
   return flatResults;
 }
 
-module.exports = { runAllSquads, runAllSquadsUpdate };
+module.exports = { runAllSquads, runAllSquadsUpdate, runSquadUpdate };

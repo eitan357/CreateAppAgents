@@ -10,7 +10,7 @@ const { createSquadPlan, formatSquadPlan } = require('./squadPlanner');
 const { createFileSystemTools } = require('./tools/fileSystem');
 const { createShellTools } = require('./tools/shell');
 const { runLayerInParallel, runLayerSequential, getFailedAgents } = require('./layerRunner');
-const { runAllSquads, runAllSquadsUpdate } = require('./squadRunner');
+const { runAllSquads, runAllSquadsUpdate, runSquadUpdate } = require('./squadRunner');
 const { runPlatformPipeline } = require('./platformRunner');
 const { analyzeUpdate, formatUpdatePlan } = require('./updatePlanner');
 const { pushCheckpoint, pushToGithub } = require('./github');
@@ -503,6 +503,52 @@ function buildPmFeedback(pmReviewResult) {
   return summary || null;
 }
 
+// ── Map quality findings to responsible squads ────────────────────────────────
+function mapFindingsToSquads(feedbackText, squadPlan) {
+  const squads = (squadPlan && squadPlan.squads) || [];
+  const sections = feedbackText.split(/(?=### Findings from )/);
+  const squadFindingsMap = new Map();
+  const platformSections = [];
+
+  for (const section of sections) {
+    if (!section.trim()) continue;
+
+    const matchedSquads = new Set();
+
+    for (const squad of squads) {
+      const patterns = [
+        squad.backendModule  && `modules/${squad.backendModule}`,
+        squad.backendModule  && `/src/${squad.backendModule}/`,
+        squad.frontendModule && `src/${squad.frontendModule}/`,
+      ].filter(Boolean);
+
+      if (patterns.some(p => section.includes(p))) {
+        matchedSquads.add(squad.id);
+      }
+    }
+
+    if (/\bshared\/|\bplatform\//i.test(section)) {
+      platformSections.push(section);
+    }
+
+    // No squad-specific paths found — broadcast to all squads
+    if (matchedSquads.size === 0) {
+      for (const squad of squads) matchedSquads.add(squad.id);
+    }
+
+    for (const squadId of matchedSquads) {
+      if (!squadFindingsMap.has(squadId)) squadFindingsMap.set(squadId, []);
+      squadFindingsMap.get(squadId).push(section);
+    }
+  }
+
+  return {
+    squadFindings: squadFindingsMap,
+    platformAffected: platformSections.length > 0,
+    platformFindings: platformSections.join('\n\n'),
+  };
+}
+
 // ── Display helpers ───────────────────────────────────────────────────────────
 function formatPlan(plan) {
   const l3 = plan.layers?.layer3 || {};
@@ -769,7 +815,7 @@ async function orchestrate(requirements, projectName, outputDir, checkpoint = nu
 
         const runFix = await approveStep(
           `🔄  Fix Round ${round} / ${MAX_FIX_ROUNDS}`,
-          'Quality agents have finished. Development agents will read the findings and fix issues. Run a fix round?',
+          'Quality agents have finished. Findings will be routed to the responsible squads for fixing. Run a fix round?',
           currentQualityFeedback.slice(0, 1200) + (currentQualityFeedback.length > 1200 ? '\n...(truncated)' : ''),
         );
 
@@ -778,15 +824,44 @@ async function orchestrate(requirements, projectName, outputDir, checkpoint = nu
           break;
         }
 
-        console.log(chalk.bold.cyan(`\n━━━  Fix Round ${round}: backendDev + frontendDev + authAgent  ━━━`));
-        context.setFeedbackNotes(currentQualityFeedback);
+        if (context.squadPlan) {
+          // Squad mode: route each finding section to the squad responsible for the affected code
+          const mapping = mapFindingsToSquads(currentQualityFeedback, context.squadPlan);
+          console.log(chalk.bold.cyan(`\n━━━  Fix Round ${round}: routing findings to ${mapping.squadFindings.size} squad(s)  ━━━`));
 
-        const fixConfigs = FIX_ROUND_AGENTS
-          .filter(name => activeAgents.has(name))
-          .map(name => ({ name, needsShell: false }));
+          const fixTasks = context.squadPlan.squads
+            .filter(squad => mapping.squadFindings.has(squad.id))
+            .map(async (squad) => {
+              const findings = mapping.squadFindings.get(squad.id).join('\n\n');
+              console.log(chalk.cyan(`  ▶  Routing quality findings to squad: ${squad.name}`));
+              await runSquadUpdate(squad, findings, context, toolSets, AGENT_REGISTRY, activeAgents);
+            });
 
-        await runLayerInParallel(fixConfigs, context, toolSets, AGENT_REGISTRY);
-        context.setFeedbackNotes(null);
+          await Promise.all(fixTasks);
+
+          if (mapping.platformAffected) {
+            console.log(chalk.bold.cyan(`\n━━━  Fix Round ${round}: routing findings to platform team  ━━━`));
+            const platformAgents = ['uiPrimitivesAgent', 'uiCompositeAgent', 'apiClientAgent', 'dbSchemaAgent']
+              .filter(name => activeAgents.has(name));
+            for (const agentName of platformAgents) {
+              context.setPlatformUpdateNote(agentName, mapping.platformFindings);
+              try {
+                await runLayerSequential([{ name: agentName, needsShell: false }], context, toolSets, AGENT_REGISTRY);
+              } finally {
+                context.setPlatformUpdateNote(agentName, null);
+              }
+            }
+          }
+        } else {
+          // No squad plan — fall back to global fix agents
+          console.log(chalk.bold.cyan(`\n━━━  Fix Round ${round}: backendDev + frontendDev + authAgent  ━━━`));
+          context.setFeedbackNotes(currentQualityFeedback);
+          const fixConfigs = FIX_ROUND_AGENTS
+            .filter(name => activeAgents.has(name))
+            .map(name => ({ name, needsShell: false }));
+          await runLayerInParallel(fixConfigs, context, toolSets, AGENT_REGISTRY);
+          context.setFeedbackNotes(null);
+        }
 
         console.log(chalk.green(`  ✅  Fix Round ${round} complete — re-running Quality to verify...`));
         const rerunResults = await runQualityLayers(activeAgents, context, toolSets, context.plan);

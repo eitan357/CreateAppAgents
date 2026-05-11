@@ -278,7 +278,7 @@ docs/agent-plans/{agentName}-{squadId}.md:
 
 ---
 
-## 🔄 Quality Fix Loop (עד 2 סבבים, גלובלי)
+## 🔄 Quality Fix Loop (עד 2 סבבים, מבוסס-צוותים)
 
 ```
 אחרי Layer 4c — buildQualityFeedback() אוסף סיכומים מ:
@@ -287,14 +287,26 @@ docs/agent-plans/{agentName}-{squadId}.md:
 
 אם יש בעיות → approval gate למשתמש
 
-  backendDev + frontendDev + authAgent (במקביל)
-    מקבלים את כל הדוחות דרך context.setFeedbackNotes()
-    מתקנים קוד קיים (read_file → fix → write_file)
+  mapFindingsToSquads() מנתח את טקסט הממצאים:
+    - מזהה נתיבי קבצים (modules/{backendModule}/, src/{frontendModule}/)
+    - ממפה כל סקציה לצוות האחראי
+    - סקציות ללא שיוך ספציפי → מופצות לכל הצוותים
+    - shared/ / platform/ → נשלחות לצוות הפלטפורמה
+
+  כל צוות מקבל רק את הממצאים הרלוונטיים אליו:
+    runSquadUpdate(squad, filteredFindings, ...) — מריץ את pipeline הצוות המלא:
+      PM spec update → devs fix → cleanup → QA → security → PM review
+
+  צוות פלטפורמה (אם shared/ files נפגעו):
+    uiPrimitivesAgent + uiCompositeAgent + apiClientAgent + dbSchemaAgent (סדרתי)
+    context.setPlatformUpdateNote() מזריק את הממצאים
 
   Quality Re-run: Layer 4 → 4b → 4c
   approval gate → סבב נוסף אם נדרש (עד max 2)
 
-מימוש: orchestrator.js — לאחר layerDef.id === '4c'
+fallback (ללא squad plan): backendDev + frontendDev + authAgent (במקביל) — כמקודם
+
+מימוש: orchestrator.js — mapFindingsToSquads() + לאחר layerDef.id === '4c'
 ```
 
 ---
