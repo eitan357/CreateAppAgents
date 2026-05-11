@@ -723,6 +723,11 @@ async function orchestrate(requirements, projectName, outputDir, checkpoint = nu
       console.log(chalk.gray(`  ☁️   checkpoint saved to GitHub (${layerLabel})`));
     } else {
       console.log(chalk.yellow(`  ⚠️   GitHub push failed (${layerLabel}): ${result.error}`));
+      if (result.error && result.error.includes('403')) {
+        console.log(chalk.gray('      If you are using a fine-grained PAT, ensure it has "Contents: Read and Write" permission.'));
+        console.log(chalk.gray('      If you are using a classic PAT, ensure the "repo" scope is enabled.'));
+        console.log(chalk.gray('      The generated code is saved locally — GitHub sync will be skipped for this run.'));
+      }
     }
   }
 

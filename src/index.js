@@ -113,7 +113,11 @@ async function askForGithubRepo() {
     }
 
     const visibility = access.private ? 'private' : 'public';
-    console.log(chalk.green(`✅  Access confirmed — ${parsed.full} (${visibility})\n`));
+    console.log(chalk.green(`✅  Access confirmed — ${parsed.full} (${visibility})`));
+    if (token.startsWith('github_pat_')) {
+      console.log(chalk.gray('    Note: fine-grained PAT detected. If push fails, ensure "Contents: Read and Write" is enabled in the token settings.'));
+    }
+    console.log('');
     return { ...parsed, token };
   }
 }
