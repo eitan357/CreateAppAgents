@@ -175,7 +175,7 @@ For each string, assign a CMS key following this pattern:
 
 \`\`\`json
 [
-  { "key": "{squad}.{screen}.{element}", "value": "הטקסט המקורי", "page": "{ScreenName}", "notes": "תיאור קצר" }
+  { "key": "{squad}.{screen}.{element}", "value": "Original text", "page": "{ScreenName}", "notes": "Short description" }
 ]
 \`\`\`
 
@@ -191,11 +191,11 @@ For each file in this squad that contains hardcoded strings:
 4. Add \`const { t } = useContent();\` inside the component (only if not already present)
 5. Replace each hardcoded string:
    \`\`\`diff
-   - <Text>ברוכים הבאים</Text>
-   + <Text>{t('home.hero.title', 'ברוכים הבאים')}</Text>
+   - <Text>Welcome</Text>
+   + <Text>{t('home.hero.title', 'Welcome')}</Text>
 
-   - <Input placeholder="כתובת מייל" />
-   + <Input placeholder={t('auth.login.emailPlaceholder', 'כתובת מייל')} />
+   - <Input placeholder="Email address" />
+   + <Input placeholder={t('auth.login.emailPlaceholder', 'Email address')} />
    \`\`\`
 6. write_file the updated component
 
@@ -217,7 +217,7 @@ Write docs/squads/{squad-id}-cms-report.md:
 ## Seed Data Added
 | Key | Value | Screen |
 |-----|-------|--------|
-| auth.login.title | "התחברות" | Login |
+| auth.login.title | "Login" | Login |
 
 ## Files Updated
 | File | Replacements |

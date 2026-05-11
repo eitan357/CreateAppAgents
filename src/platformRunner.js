@@ -19,8 +19,11 @@ const PLATFORM_FEATURE_AGENTS = [
   'socialSharingAgent',
   // Web feature infrastructure
   'responsiveDesignAgent', 'pwaAgent', 'webMonetizationAgent',
+  // Cross-platform i18n infrastructure
+  'localizationAgent',
 ];
 
+const QA_AGENT_CONFIG  = { name: 'platformQaAgent', needsShell: false };
 const MAX_PLATFORM_QA_FIX_ROUNDS = 2;
 
 // ── Report readers ────────────────────────────────────────────────────────────
@@ -68,14 +71,23 @@ async function runPlatformPipeline(context, toolSets, agentRegistry, activeAgent
     }
   }
 
+  // Runs buildConfigs then (optionally) the platform QA agent — shared by fix loops
+  async function _runBuildThenQa(withQa) {
+    if (buildConfigs.length > 0) {
+      _track(await runLayerSequential(buildConfigs, context, toolSets, agentRegistry));
+    }
+    if (withQa) {
+      _track(await runLayerSequential([QA_AGENT_CONFIG], context, toolSets, agentRegistry));
+    }
+  }
+
   // Phase 1 — Platform PM writes the platform spec
   if (agentRegistry['platformPmAgent'] && activeAgents.has('platformPmAgent')) {
     console.log(chalk.bold.yellow('  [Platform] Phase 1 — PM writing platform spec...'));
-    const r = await runLayerSequential(
+    _track(await runLayerSequential(
       [{ name: 'platformPmAgent', needsShell: false }],
       context, toolSets, agentRegistry,
-    );
-    _track(r);
+    ));
   }
 
   // Phase 2 — Platform Build agents (sequential — each builds on previous)
@@ -99,12 +111,10 @@ async function runPlatformPipeline(context, toolSets, agentRegistry, activeAgent
   }
 
   // Phase 4 — Platform QA + fix loop (max MAX_PLATFORM_QA_FIX_ROUNDS)
-  if (agentRegistry['platformQaAgent'] && activeAgents.has('platformQaAgent')) {
+  const hasQaAgent = agentRegistry['platformQaAgent'] && activeAgents.has('platformQaAgent');
+  if (hasQaAgent) {
     console.log(chalk.bold.yellow('  [Platform] Phase 4 — QA review...'));
-    _track(await runLayerSequential(
-      [{ name: 'platformQaAgent', needsShell: false }],
-      context, toolSets, agentRegistry,
-    ));
+    _track(await runLayerSequential([QA_AGENT_CONFIG], context, toolSets, agentRegistry));
 
     for (let round = 1; round <= MAX_PLATFORM_QA_FIX_ROUNDS; round++) {
       if (!_platformQaHasIssues(context.outputDir)) {
@@ -112,14 +122,8 @@ async function runPlatformPipeline(context, toolSets, agentRegistry, activeAgent
         break;
       }
       console.log(chalk.yellow(`  [Platform] QA found issues — fix round ${round}/${MAX_PLATFORM_QA_FIX_ROUNDS}...`));
-      if (buildConfigs.length > 0) {
-        _track(await runLayerSequential(buildConfigs, context, toolSets, agentRegistry));
-      }
       console.log(chalk.bold.yellow(`  [Platform] QA re-check after fix round ${round}...`));
-      _track(await runLayerSequential(
-        [{ name: 'platformQaAgent', needsShell: false }],
-        context, toolSets, agentRegistry,
-      ));
+      await _runBuildThenQa(true);
       if (round >= MAX_PLATFORM_QA_FIX_ROUNDS && _platformQaHasIssues(context.outputDir)) {
         console.log(chalk.gray('  [Platform] Max QA fix rounds reached — continuing.'));
       }
@@ -143,18 +147,8 @@ async function runPlatformPipeline(context, toolSets, agentRegistry, activeAgent
   // Phase 7 — Fix round if PM found gaps (build → QA re-check → PM re-review)
   if (_platformPmHasGaps(context.outputDir)) {
     console.log(chalk.yellow('  [Platform] Phase 7 — PM found gaps — running fix round...'));
-    if (buildConfigs.length > 0) {
-      _track(await runLayerSequential(buildConfigs, context, toolSets, agentRegistry));
-    }
-
-    if (agentRegistry['platformQaAgent'] && activeAgents.has('platformQaAgent')) {
-      console.log(chalk.bold.yellow('  [Platform] QA re-check after PM fix round...'));
-      _track(await runLayerSequential(
-        [{ name: 'platformQaAgent', needsShell: false }],
-        context, toolSets, agentRegistry,
-      ));
-    }
-
+    if (hasQaAgent) console.log(chalk.bold.yellow('  [Platform] QA re-check after PM fix round...'));
+    await _runBuildThenQa(hasQaAgent);
     console.log(chalk.bold.yellow('  [Platform] PM re-reviewing after fix...'));
     const reReview = await _runPlatformPmReview(context, toolSets);
     if (reReview && !reReview.error) allFilesCreated.push(...(reReview.filesCreated || []));

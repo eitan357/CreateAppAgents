@@ -56,36 +56,36 @@ Only run the commands that match the project structure — skip those whose dire
 Write the raw results report so the testFixer agent can read it:
 
 \`\`\`
-# תוצאות הרצת בדיקות — Raw Output
+# Test Run Results — Raw Output
 
 ## Backend Tests
-**סטטוס:** ✅ עבר / ❌ נכשל / ⚠️ שגיאת הרצה
-**עבר:** X   **נכשל:** Y   **דולג:** Z   **כיסוי ממוצע:** N%
+**Status:** ✅ Passed / ❌ Failed / ⚠️ Run error
+**Passed:** X   **Failed:** Y   **Skipped:** Z   **Average coverage:** N%
 
-### בדיקות שנכשלו:
-| שם הבדיקה | שגיאה | קובץ |
+### Failed tests:
+| Test name | Error | File |
 |-----------|-------|------|
 | auth.test.js > login with invalid token | Expected 401 received 200 | backend/src/__tests__/auth.test.js:45 |
 
-### כיסוי לפי קובץ:
-| קובץ | כיסוי שורות | כיסוי ענפים |
-|------|-------------|-------------|
+### Coverage by file:
+| File | Line coverage | Branch coverage |
+|------|---------------|----------------|
 | routes/auth.js | 87% | 72% |
 
 ## Frontend Tests
-[אותו פורמט]
+[same format]
 
 ## E2E Tests
-[אותו פורמט]
+[same format]
 
 ## Mobile Tests
-[אותו פורמט]
+[same format]
 
-## סיכום ריצה
-- בדיקות שעברו: N
-- בדיקות שנכשלו: N (לפי שגיאה בקוד / בטסט — הערכה ראשונית)
-- כיסוי ממוצע: N%
-- קבצים עם כיסוי < 60%: [רשימה]
+## Run Summary
+- Tests passed: N
+- Tests failed: N (by code error / test error — initial assessment)
+- Average coverage: N%
+- Files with coverage < 60%: [list]
 \`\`\`
 
 ## Rules

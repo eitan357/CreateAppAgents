@@ -2,7 +2,6 @@
 
 const DEPENDENCY_MAP = {
   // ── Planning & Discovery ──────────────────────────────────────────────────
-  pmAgent:                [],
   requirementsAnalyst:    [],
   mobileTechAdvisor:      ['requirementsAnalyst'],
   webTechAdvisor:         ['requirementsAnalyst'],
@@ -13,8 +12,8 @@ const DEPENDENCY_MAP = {
   systemArchitect:        ['requirementsAnalyst'],
   dataArchitect:          ['requirementsAnalyst', 'systemArchitect'],
   apiDesigner:            ['requirementsAnalyst', 'systemArchitect'],
-  frontendArchitect:      ['requirementsAnalyst', 'systemArchitect'],
-  renderingStrategyAgent: ['requirementsAnalyst', 'systemArchitect', 'frontendArchitect'],
+  frontendArchitect:      ['requirementsAnalyst', 'systemArchitect', 'mobileTechAdvisor', 'webTechAdvisor'],
+  renderingStrategyAgent: ['requirementsAnalyst', 'systemArchitect', 'frontendArchitect', 'webTechAdvisor'],
   uxDesignerAgent:        ['requirementsAnalyst', 'systemArchitect'],
   designLeadAgent:        ['requirementsAnalyst', 'frontendArchitect', 'uxDesignerAgent'],
   localizationAgent:      ['requirementsAnalyst', 'frontendArchitect'],
@@ -41,7 +40,7 @@ const DEPENDENCY_MAP = {
 
   // ── Core Implementation ───────────────────────────────────────────────────
   backendDev:             ['systemArchitect', 'dataArchitect', 'apiDesigner', 'apiClientAgent', 'dbSchemaAgent'],
-  frontendDev:            ['systemArchitect', 'frontendArchitect', 'apiDesigner', 'uxDesignerAgent', 'designLeadAgent', 'localizationAgent', 'uiPrimitivesAgent', 'uiCompositeAgent', 'apiClientAgent', 'inputPolicyAgent'],
+  frontendDev:            ['systemArchitect', 'frontendArchitect', 'apiDesigner', 'uxDesignerAgent', 'designLeadAgent', 'localizationAgent', 'uiPrimitivesAgent', 'uiCompositeAgent', 'apiClientAgent', 'inputPolicyAgent', 'mobileTechAdvisor', 'webTechAdvisor'],
   authAgent:              ['systemArchitect', 'apiDesigner', 'dataArchitect', 'apiClientAgent', 'dbSchemaAgent', 'inputPolicyAgent'],
   integrationAgent:       ['systemArchitect', 'apiDesigner', 'apiClientAgent'],
 

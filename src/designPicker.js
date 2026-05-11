@@ -2,23 +2,25 @@
 
 const Anthropic = require('@anthropic-ai/sdk');
 const chalk = require('chalk');
+const { getLangInstruction, t } = require('./lang');
 
-// ── Prompt for generating 3 design concepts ───────────────────────────────────
 const GENERATOR_SYSTEM = `You are a senior UI/UX designer and brand strategist.
 Given application requirements, generate exactly 3 distinct design concepts as valid JSON.
 Each concept must be meaningfully different in mood, palette, and visual personality.
 Return ONLY a valid JSON array — no markdown, no explanation, just the JSON.`;
 
-const REFINER_SYSTEM = `You are a senior UI/UX designer helping a client refine design concepts.
-You speak Hebrew. When the client requests changes, update the concepts and return the full
+function getRefinerSystem() {
+  return `You are a senior UI/UX designer helping a client refine design concepts.
+${getLangInstruction()} When the client requests changes, update the concepts and return the full
 updated JSON array (same format, same 3 concepts). Return ONLY valid JSON — no extra text.`;
+}
 
 const CONCEPT_SCHEMA = `[
   {
     "id": 1,
-    "name": "שם העיצוב בעברית",
-    "tagline": "משפט קצר שמסכם את האופי",
-    "mood": "תיאור האופי הויזואלי (2-3 משפטים)",
+    "name": "Design name in English",
+    "tagline": "Short sentence summarizing the character",
+    "mood": "Description of the visual character (2-3 sentences)",
     "colors": {
       "primary":    "#hex",
       "secondary":  "#hex",
@@ -28,16 +30,16 @@ const CONCEPT_SCHEMA = `[
       "text":       "#hex"
     },
     "typography": {
-      "heading": "שם גופן כותרות",
-      "body":    "שם גופן גוף",
-      "style":   "תיאור סגנון הטיפוגרפיה"
+      "heading": "Heading font name",
+      "body":    "Body font name",
+      "style":   "Typography style description"
     },
-    "cornerRadius": "חד | בינוני | עגול מאוד",
-    "shadows":      "ללא | עדין | בולט",
-    "animations":   "ללא | עדינות | אקספרסיביות",
-    "darkMode":     "ברירת מחדל | אופציונלי | לא נתמך",
-    "layoutStyle":  "תיאור מבנה הממשק",
-    "inspiration":  "מוצרים דומים (לדוגמה: Notion, Linear, Stripe)"
+    "cornerRadius": "Sharp | Medium | Very Rounded",
+    "shadows":      "None | Subtle | Prominent",
+    "animations":   "None | Subtle | Expressive",
+    "darkMode":     "Default | Optional | Not Supported",
+    "layoutStyle":  "Description of the interface structure",
+    "inspiration":  "Similar products (e.g. Notion, Linear, Stripe)"
   }
 ]`;
 
@@ -52,7 +54,6 @@ function swatch(hex, label) {
 
 function textOnBg(hex, text) {
   try {
-    // pick white or black text based on luminance
     const r = parseInt(hex.slice(1, 3), 16);
     const g = parseInt(hex.slice(3, 5), 16);
     const b = parseInt(hex.slice(5, 7), 16);
@@ -70,53 +71,47 @@ function displayConcept(concept, index) {
 
   console.log('\n' + border);
   console.log(
-    chalk.hex(c.primary).bold(`  עיצוב ${index + 1} — ${concept.name}`) +
+    chalk.hex(c.primary).bold(`  Design ${index + 1} — ${concept.name}`) +
     chalk.gray(`  "${concept.tagline}"`)
   );
   console.log(border);
 
-  // Color palette row
-  console.log(chalk.gray('\n  צבעים:'));
+  console.log(chalk.gray(`\n  ${t('colorsLabel')}`));
   console.log(
-    `    ${swatch(c.primary,    'ראשי')}   ` +
-    `${swatch(c.secondary, 'משני')}   ` +
-    `${swatch(c.accent,    'הדגשה')}`
+    `    ${swatch(c.primary,    t('primaryLabel'))}   ` +
+    `${swatch(c.secondary, t('secondaryLabel'))}   ` +
+    `${swatch(c.accent,    t('accentLabel'))}`
   );
   console.log(
-    `    ${swatch(c.background, 'רקע')}    ` +
-    `${swatch(c.surface,   'משטח')}   ` +
-    `${swatch(c.text,      'טקסט')}`
+    `    ${swatch(c.background, t('backgroundLabel'))}    ` +
+    `${swatch(c.surface,   t('surfaceLabel'))}   ` +
+    `${swatch(c.text,      t('textLabel'))}`
   );
 
-  // Typography
-  console.log(chalk.gray('\n  טיפוגרפיה:'));
-  console.log(`    כותרות: ${chalk.white(concept.typography.heading)}  |  גוף: ${chalk.white(concept.typography.body)}`);
+  console.log(chalk.gray(`\n  ${t('typographyLabel')}`));
+  console.log(`    ${t('headingsLabel')} ${chalk.white(concept.typography.heading)}  |  ${t('bodyLabel')} ${chalk.white(concept.typography.body)}`);
   console.log(`    ${chalk.gray(concept.typography.style)}`);
 
-  // Style details
-  console.log(chalk.gray('\n  סגנון:'));
-  console.log(`    פינות: ${chalk.white(concept.cornerRadius)}   צללים: ${chalk.white(concept.shadows)}   אנימציה: ${chalk.white(concept.animations)}`);
-  console.log(`    Dark mode: ${chalk.white(concept.darkMode)}`);
+  console.log(chalk.gray(`\n  ${t('styleLabel')}`));
+  console.log(`    ${t('cornersLabel')} ${chalk.white(concept.cornerRadius)}   ${t('shadowsLabel')} ${chalk.white(concept.shadows)}   ${t('animationLabel')} ${chalk.white(concept.animations)}`);
+  console.log(`    ${t('darkModeLabel')} ${chalk.white(concept.darkMode)}`);
 
-  // Layout preview (ASCII)
-  console.log(chalk.gray('\n  מבנה ממשק:'));
+  console.log(chalk.gray(`\n  ${t('previewLabel').replace(':', '')} — ${t('styleLabel').replace(':', '')}`));
   console.log('    ' + chalk.gray(concept.layoutStyle));
 
-  // Mood & inspiration
-  console.log(chalk.gray('\n  אופי:'));
+  console.log(chalk.gray(`\n  ${t('characterLabel')}`));
   concept.mood.split('. ').filter(Boolean).forEach(s => {
     console.log(`    ${chalk.white('• ' + s.trim())}`);
   });
-  console.log(chalk.gray(`\n  השראה: ${concept.inspiration}`));
+  console.log(chalk.gray(`\n  ${t('inspirationLabel')} ${concept.inspiration}`));
 
-  // Mini UI preview using the palette
-  console.log(chalk.gray('\n  תצוגה מקדימה:'));
-  const navBg   = textOnBg(c.primary,    `  ◉ ${concept.name}                    `);
-  const btnPrim = textOnBg(c.primary,    '  פעולה ראשית  ');
-  const btnSec  = chalk.hex(c.primary)('[ פעולה משנית ]');
+  console.log(chalk.gray(`\n  ${t('previewLabel')}`));
+  const navBg   = textOnBg(c.primary, `  ◉ ${concept.name}                    `);
+  const btnPrim = textOnBg(c.primary, '  Primary Action  ');
+  const btnSec  = chalk.hex(c.primary)('[ Secondary Action ]');
   console.log('    ' + navBg);
-  console.log('    ' + chalk.bgHex(c.background).hex(c.text)('  תוכן ראשי / כרטיסיה                '));
-  console.log('    ' + chalk.bgHex(c.surface).hex(c.text)('  משטח מורם / מודאל                   '));
+  console.log('    ' + chalk.bgHex(c.background).hex(c.text)('  Main Content / Card                 '));
+  console.log('    ' + chalk.bgHex(c.surface).hex(c.text)('  Raised Surface / Modal               '));
   console.log(`    ${btnPrim}  ${btnSec}`);
 
   console.log('\n' + border + '\n');
@@ -125,7 +120,7 @@ function displayConcept(concept, index) {
 // ── Display all 3 concepts ────────────────────────────────────────────────────
 function displayAllConcepts(concepts) {
   console.log(chalk.bold.cyan('\n\n╔══════════════════════════════════════════════════════════╗'));
-  console.log(chalk.bold.cyan('║               🎨  3 הצעות עיצוב לאפליקציה שלך            ║'));
+  console.log(chalk.bold.cyan(`║   ${t('designTitle').padEnd(57)}║`));
   console.log(chalk.bold.cyan('╚══════════════════════════════════════════════════════════╝'));
   concepts.forEach((c, i) => displayConcept(c, i));
 }
@@ -137,18 +132,18 @@ async function generateConcepts(client, requirements, refinementHistory) {
   const messages = isRefinement
     ? refinementHistory
     : [{ role: 'user', content:
-        `צור 3 הצעות עיצוב שונות לאפליקציה הבאה.\n\nדרישות:\n${requirements}\n\nסכמת JSON:\n${CONCEPT_SCHEMA}` }];
+        `Create 3 different design proposals for the following application.\n\nRequirements:\n${requirements}\n\nJSON schema:\n${CONCEPT_SCHEMA}` }];
 
   const response = await client.messages.create({
     model: 'claude-sonnet-4-6',
     max_tokens: 2000,
-    system: [{ type: 'text', text: isRefinement ? REFINER_SYSTEM : GENERATOR_SYSTEM, cache_control: { type: 'ephemeral' } }],
+    system: [{ type: 'text', text: isRefinement ? getRefinerSystem() : GENERATOR_SYSTEM, cache_control: { type: 'ephemeral' } }],
     messages,
   });
 
   const raw = response.content.find(b => b.type === 'text')?.text || '[]';
   const jsonMatch = raw.match(/\[[\s\S]*\]/);
-  if (!jsonMatch) throw new Error('לא הצלחתי לייצר הצעות עיצוב תקינות.');
+  if (!jsonMatch) throw new Error('Failed to generate valid design proposals.');
   return JSON.parse(jsonMatch[0]);
 }
 
@@ -156,33 +151,33 @@ async function generateConcepts(client, requirements, refinementHistory) {
 function formatDesignSpec(concept) {
   const c = concept.colors;
   return `
-## מפרט עיצוב נבחר — ${concept.name}
-### אופי
+## Selected Design Spec — ${concept.name}
+### Character
 ${concept.mood}
 
-### פלטת צבעים
-- ראשי:      ${c.primary}
-- משני:      ${c.secondary}
-- הדגשה:     ${c.accent}
-- רקע:       ${c.background}
-- משטח:      ${c.surface}
-- טקסט:      ${c.text}
+### Color Palette
+- Primary:    ${c.primary}
+- Secondary:  ${c.secondary}
+- Accent:     ${c.accent}
+- Background: ${c.background}
+- Surface:    ${c.surface}
+- Text:       ${c.text}
 
-### טיפוגרפיה
-- כותרות: ${concept.typography.heading}
-- גוף:    ${concept.typography.body}
-- סגנון:  ${concept.typography.style}
+### Typography
+- Headings: ${concept.typography.heading}
+- Body:     ${concept.typography.body}
+- Style:    ${concept.typography.style}
 
-### סגנון
-- פינות:   ${concept.cornerRadius}
-- צללים:   ${concept.shadows}
-- אנימציה: ${concept.animations}
+### Style
+- Corners:   ${concept.cornerRadius}
+- Shadows:   ${concept.shadows}
+- Animation: ${concept.animations}
 - Dark mode: ${concept.darkMode}
 
-### מבנה ממשק
+### Interface Structure
 ${concept.layoutStyle}
 
-### השראה
+### Inspiration
 ${concept.inspiration}`.trim();
 }
 
@@ -190,16 +185,15 @@ ${concept.inspiration}`.trim();
 async function runDesignPicker(requirements, ask) {
   const client = new Anthropic();
 
-  console.log(chalk.bold.cyan('\n🎨  מייצר 3 הצעות עיצוב מותאמות לאפליקציה שלך...'));
+  console.log(chalk.bold.cyan(`\n${t('generatingDesigns')}`));
 
   let concepts = await generateConcepts(client, requirements, []);
   displayAllConcepts(concepts);
 
-  // Refinement conversation history (for REFINER_SYSTEM)
   const refinementHistory = [
     {
       role: 'user',
-      content: `הנה הדרישות:\n${requirements}\n\nהצעות העיצוב הנוכחיות:\n${JSON.stringify(concepts, null, 2)}`,
+      content: `Here are the requirements:\n${requirements}\n\nCurrent design proposals:\n${JSON.stringify(concepts, null, 2)}`,
     },
     {
       role: 'assistant',
@@ -207,41 +201,35 @@ async function runDesignPicker(requirements, ask) {
     },
   ];
 
-  console.log(chalk.bold.yellow('מה תרצה לעשות?\n'));
-  console.log(chalk.white('  • הקלד 1, 2, או 3 — לבחור עיצוב'));
-  console.log(chalk.white('  • הקלד בקשה — לשנות / לשלב עיצובים (לדוגמה: "אני אוהב את 1 אבל עם הצבעים של 2")'));
-  console.log(chalk.white('  • הקלד "דלג" — להמשיך לפיתוח ללא בחירת עיצוב\n'));
+  console.log(chalk.bold.yellow(t('designOpts') + '\n'));
+  console.log(chalk.white(t('designOptPick')));
+  console.log(chalk.white(t('designOptRefine')));
+  console.log(chalk.white(t('designOptSkip') + '\n'));
 
   while (true) {
-    const input = (await ask(chalk.bold.green('▶  בחירה או בקשה: '))).trim();
-
+    const input = (await ask(chalk.bold.green(t('chooseDesign')))).trim();
     if (!input) continue;
 
-    // Skip design picking
-    if (input === 'דלג' || input === 'skip') {
-      console.log(chalk.gray('\n⏭️   ממשיך לפיתוח ללא עיצוב נבחר.'));
+    if (input === 'skip') {
+      console.log(chalk.gray(`\n${t('designSkipped')}`));
       return null;
     }
 
-    // Direct selection: "1", "2", "3"
     const pick = parseInt(input, 10);
     if ([1, 2, 3].includes(pick)) {
       const chosen = concepts[pick - 1];
-      console.log(chalk.bold.green(`\n✅  נבחר עיצוב ${pick} — ${chosen.name}`));
+      console.log(chalk.bold.green(`\n${t('designSelected', pick, chosen.name)}`));
       displayConcept(chosen, pick - 1);
 
-      const confirm = (await ask(chalk.bold.green('▶  לאשר את הבחירה ולהמשיך לפיתוח? (y/n): '))).trim().toLowerCase();
+      const confirm = (await ask(chalk.bold.green(t('confirmSelection')))).trim().toLowerCase();
       if (confirm === 'y' || confirm === 'yes' || confirm === '') {
         return formatDesignSpec(chosen);
       }
-      // User wants to continue refining
-      console.log(chalk.gray('\n💬  המשך לשכלל את העיצוב:\n'));
+      console.log(chalk.gray(`\n${t('continueRefining')}\n`));
       continue;
     }
 
-    // Refinement request — send to Claude
-    console.log(chalk.cyan('\n🔄  משכלל את העיצובים לפי הבקשה שלך...'));
-
+    console.log(chalk.cyan(`\n${t('refining')}`));
     refinementHistory.push({ role: 'user', content: input });
 
     try {
@@ -249,10 +237,10 @@ async function runDesignPicker(requirements, ask) {
       refinementHistory.push({ role: 'assistant', content: JSON.stringify(concepts) });
       displayAllConcepts(concepts);
 
-      console.log(chalk.bold.yellow('\nמה תרצה לעשות עכשיו?'));
-      console.log(chalk.white('  • הקלד 1, 2, או 3 לבחור  •  המשך לשכלל  •  הקלד "דלג" לדילוג\n'));
+      console.log(chalk.bold.yellow('\n' + t('designNow')));
+      console.log(chalk.white(t('designNowOpts') + '\n'));
     } catch (err) {
-      console.log(chalk.red(`\n⚠️  שגיאה בעדכון העיצובים: ${err.message}`));
+      console.log(chalk.red(`\n⚠️  Error updating designs: ${err.message}`));
     }
   }
 }

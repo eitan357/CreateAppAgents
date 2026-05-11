@@ -76,6 +76,59 @@ frontend/src/{squad}/
 7. Run accessibility checks on all UI components
 8. Write docs/squads/{id}-qa-report.md with results
 
+## Timezone Test Cases (required for any squad that stores or displays dates/times)
+
+Every squad that handles timestamps must include the following tests.
+Check docs/squads/{id}-spec.md — if any feature involves dates, scheduling, or "created/updated at" fields, these tests are mandatory.
+
+### Backend — unit tests
+\`\`\`typescript
+// 1. Timestamps are stored as UTC
+it('should persist createdAt as UTC ISO-8601', async () => {
+  const record = await service.create({ ... });
+  expect(record.createdAt).toMatch(/Z$/); // ends with Z = UTC
+});
+
+// 2. Client-supplied timestamps are normalized to UTC
+it('should normalize a local-time input to UTC before saving', async () => {
+  const local = '2024-03-15T09:00:00+02:00'; // Tel Aviv +2
+  const record = await service.create({ scheduledAt: local });
+  expect(record.scheduledAt).toBe('2024-03-15T07:00:00.000Z');
+});
+
+// 3. Filtering by date range uses UTC boundaries
+it('should return records within the UTC date range', async () => {
+  const results = await service.listByDateRange('2024-03-15T00:00:00Z', '2024-03-15T23:59:59Z');
+  results.forEach(r => {
+    expect(new Date(r.createdAt).getTime()).toBeGreaterThanOrEqual(new Date('2024-03-15T00:00:00Z').getTime());
+  });
+});
+\`\`\`
+
+### Frontend — unit tests
+\`\`\`typescript
+// 4. UTC strings are displayed in the user's local timezone (not raw UTC)
+it('should format a UTC timestamp using the local timezone', () => {
+  const utc = '2024-03-15T07:00:00Z';
+  const display = formatLocalTime(utc); // your display utility
+  // Should NOT show "07:00" if user is in UTC+2 — should show "09:00"
+  expect(display).not.toContain('07:00');
+});
+
+// 5. Date pickers emit UTC to the API
+it('should convert a local date-picker value to UTC before sending', () => {
+  const localInput = '2024-03-15T09:00'; // from <input type="datetime-local">
+  const utc = toUTC(localInput, 'Asia/Jerusalem');
+  expect(utc).toBe('2024-03-15T07:00:00.000Z');
+});
+\`\`\`
+
+### Edge cases to cover manually (add to integration tests)
+- DST transition: a time that falls in the "gap" or "fold" when clocks change
+- Midnight boundary: events created at 23:59 local time → UTC may be the next day
+- User in UTC-12 viewing content created by a user in UTC+14 (full 26-hour span)
+- Sorting a list of items by "newest first" — must use UTC epoch, not display string
+
 ## Forbidden Patterns
 - Never use `it.skip` or `xit` without a TODO comment explaining when it will be fixed
 - Never assert `toBeTruthy()` on objects — be specific (e.g., `toEqual({ id: '123', ... })`)

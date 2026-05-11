@@ -16,8 +16,7 @@ const SELF_PLANNING_AGENTS = new Set([
   'uiPrimitivesAgent', 'uiCompositeAgent', 'apiClientAgent', 'dbSchemaAgent',
   // Per-squad specialists
   'squadErrorHandlingAgent', 'squadCodeCleanupAgent', 'squadDeduplicationAgent',
-  'squadQaAgent',
-  // squadSecurityAgent — self-planning is conditional (only on HIGH findings), handled in prompt
+  'squadQaAgent', 'squadSecurityAgent',
   // Layer 2
   'localizationAgent',
   // Mobile features (Layer 3b)
@@ -53,6 +52,29 @@ const GUIDELINE_MAP = {
   platformQaAgent:           'docs/guidelines/qa-guidelines.md',
   platformSecurityAgent:     'docs/guidelines/security-guidelines.md',
 };
+
+function _injectUniversalRules(lines) {
+  lines.push(
+    '# Universal Rules — apply to every agent without exception',
+    '',
+    '## Language',
+    'All code identifiers, function names, variable names, file names, comments, and inline documentation must be in English.',
+    'User-facing strings inside the generated app (UI labels, error messages, notifications) must match the language requirements in the project spec — do NOT default them to any language.',
+    '',
+    '## Output quality',
+    'Write complete, production-ready output only.',
+    '- No TODO comments, no placeholder text, no "coming soon" stubs, no empty function bodies',
+    '- No commented-out code blocks',
+    '- No console.log / print statements left in production code (use a logger)',
+    '- Every function, component, and endpoint must be fully implemented',
+    '',
+    '## File operations',
+    'Always use the write_file tool to create or update files — never print code as a markdown block.',
+    'Before modifying an existing file: use read_file first to see its current contents.',
+    'Paths must be relative to the output directory — never include the output directory prefix.',
+    '',
+  );
+}
 
 function _injectSelfPlanningPrompt(lines, agentName, squadId) {
   if (!SELF_PLANNING_AGENTS.has(agentName)) return;
@@ -264,6 +286,8 @@ class ProjectContext {
       '',
     ];
 
+    _injectUniversalRules(lines);
+
     if (this.squadPlan) {
       lines.push('# Squad Structure');
       lines.push('The application is divided into feature squads. Structure your code under the module paths below.');
@@ -370,6 +394,8 @@ class ProjectContext {
       '',
     ];
 
+    _injectUniversalRules(lines);
+
     const otherSquads = this.squadPlan ? this.squadPlan.squads.filter(s => s.id !== squad.id) : [];
     if (otherSquads.length > 0) {
       lines.push('# Other Squads (do NOT spec their features)');
@@ -438,10 +464,19 @@ class ProjectContext {
       '',
     ];
 
+    _injectUniversalRules(lines);
+
     // Squad PM spec — injected so devs implement exactly what was specified
     const spec = this.squadSpecs[squad.id];
     if (spec) {
       lines.push('# Squad Feature Spec (written by your Squad PM — implement exactly this)', spec, '');
+    }
+
+    // Squad design doc — injected so devs follow the screen-by-screen design
+    const designPath = path.join(this.outputDir, 'docs', 'squads', `${squad.id}-design.md`);
+    if (fs.existsSync(designPath)) {
+      lines.push('# Squad Design (written by your Squad Designer — follow this design exactly)',
+        fs.readFileSync(designPath, 'utf8'), '');
     }
 
     // Squad PM gaps — injected during fix rounds
@@ -535,6 +570,11 @@ class ProjectContext {
       `# Your Squad: ${squad.name}`,
       `You are the **${agentName}** agent working in the **${squad.name}**.`,
       '',
+    ];
+
+    _injectUniversalRules(lines);
+
+    lines.push(
       '# ⚠️  UPDATE MODE — Read existing files first',
       'This squad already has existing code. Your task is to ADD or MODIFY — not rebuild from scratch.',
       '',
@@ -548,7 +588,7 @@ class ProjectContext {
       '4. Apply ONLY the changes described in "What to change" above',
       '5. Write updated files using write_file',
       '',
-    ];
+    );
 
     const spec = this.squadSpecs[squad.id];
     if (spec) {
@@ -597,9 +637,6 @@ class ProjectContext {
     return lines.join('\n');
   }
 
-  buildContextMessage(agentName) {
-    return this.buildScopedContext(agentName);
-  }
 }
 
 module.exports = { ProjectContext };

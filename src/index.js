@@ -11,23 +11,12 @@ const { runDesignPicker } = require('./designPicker');
 const { setModelConfig } = require('./agents/base');
 const { ProjectContext } = require('./context');
 const { parseGithubRepo, checkGithubAccess, createGithubRepo } = require('./github');
+const { SUPPORTED, setLanguage, t } = require('./lang');
 
 const TIERS = {
-  '1': {
-    label: 'חסכוני  — ללא חשיבה עמוקה, מהיר וזול יותר',
-    thinking: null,
-    max_tokens: 4000,
-  },
-  '2': {
-    label: 'מאוזן   — חשיבה עמוקה אדפטיבית (Claude מחליט מתי לחשוב)',
-    thinking: { type: 'adaptive' },
-    max_tokens: 6000,
-  },
-  '3': {
-    label: 'מקסימלי — חשיבה עמוקה מלאה, איכות גבוהה ביותר',
-    thinking: { type: 'adaptive' },
-    max_tokens: 8096,
-  },
+  '1': { thinking: null,                  max_tokens: 4000 },
+  '2': { thinking: { type: 'adaptive' },  max_tokens: 6000 },
+  '3': { thinking: { type: 'adaptive' },  max_tokens: 8096 },
 };
 
 const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
@@ -36,89 +25,115 @@ function ask(question) {
   return new Promise(resolve => rl.question(question, resolve));
 }
 
-// Returns { owner, repo, full } after validating token + access.
-// Loops until the user provides a valid repo or exits.
-async function askForGithubRepo() {
-  console.log(chalk.bold.cyan('\n━━━  GitHub Repository  ━━━'));
-  console.log(chalk.gray('הקוד שייוצר יישמר ב-repository הזה בסוף הבנייה.\n'));
+async function selectLanguage() {
+  console.log(chalk.bold.cyan('\n━━━  Language / שפה / Langue / Idioma  ━━━'));
+  SUPPORTED.forEach((l, i) => {
+    console.log(chalk.white(`  ${i + 1}.  ${l.label}`));
+  });
+  console.log('');
+  const input = (await ask(chalk.bold.green(`▶  Select (1-${SUPPORTED.length}) [default: 1]: `))).trim();
+  const index = parseInt(input, 10) - 1;
+  const chosen = SUPPORTED[index] || SUPPORTED[0];
+  setLanguage(chosen.code);
+}
 
-  // Check token
+async function askForGithubRepo() {
+  console.log(chalk.bold.cyan(`\n━━━  ${t('githubTitle')}  ━━━`));
+  console.log(chalk.gray('The generated code will be saved to this repository at the end of the build.\n'));
+
   let token = process.env.GITHUB_TOKEN || process.env.GH_TOKEN || '';
   if (!token) {
-    console.log(chalk.yellow('⚠️   לא נמצא GITHUB_TOKEN בסביבה.'));
-    console.log(chalk.gray('    הוסף GITHUB_TOKEN=<personal access token> לקובץ .env'));
-    console.log(chalk.gray('    הטוקן צריך הרשאות: repo (read + write)\n'));
-    console.log(chalk.gray('    ליצירת טוקן: https://github.com/settings/tokens/new'));
-    console.log(chalk.gray('    בחר: repo → Full control of private repositories\n'));
-    token = (await ask(chalk.bold.green('▶  הדבק את ה-GitHub token כאן (או Enter לדלג): '))).trim();
+    console.log(chalk.yellow('⚠️   No GITHUB_TOKEN found in environment.'));
+    console.log(chalk.gray('    Add GITHUB_TOKEN=<personal access token> to your .env file'));
+    console.log(chalk.gray('    The token needs permissions: repo (read + write)\n'));
+    console.log(chalk.gray('    To create a token: https://github.com/settings/tokens/new'));
+    console.log(chalk.gray('    Select: repo → Full control of private repositories\n'));
+    token = (await ask(chalk.bold.green('▶  Paste your GitHub token here (or Enter to skip): '))).trim();
     if (!token) {
-      console.log(chalk.yellow('⚠️  דילוג על GitHub — הקוד ייוצר מקומית בלבד.\n'));
+      console.log(chalk.yellow('⚠️  Skipping GitHub — code will be generated locally only.\n'));
       return null;
     }
-    // Save to process.env for this session
     process.env.GITHUB_TOKEN = token;
   }
 
   while (true) {
     const input = (await ask(chalk.bold.green('▶  GitHub repository (owner/repo): '))).trim();
     if (!input) {
-      console.log(chalk.yellow('⚠️  דילוג על GitHub — הקוד ייוצר מקומית בלבד.\n'));
+      console.log(chalk.yellow('⚠️  Skipping GitHub — code will be generated locally only.\n'));
       return null;
     }
 
     const parsed = parseGithubRepo(input);
     if (!parsed) {
-      console.log(chalk.red('❌  פורמט לא תקין. דוגמאות: myuser/my-app  או  https://github.com/myuser/my-app\n'));
+      console.log(chalk.red('❌  Invalid format. Examples: myuser/my-app  or  https://github.com/myuser/my-app\n'));
       continue;
     }
 
-    console.log(chalk.gray(`\n🔍  בודק גישה ל-${parsed.full}...`));
+    console.log(chalk.gray(`\n🔍  Checking access to ${parsed.full}...`));
     const access = await checkGithubAccess(parsed.owner, parsed.repo, token);
 
     if (access.networkError) {
-      console.log(chalk.red(`❌  שגיאת רשת: ${access.networkError}`));
-      console.log(chalk.gray('    בדוק חיבור לאינטרנט ונסה שוב.\n'));
+      console.log(chalk.red(`❌  Network error: ${access.networkError}`));
+      console.log(chalk.gray('    Check your internet connection and try again.\n'));
       continue;
     }
 
     if (access.authError) {
-      console.log(chalk.red('❌  שגיאת אימות — הטוקן לא תקין או פג תוקף.'));
-      console.log(chalk.gray('    צור טוקן חדש ב: https://github.com/settings/tokens/new'));
-      console.log(chalk.gray('    הרשאות נדרשות: repo → Full control\n'));
-      token = (await ask(chalk.bold.green('▶  הדבק טוקן חדש: '))).trim();
+      console.log(chalk.red('❌  Authentication error — token is invalid or expired.'));
+      console.log(chalk.gray('    Create a new token at: https://github.com/settings/tokens/new'));
+      console.log(chalk.gray('    Required permissions: repo → Full control\n'));
+      token = (await ask(chalk.bold.green('▶  Paste new token: '))).trim();
       if (!token) return null;
       process.env.GITHUB_TOKEN = token;
       continue;
     }
 
     if (!access.exists) {
-      console.log(chalk.yellow(`⚠️   Repository "${parsed.full}" לא קיים.`));
-      const create = (await ask(chalk.bold.green('▶  ליצור אותו עכשיו? (y/n) [ברירת מחדל: y]: '))).trim().toLowerCase();
+      console.log(chalk.yellow(`⚠️   Repository "${parsed.full}" does not exist.`));
+      const create = (await ask(chalk.bold.green('▶  Create it now? (y/n) [default: y]: '))).trim().toLowerCase();
       if (create === 'n') continue;
 
-      const isPrivate = (await ask(chalk.bold.green('▶  Repository פרטי? (y/n) [ברירת מחדל: y]: '))).trim().toLowerCase();
+      const isPrivate = (await ask(chalk.bold.green('▶  Private repository? (y/n) [default: y]: '))).trim().toLowerCase();
       try {
         await createGithubRepo(parsed.repo, token, isPrivate !== 'n');
-        console.log(chalk.green(`✅  Repository "${parsed.full}" נוצר בהצלחה.\n`));
+        console.log(chalk.green(`✅  Repository "${parsed.full}" created successfully.\n`));
         return { ...parsed, token };
       } catch (err) {
-        console.log(chalk.red(`❌  יצירת repository נכשלה: ${err.message}`));
-        console.log(chalk.gray('    ייתכן שהשם תפוס או שאין הרשאות ליצירה. נסה שם אחר.\n'));
+        console.log(chalk.red(`❌  Repository creation failed: ${err.message}`));
+        console.log(chalk.gray('    The name may be taken or you may lack creation permissions. Try a different name.\n'));
         continue;
       }
     }
 
     if (!access.canPush) {
-      console.log(chalk.red(`❌  אין הרשאת כתיבה ל-${parsed.full}.`));
-      console.log(chalk.gray('    ודא שהטוקן שייך למשתמש שיש לו הרשאת write/push ל-repository.'));
-      console.log(chalk.gray('    אם זה repository של ארגון — ודא שהטוקן כולל גישה לארגון.\n'));
+      console.log(chalk.red(`❌  No write access to ${parsed.full}.`));
+      console.log(chalk.gray('    Ensure the token belongs to a user with write/push permission to this repository.'));
+      console.log(chalk.gray('    If this is an organization repository — ensure the token includes org access.\n'));
       continue;
     }
 
-    const visibility = access.private ? 'פרטי' : 'ציבורי';
-    console.log(chalk.green(`✅  גישה אושרה — ${parsed.full} (${visibility})\n`));
+    const visibility = access.private ? 'private' : 'public';
+    console.log(chalk.green(`✅  Access confirmed — ${parsed.full} (${visibility})\n`));
     return { ...parsed, token };
   }
+}
+
+async function selectTier() {
+  console.log(chalk.bold.cyan(`\n━━━  ${t('qualityTitle')}  ━━━`));
+  console.log(chalk.gray('Select the level of Extended Thinking usage and tokens:\n'));
+  Object.entries(TIERS).forEach(([key, tier]) => {
+    const tokens = tier.max_tokens.toLocaleString();
+    console.log(chalk.white(`  ${key}️⃣   ${t(`tier${key}`)}  (max ${tokens} tokens)`));
+  });
+  console.log('');
+  let tier = '';
+  while (!Object.keys(TIERS).includes(tier)) {
+    tier = (await ask(chalk.bold.green(t('chooseLevel')))).trim() || '2';
+  }
+  const selected = TIERS[tier];
+  setModelConfig({ thinking: selected.thinking, max_tokens: selected.max_tokens });
+  console.log(chalk.green(`\n${t('tierSelected', t(`tier${tier}`))}\n`));
+  return selected;
 }
 
 async function main() {
@@ -132,9 +147,12 @@ async function main() {
     process.exit(1);
   }
 
-  const projectName = (await ask(chalk.yellow('\n📦  שם הפרויקט: '))).trim();
+  // Language selection — first step
+  await selectLanguage();
+
+  const projectName = (await ask(chalk.yellow(`\n${t('projectName')}`))).trim();
   if (!projectName) {
-    console.log(chalk.red('❌  שם הפרויקט הוא שדה חובה.'));
+    console.log(chalk.red(t('errNoProjectName')));
     process.exit(1);
   }
 
@@ -150,44 +168,27 @@ async function main() {
     const hasSquadPlan  = !!(checkpoint.squadPlan);
     const allDone       = completedList.includes('5');
 
-    console.log(chalk.bold.yellow(`\n♻️   נמצאה בנייה קודמת עבור "${projectName}"`));
-    console.log(chalk.gray(`    Layers שהושלמו: ${completedList || 'אין'}`));
+    console.log(chalk.bold.yellow(`\n${t('foundPrevBuild', projectName)}`));
+    console.log(chalk.gray(`    ${t('completedLayers')} ${completedList || 'none'}`));
     console.log('');
-    console.log(chalk.white('  1️⃣   בנייה חדשה מאפס'));
-    if (!allDone) {
-      console.log(chalk.white('  2️⃣   המשך מנקודת העצירה'));
-    }
-    if (hasSquadPlan) {
-      console.log(chalk.white('  3️⃣   עדכון / הוספת פיצ\'ר לאפליקציה הקיימת'));
-    }
+    console.log(chalk.white(`  ${t('opt1Fresh')}`));
+    if (!allDone)      console.log(chalk.white(`  ${t('opt2Resume')}`));
+    if (hasSquadPlan)  console.log(chalk.white(`  ${t('opt3Update')}`));
     console.log('');
 
     const validOptions = ['1', ...(!allDone ? ['2'] : []), ...(hasSquadPlan ? ['3'] : [])];
     let choice = '';
     while (!validOptions.includes(choice)) {
-      choice = (await ask(chalk.bold.green(`▶  בחר (${validOptions.join('/')}): `))).trim();
+      choice = (await ask(chalk.bold.green(t('chooseOption', validOptions.join('/'))))).trim();
     }
 
     if (choice === '2') {
-      // Resume build
-      console.log(chalk.bold.cyan('\n━━━  רמת איכות / עלות  ━━━'));
-      console.log(chalk.gray('בחר רמה לשלבים הנותרים:\n'));
-      Object.entries(TIERS).forEach(([key, tier]) => {
-        console.log(chalk.white(`  ${key}️⃣   ${tier.label}  (max ${tier.max_tokens.toLocaleString()} tokens)`));
-      });
-      let tier = '';
-      while (!Object.keys(TIERS).includes(tier)) {
-        tier = (await ask(chalk.bold.green('▶  בחר רמה (1, 2 או 3) [ברירת מחדל: 2]: '))).trim() || '2';
-      }
-      const selectedTier = TIERS[tier];
-      setModelConfig({ thinking: selectedTier.thinking, max_tokens: selectedTier.max_tokens });
-      console.log(chalk.green(`\n✅  נבחרה רמה: ${selectedTier.label}\n`));
-
+      await selectTier();
       rl.close();
       try {
         await orchestrate(checkpoint.requirements, projectName, outputDir, checkpoint, githubRepo);
       } catch (err) {
-        console.error(chalk.red('\n❌  שגיאה קריטית:'), err.message);
+        console.error(chalk.red('\n❌  Critical error:'), err.message);
         if (process.env.DEBUG) console.error(err.stack);
         process.exit(1);
       }
@@ -195,10 +196,8 @@ async function main() {
     }
 
     if (choice === '3') {
-      // Update mode
-      console.log(chalk.bold.cyan('\n━━━  עדכון אפליקציה  ━━━'));
-      console.log(chalk.gray('תאר את השינוי שאתה רוצה לבצע. (הקלד END בשורה נפרדת לסיום)\n'));
-
+      console.log(chalk.bold.cyan('\n━━━  Update App  ━━━'));
+      console.log(chalk.gray(t('describeUpdate') + '\n'));
       const lines = [];
       while (true) {
         const line = await ask('');
@@ -207,45 +206,32 @@ async function main() {
       }
       const changeRequest = lines.join('\n').trim();
       if (!changeRequest) {
-        console.log(chalk.red('❌  לא ניתן להמשיך ללא תיאור השינוי.'));
+        console.log(chalk.red(t('errNoChange')));
         process.exit(1);
       }
-
-      console.log(chalk.bold.cyan('\n━━━  רמת איכות / עלות  ━━━'));
-      Object.entries(TIERS).forEach(([key, tier]) => {
-        console.log(chalk.white(`  ${key}️⃣   ${tier.label}  (max ${tier.max_tokens.toLocaleString()} tokens)`));
-      });
-      let tier = '';
-      while (!Object.keys(TIERS).includes(tier)) {
-        tier = (await ask(chalk.bold.green('▶  בחר רמה (1, 2 או 3) [ברירת מחדל: 2]: '))).trim() || '2';
-      }
-      const selectedTier = TIERS[tier];
-      setModelConfig({ thinking: selectedTier.thinking, max_tokens: selectedTier.max_tokens });
-      console.log(chalk.green(`\n✅  נבחרה רמה: ${selectedTier.label}\n`));
-
+      await selectTier();
       rl.close();
       try {
         await orchestrateUpdate(changeRequest, checkpoint, outputDir, githubRepo);
       } catch (err) {
-        console.error(chalk.red('\n❌  שגיאה קריטית:'), err.message);
+        console.error(chalk.red('\n❌  Critical error:'), err.message);
         if (process.env.DEBUG) console.error(err.stack);
         process.exit(1);
       }
       return;
     }
 
-    // choice === '1': fall through to fresh build
-    console.log(chalk.gray('מתחיל בנייה חדשה...\n'));
+    console.log(chalk.gray(t('freshBuild') + '\n'));
   }
 
   // ── Mode selection ──────────────────────────────────────────────────────────
-  console.log(chalk.bold.yellow('איך תרצה להתחיל?\n'));
-  console.log(chalk.white('  1️⃣   תכנון עם AI  — שיחה אינטראקטיבית עם יועץ מוצר שישאל אותך שאלות'));
-  console.log(chalk.white('  2️⃣   הזנה ישירה  — הקלד את הדרישות שלך בעצמך\n'));
+  console.log(chalk.bold.yellow(t('howStart') + '\n'));
+  console.log(chalk.white(`  ${t('mode1')}`));
+  console.log(chalk.white(`  ${t('mode2')}\n`));
 
   let mode = '';
   while (!['1', '2'].includes(mode)) {
-    mode = (await ask(chalk.bold.green('▶  בחר מצב (1 או 2): '))).trim();
+    mode = (await ask(chalk.bold.green(t('chooseMode')))).trim();
   }
 
   let requirements = '';
@@ -254,65 +240,46 @@ async function main() {
   if (mode === '1') {
     requirements = await runPlanningSession(ask);
 
-    // Show the generated requirements and let user confirm
-    console.log(chalk.bold.cyan('\n━━━  מסמך הדרישות שנוצר  ━━━'));
+    console.log(chalk.bold.cyan(`\n${t('reqsHeader')}`));
     console.log(chalk.gray(requirements));
-    console.log(chalk.bold.cyan('━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n'));
+    console.log(chalk.bold.cyan(`${t('reqsFooter')}\n`));
 
-    const confirm = (await ask(chalk.bold.green('▶  להתחיל בפיתוח עם הדרישות האלו? (y/n): '))).trim().toLowerCase();
+    const confirm = (await ask(chalk.bold.green(t('startDev')))).trim().toLowerCase();
     if (confirm !== 'y' && confirm !== 'yes' && confirm !== '') {
-      console.log(chalk.yellow('\n💡  תוכל להריץ מחדש ולהמשיך לשכלל את הדרישות בשיחה נוספת.'));
+      console.log(chalk.yellow(`\n${t('refineHint')}`));
       rl.close();
       return;
     }
 
   // ── Mode 2: Direct Input ────────────────────────────────────────────────────
   } else {
-    console.log(chalk.yellow('\n📝  תאר את האפליקציה שתרצה לבנות.'));
-    console.log(chalk.gray('    (הקלד את הדרישות שלך, ובסיום הקלד END בשורה נפרדת)\n'));
-
+    console.log(chalk.yellow(`\n${t('describeApp')}\n`));
     const lines = [];
     while (true) {
       const line = await ask('');
       if (line.trim() === 'END') break;
       lines.push(line);
     }
-
     requirements = lines.join('\n').trim();
     if (!requirements) {
-      console.log(chalk.red('❌  לא ניתן להמשיך ללא דרישות.'));
+      console.log(chalk.red(t('errNoRequirements')));
       process.exit(1);
     }
   }
 
   // ── Tier selection ────────────────────────────────────────────────────────
-  console.log(chalk.bold.cyan('\n━━━  רמת איכות / עלות  ━━━'));
-  console.log(chalk.gray('בחר את רמת השימוש בחשיבה עמוקה (Extended Thinking) ו-tokens:\n'));
-  Object.entries(TIERS).forEach(([key, tier]) => {
-    const tokens = tier.max_tokens.toLocaleString();
-    console.log(chalk.white(`  ${key}️⃣   ${tier.label}  (max ${tokens} tokens)`));
-  });
-  console.log('');
-
-  let tier = '';
-  while (!Object.keys(TIERS).includes(tier)) {
-    tier = (await ask(chalk.bold.green('▶  בחר רמה (1, 2 או 3) [ברירת מחדל: 2]: '))).trim() || '2';
-  }
-  const selectedTier = TIERS[tier];
-  setModelConfig({ thinking: selectedTier.thinking, max_tokens: selectedTier.max_tokens });
-  console.log(chalk.green(`\n✅  נבחרה רמה: ${selectedTier.label}\n`));
+  await selectTier();
 
   // ── Design Picker ─────────────────────────────────────────────────────────
-  console.log(chalk.bold.cyan('\n━━━  שלב עיצוב  ━━━'));
-  console.log(chalk.gray('לפני שנתחיל לבנות — נבחר את הסגנון הויזואלי של האפליקציה.\n'));
+  console.log(chalk.bold.cyan('\n━━━  Design Phase  ━━━'));
+  console.log(chalk.gray("Before we start building — let's choose the visual style of the application.\n"));
 
-  const skipDesign = (await ask(chalk.bold.green('▶  האם לעצב את האפליקציה לפני הפיתוח? (y/n): '))).trim().toLowerCase();
-
+  const skipDesign = (await ask(chalk.bold.green(t('designBeforeDev')))).trim().toLowerCase();
   if (skipDesign === 'y' || skipDesign === 'yes' || skipDesign === '') {
     const designSpec = await runDesignPicker(requirements, ask);
     if (designSpec) {
       requirements = requirements + '\n\n' + designSpec;
-      console.log(chalk.green('\n✅  מפרט העיצוב נוסף לדרישות הפרויקט.\n'));
+      console.log(chalk.green(`\n${t('designAdded')}\n`));
     }
   }
 
@@ -321,7 +288,7 @@ async function main() {
   try {
     await orchestrate(requirements, projectName, outputDir, null, githubRepo);
   } catch (err) {
-    console.error(chalk.red('\n❌  שגיאה קריטית:'), err.message);
+    console.error(chalk.red('\n❌  Critical error:'), err.message);
     if (process.env.DEBUG) console.error(err.stack);
     process.exit(1);
   }

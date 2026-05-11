@@ -77,7 +77,7 @@ function formatUpdatePlan(updatePlan) {
   const lines = [`📋  ${updatePlan.summary}`, ''];
 
   if (updatePlan.affectedSquads.length > 0) {
-    lines.push('🔄  צוותים קיימים שישתנו:');
+    lines.push('🔄  Existing squads to be changed:');
     updatePlan.affectedSquads.forEach(s => {
       lines.push(`    • ${s.id}: ${s.changeDescription}`);
     });
@@ -85,10 +85,10 @@ function formatUpdatePlan(updatePlan) {
   }
 
   if (updatePlan.newSquads.length > 0) {
-    lines.push('🆕  צוותים חדשים שייווצרו:');
+    lines.push('🆕  New squads to be created:');
     updatePlan.newSquads.forEach(s => {
       lines.push(`    • ${s.name}: ${s.userFacingArea}`);
-      lines.push(`      פיצ'רים: ${s.keyFeatures.join(', ')}`);
+      lines.push(`      Features: ${s.keyFeatures.join(', ')}`);
     });
     lines.push('');
   }
@@ -101,7 +101,7 @@ function formatUpdatePlan(updatePlan) {
   ].filter(Boolean);
 
   if (platformChanges.length > 0) {
-    lines.push('🏗️   Platform Layer שישתנה:');
+    lines.push('🏗️   Platform Layer to be changed:');
     platformChanges.forEach(l => lines.push(l));
   }
 
