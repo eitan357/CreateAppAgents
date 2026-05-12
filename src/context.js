@@ -53,6 +53,16 @@ const GUIDELINE_MAP = {
   platformSecurityAgent:     'docs/guidelines/security-guidelines.md',
 };
 
+// Cap each dependency summary at this many characters.
+// Agents should use read_file on the listed files for full details.
+// Keeps a single agent's context well under the 30k input-tokens/min rate limit.
+const MAX_DEP_SUMMARY_CHARS = 400;
+
+function _truncateSummary(text) {
+  if (!text || text.length <= MAX_DEP_SUMMARY_CHARS) return text;
+  return text.slice(0, MAX_DEP_SUMMARY_CHARS) + '… (use read_file on the files listed below for full context)';
+}
+
 function _injectUniversalRules(lines) {
   lines.push(
     '# Universal Rules — apply to every agent without exception',
@@ -192,6 +202,8 @@ class ProjectContext {
     this.squadSpecs = {};   // squadId → spec markdown content
     this.squadGaps  = {};   // squadId → gaps markdown content (cleared after fix)
     this.platformUpdateNotes = {}; // agentName → change description (set during update mode)
+    this.completedSquads = new Set(); // squadId → marked complete after all squad phases finish
+    this.completedSquadAgents = {};   // squadId → Set of agentNames that finished
   }
 
   setPlatformUpdateNote(agentName, note) {
@@ -239,6 +251,25 @@ class ProjectContext {
     return this.completedLayers.has(String(layerId));
   }
 
+  markSquadComplete(squadId) {
+    this.completedSquads.add(String(squadId));
+  }
+
+  isSquadComplete(squadId) {
+    return this.completedSquads.has(String(squadId));
+  }
+
+  markSquadAgentComplete(squadId, agentName) {
+    if (!this.completedSquadAgents[squadId]) {
+      this.completedSquadAgents[squadId] = new Set();
+    }
+    this.completedSquadAgents[squadId].add(agentName);
+  }
+
+  isSquadAgentComplete(squadId, agentName) {
+    return this.completedSquadAgents[squadId]?.has(agentName) ?? false;
+  }
+
   saveCheckpoint() {
     const checkpointPath = path.join(this.outputDir, '.build-checkpoint.json');
     fs.mkdirSync(this.outputDir, { recursive: true });
@@ -249,6 +280,10 @@ class ProjectContext {
       agentOutputs: this.agentOutputs,
       allFilesCreated: this.allFilesCreated,
       completedLayers: [...this.completedLayers],
+      completedSquads: [...this.completedSquads],
+      completedSquadAgents: Object.fromEntries(
+        Object.entries(this.completedSquadAgents).map(([k, v]) => [k, [...v]])
+      ),
     }, null, 2), 'utf8');
   }
 
@@ -267,6 +302,11 @@ class ProjectContext {
     ctx.agentOutputs = checkpoint.agentOutputs || {};
     ctx.allFilesCreated = checkpoint.allFilesCreated || [];
     ctx.completedLayers = new Set(checkpoint.completedLayers || []);
+    ctx.completedSquads = new Set(checkpoint.completedSquads || []);
+    const rawAgents = checkpoint.completedSquadAgents || {};
+    ctx.completedSquadAgents = Object.fromEntries(
+      Object.entries(rawAgents).map(([k, v]) => [k, new Set(v)])
+    );
     ctx.squadPlan = checkpoint.squadPlan || null;
     return ctx;
   }
@@ -319,7 +359,7 @@ class ProjectContext {
           }
           lines.push(
             `## ${depName} Agent Output`,
-            output.summary,
+            _truncateSummary(output.summary),
             '',
             `Files created: ${output.files.join(', ')}`,
             '',
@@ -406,7 +446,7 @@ class ProjectContext {
     // Platform context
     ['systemArchitect', 'dataArchitect', 'apiDesigner'].forEach(dep => {
       const out = this.agentOutputs[dep];
-      if (out) lines.push(`# ${dep} Output`, out.summary, '');
+      if (out) lines.push(`# ${dep} Output`, _truncateSummary(out.summary), `Files: ${out.files.join(', ')}`, '');
     });
 
     lines.push(
@@ -510,7 +550,7 @@ class ProjectContext {
         const output = this.agentOutputs[depName];
         lines.push(
           `## ${depName}`,
-          output.summary,
+          _truncateSummary(output.summary),
           '',
           `Files: ${output.files.join(', ')}`,
           '',
@@ -619,7 +659,7 @@ class ProjectContext {
       lines.push('# Platform Context', '');
       for (const depName of availableDeps) {
         const output = this.agentOutputs[depName];
-        lines.push(`## ${depName}`, output.summary, '', `Files: ${output.files.join(', ')}`, '');
+        lines.push(`## ${depName}`, _truncateSummary(output.summary), '', `Files: ${output.files.join(', ')}`, '');
       }
     }
 
