@@ -72,4 +72,17 @@ async function approveLayer(layerName, layerResults) {
   return answer === 'y' || answer === 'yes' || answer === '';
 }
 
-module.exports = { approveStep, showAgentOutput, approveLayer, ask };
+// Gate shown BEFORE a layer runs — lets user skip or stop without running.
+// Returns 'run' | 'skip' | 'stop'.
+async function approveLayerStart(layerName, agentNames) {
+  console.log('\n' + chalk.cyan('┄'.repeat(70)));
+  console.log(chalk.bold.yellow(`⏭   Next: ${layerName}`));
+  console.log(chalk.white(`   Agents : ${agentNames.join(', ')}`));
+  console.log(chalk.cyan('┄'.repeat(70)));
+  const answer = await ask(chalk.bold.green('▶  Run (y) / Skip (s) / Stop (n) [default: y]: '));
+  if (answer === 's' || answer === 'skip') return 'skip';
+  if (answer === 'n' || answer === 'no' || answer === 'stop') return 'stop';
+  return 'run';
+}
+
+module.exports = { approveStep, showAgentOutput, approveLayer, approveLayerStart, ask };

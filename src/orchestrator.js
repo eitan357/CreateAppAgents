@@ -4,7 +4,7 @@ const Anthropic = require('@anthropic-ai/sdk');
 const chalk = require('chalk');
 
 const { ProjectContext } = require('./context');
-const { approveStep, approveLayer } = require('./approval');
+const { approveStep, approveLayer, approveLayerStart } = require('./approval');
 const { t } = require('./lang');
 const { createSquadPlan, formatSquadPlan } = require('./squadPlanner');
 const { createFileSystemTools } = require('./tools/fileSystem');
@@ -746,6 +746,22 @@ async function orchestrate(requirements, projectName, outputDir, checkpoint = nu
     if (agentConfigs.length === 0) {
       console.log(chalk.gray(`\nLayer ${layerDef.id} (${layerDef.name}): all agents skipped — moving on`));
       continue;
+    }
+
+    // ── Pre-layer gate: run / skip / stop ────────────────────────────────────
+    const layerDecision = await approveLayerStart(
+      `Layer ${layerDef.id} — ${layerDef.name}`,
+      agentConfigs.map(a => a.name),
+    );
+    if (layerDecision === 'stop') {
+      console.log(chalk.yellow(`\n${t('stoppedByUser')}`));
+      console.log(chalk.gray(t('progressSaved')));
+      saveCheckpoint(`Before Layer ${layerDef.id} — ${layerDef.name}`);
+      return;
+    }
+    if (layerDecision === 'skip') {
+      console.log(chalk.gray(`  ⏭  Layer ${layerDef.id} (${layerDef.name}) skipped — will appear again on next resume.`));
+      continue;  // not marked complete → re-runs on resume
     }
 
     console.log(chalk.bold.cyan(`\n━━━  Layer ${layerDef.id}: ${layerDef.name}  ━━━`));
