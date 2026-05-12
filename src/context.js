@@ -203,6 +203,7 @@ class ProjectContext {
     this.squadGaps  = {};   // squadId → gaps markdown content (cleared after fix)
     this.platformUpdateNotes = {}; // agentName → change description (set during update mode)
     this.completedSquads = new Set(); // squadId → marked complete after all squad phases finish
+    this.completedSquadAgents = {};   // squadId → Set of agentNames that finished
   }
 
   setPlatformUpdateNote(agentName, note) {
@@ -258,6 +259,17 @@ class ProjectContext {
     return this.completedSquads.has(String(squadId));
   }
 
+  markSquadAgentComplete(squadId, agentName) {
+    if (!this.completedSquadAgents[squadId]) {
+      this.completedSquadAgents[squadId] = new Set();
+    }
+    this.completedSquadAgents[squadId].add(agentName);
+  }
+
+  isSquadAgentComplete(squadId, agentName) {
+    return this.completedSquadAgents[squadId]?.has(agentName) ?? false;
+  }
+
   saveCheckpoint() {
     const checkpointPath = path.join(this.outputDir, '.build-checkpoint.json');
     fs.mkdirSync(this.outputDir, { recursive: true });
@@ -269,6 +281,9 @@ class ProjectContext {
       allFilesCreated: this.allFilesCreated,
       completedLayers: [...this.completedLayers],
       completedSquads: [...this.completedSquads],
+      completedSquadAgents: Object.fromEntries(
+        Object.entries(this.completedSquadAgents).map(([k, v]) => [k, [...v]])
+      ),
     }, null, 2), 'utf8');
   }
 
@@ -288,6 +303,10 @@ class ProjectContext {
     ctx.allFilesCreated = checkpoint.allFilesCreated || [];
     ctx.completedLayers = new Set(checkpoint.completedLayers || []);
     ctx.completedSquads = new Set(checkpoint.completedSquads || []);
+    const rawAgents = checkpoint.completedSquadAgents || {};
+    ctx.completedSquadAgents = Object.fromEntries(
+      Object.entries(rawAgents).map(([k, v]) => [k, new Set(v)])
+    );
     ctx.squadPlan = checkpoint.squadPlan || null;
     return ctx;
   }

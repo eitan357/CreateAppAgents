@@ -52,13 +52,39 @@ function _qaHasIssues(context, squad) {
          !/ALL PASS|ALL TESTS PASS|NO ISSUES|0 FAILING/i.test(content);
 }
 
+// ── Skip a squad phase if already checkpointed; run fn() and save on success ──
+// bypassCheckpoint=true is used for fix rounds — always run regardless of checkpoint.
+async function _skipOrRun(phaseName, squad, context, fn, bypassCheckpoint = false) {
+  if (!bypassCheckpoint && context.isSquadAgentComplete(squad.id, phaseName)) {
+    console.log(chalk.gray(`    [${squad.name}] ${phaseName} — skipped (checkpoint)`));
+    return null;
+  }
+  const result = await fn();
+  if (!bypassCheckpoint && result !== undefined && !result?.error) {
+    context.markSquadAgentComplete(squad.id, phaseName);
+    context.saveCheckpoint();
+  }
+  return result;
+}
+
 // ── Run dev agents — contextFn(agentName) builds the context string ───────────
-async function _runDevAgents(squad, agents, context, toolSets, agentRegistry, contextFn, label = 'Running') {
+// bypassCheckpoint=true skips checkpoint checks (used in fix rounds).
+async function _runDevAgents(squad, agents, context, toolSets, agentRegistry, contextFn, label = 'Running', bypassCheckpoint = false) {
   const results = {};
   for (const agentName of agents) {
+    if (!bypassCheckpoint && context.isSquadAgentComplete(squad.id, agentName)) {
+      console.log(chalk.gray(`    [${squad.name}] ${agentName} — skipped (checkpoint)`));
+      continue;
+    }
     console.log(chalk.cyan(`    [${squad.name}] ${label} ${agentName}...`));
     const result = await _runSingleAgent(agentName, contextFn(agentName), squad, context, toolSets, agentRegistry);
-    if (result) results[agentName] = result;
+    if (result) {
+      results[agentName] = result;
+      if (!bypassCheckpoint && !result.error) {
+        context.markSquadAgentComplete(squad.id, agentName);
+        context.saveCheckpoint();
+      }
+    }
   }
   return results;
 }
@@ -127,66 +153,89 @@ async function runSquad(squad, context, toolSets, agentRegistry, activeAgents) {
     .filter(name => agentRegistry[name])
     .filter(name => activeAgents.has(name));
 
-  const devCtx = (agentName) => context.buildSquadScopedContext(agentName, squad);
-  const qaCtx  = () => context.buildSquadScopedContext('squadQaAgent', squad);
-  const devFn  = () => _runDevAgents(squad, devAgents, context, toolSets, agentRegistry, devCtx);
+  const devCtx   = (agentName) => context.buildSquadScopedContext(agentName, squad);
+  const qaCtx    = () => context.buildSquadScopedContext('squadQaAgent', squad);
+  // Fix rounds always bypass checkpoint — agents must re-run to actually fix things
+  const devFnFix = () => _runDevAgents(squad, devAgents, context, toolSets, agentRegistry, devCtx, 'Fixing', true);
 
   // Phase 1: Squad PM writes the feature spec
-  console.log(chalk.bold.yellow(`    [${squad.name}] PM writing feature spec...`));
-  try {
-    const specAgent = createSquadPmSpecAgent(toolSets.fs);
-    await specAgent.run(context.buildSquadPmSpecContext(squad));
-    const specPath = path.join(context.outputDir, 'docs', 'squads', `${squad.id}-spec.md`);
-    if (fs.existsSync(specPath)) {
-      context.setSquadSpec(squad.id, fs.readFileSync(specPath, 'utf8'));
-      console.log(chalk.green(`    [${squad.name}] Spec written → docs/squads/${squad.id}-spec.md`));
+  if (!context.isSquadAgentComplete(squad.id, 'squadPmSpecAgent')) {
+    console.log(chalk.bold.yellow(`    [${squad.name}] PM writing feature spec...`));
+    try {
+      const specAgent = createSquadPmSpecAgent(toolSets.fs);
+      await specAgent.run(context.buildSquadPmSpecContext(squad));
+      const specPath = path.join(context.outputDir, 'docs', 'squads', `${squad.id}-spec.md`);
+      if (fs.existsSync(specPath)) {
+        context.setSquadSpec(squad.id, fs.readFileSync(specPath, 'utf8'));
+        console.log(chalk.green(`    [${squad.name}] Spec written → docs/squads/${squad.id}-spec.md`));
+        context.markSquadAgentComplete(squad.id, 'squadPmSpecAgent');
+        context.saveCheckpoint();
+      }
+    } catch (err) {
+      console.log(chalk.yellow(`    [${squad.name}] Spec writing failed: ${err.message} — continuing without spec`));
     }
-  } catch (err) {
-    console.log(chalk.yellow(`    [${squad.name}] Spec writing failed: ${err.message} — continuing without spec`));
+  } else {
+    console.log(chalk.gray(`    [${squad.name}] squadPmSpecAgent — skipped (checkpoint)`));
+    // Reload spec into memory so downstream agents get it
+    const specPath = path.join(context.outputDir, 'docs', 'squads', `${squad.id}-spec.md`);
+    if (fs.existsSync(specPath) && !context.squadSpecs[squad.id]) {
+      context.setSquadSpec(squad.id, fs.readFileSync(specPath, 'utf8'));
+    }
   }
 
   // Phase 2: Squad Designer writes screen-by-screen design doc
   if (agentRegistry['squadDesignerAgent']) {
-    console.log(chalk.bold.yellow(`    [${squad.name}] Designer writing design doc...`));
-    await _runSingleAgent('squadDesignerAgent', devCtx('squadDesignerAgent'), squad, context, toolSets, agentRegistry);
+    await _skipOrRun('squadDesignerAgent', squad, context, async () => {
+      console.log(chalk.bold.yellow(`    [${squad.name}] Designer writing design doc...`));
+      return _runSingleAgent('squadDesignerAgent', devCtx('squadDesignerAgent'), squad, context, toolSets, agentRegistry);
+    });
   }
 
-  // Phase 3: Dev agents implement
-  const squadResults = await devFn();
+  // Phase 3: Dev agents implement (each checkpointed individually)
+  const squadResults = await _runDevAgents(squad, devAgents, context, toolSets, agentRegistry, devCtx);
 
   // Phases 4a–4c: Error handling, cleanup, dedup
   for (const agentName of CLEANUP_AGENTS) {
     if (agentRegistry[agentName]) {
-      console.log(chalk.bold.yellow(`    [${squad.name}] ${agentName}...`));
-      await _runSingleAgent(agentName, devCtx(agentName), squad, context, toolSets, agentRegistry);
+      await _skipOrRun(agentName, squad, context, async () => {
+        console.log(chalk.bold.yellow(`    [${squad.name}] ${agentName}...`));
+        return _runSingleAgent(agentName, devCtx(agentName), squad, context, toolSets, agentRegistry);
+      });
     }
   }
 
   // Phase 5: CMS Integrator (per-squad, optional)
   if (agentRegistry['cmsIntegratorAgent'] && activeAgents.has('cmsIntegratorAgent')) {
-    console.log(chalk.bold.yellow(`    [${squad.name}] CMS integration...`));
-    await _runSingleAgent('cmsIntegratorAgent', devCtx('cmsIntegratorAgent'), squad, context, toolSets, agentRegistry);
+    await _skipOrRun('cmsIntegratorAgent', squad, context, async () => {
+      console.log(chalk.bold.yellow(`    [${squad.name}] CMS integration...`));
+      return _runSingleAgent('cmsIntegratorAgent', devCtx('cmsIntegratorAgent'), squad, context, toolSets, agentRegistry);
+    });
   }
 
-  // Phase 6: Squad QA with fix loop
+  // Phase 6: QA + fix loop (entire block = one checkpoint unit)
   if (agentRegistry['squadQaAgent']) {
-    console.log(chalk.bold.yellow(`    [${squad.name}] QA: writing + running tests...`));
-    await _runSingleAgent('squadQaAgent', qaCtx(), squad, context, toolSets, agentRegistry);
-    await _runQaFixLoop(squad, devFn, qaCtx, context, toolSets, agentRegistry);
+    await _skipOrRun('squadQaAgent', squad, context, async () => {
+      console.log(chalk.bold.yellow(`    [${squad.name}] QA: writing + running tests...`));
+      await _runSingleAgent('squadQaAgent', qaCtx(), squad, context, toolSets, agentRegistry);
+      await _runQaFixLoop(squad, devFnFix, qaCtx, context, toolSets, agentRegistry);
+      return { ok: true };
+    });
   }
 
   // Phase 7: Squad Security review
   if (agentRegistry['squadSecurityAgent']) {
-    console.log(chalk.bold.yellow(`    [${squad.name}] Security review...`));
-    await _runSingleAgent('squadSecurityAgent', devCtx('squadSecurityAgent'), squad, context, toolSets, agentRegistry);
+    await _skipOrRun('squadSecurityAgent', squad, context, async () => {
+      console.log(chalk.bold.yellow(`    [${squad.name}] Security review...`));
+      return _runSingleAgent('squadSecurityAgent', devCtx('squadSecurityAgent'), squad, context, toolSets, agentRegistry);
+    });
   }
 
-  // Phase 8: Squad PM reviews the output
+  // Phase 8: PM review — always runs (fast, stateless read of output files)
   console.log(chalk.bold.yellow(`    [${squad.name}] PM reviewing implementation...`));
   const verdict = await _runPmReview(squad, context, toolSets);
 
-  // Phase 9: PM fix round if needed
-  await _handlePmGaps(squad, verdict, devFn, qaCtx, context, toolSets, agentRegistry);
+  // Phase 9: PM fix round if needed — fix rounds always bypass checkpoint
+  await _handlePmGaps(squad, verdict, devFnFix, qaCtx, context, toolSets, agentRegistry);
 
   return squadResults;
 }
@@ -263,7 +312,8 @@ async function runSquadUpdate(squad, changeDescription, context, toolSets, agent
 
   const devCtx = (agentName) => context.buildSquadUpdateContext(agentName, squad, changeDescription);
   const qaCtx  = () => context.buildSquadUpdateContext('squadQaAgent', squad, changeDescription);
-  const devFn  = () => _runDevAgents(squad, devAgents, context, toolSets, agentRegistry, devCtx, 'Updating');
+  // Update mode always bypasses checkpoint — agents must re-run to apply changes
+  const devFn  = () => _runDevAgents(squad, devAgents, context, toolSets, agentRegistry, devCtx, 'Updating', true);
 
   // Phase 1: Update the PM spec
   console.log(chalk.bold.yellow(`    [${squad.name}] PM updating feature spec...`));
