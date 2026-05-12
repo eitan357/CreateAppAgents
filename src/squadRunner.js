@@ -191,16 +191,38 @@ async function runSquad(squad, context, toolSets, agentRegistry, activeAgents) {
   return squadResults;
 }
 
-// Run all squads in parallel, then merge their outputs so global Layer 4 agents
+// Reconstruct a squad's agent results from checkpoint agentOutputs (keyed as "squadId:agentName").
+// Used when a squad is skipped on resume so its outputs still flow into _mergeOutputsToContext.
+function _rebuildSquadResults(squad, context) {
+  const results = {};
+  for (const [key, output] of Object.entries(context.agentOutputs)) {
+    if (key.startsWith(`${squad.id}:`)) {
+      const agentName = key.slice(squad.id.length + 1);
+      results[agentName] = output;
+    }
+  }
+  return Object.keys(results).length > 0 ? results : null;
+}
+
+// Run all squads sequentially, then merge their outputs so global Layer 4 agents
 // can find 'backendDev' / 'frontendDev' outputs as if one agent built the whole app.
 async function runAllSquads(squadPlan, context, toolSets, agentRegistry, activeAgents) {
   // Squads run sequentially (not parallel) to avoid API rate limit bursts.
-  // Each squad's internal agents already run concurrently within the squad.
   const allSquadResults = [];
   for (const squad of squadPlan.squads) {
+    if (context.isSquadComplete(squad.id)) {
+      console.log(chalk.gray(`\n  ✓  Squad: ${squad.name} — already completed, skipping`));
+      // Reconstruct results from checkpoint so _mergeOutputsToContext includes this squad
+      const saved = _rebuildSquadResults(squad, context);
+      if (saved) allSquadResults.push({ squad, results: saved });
+      continue;
+    }
     console.log(chalk.bold.cyan(`\n  ▶  Squad: ${squad.name} — ${squad.userFacingArea}`));
     const results = await runSquad(squad, context, toolSets, agentRegistry, activeAgents);
     allSquadResults.push({ squad, results });
+    context.markSquadComplete(squad.id);
+    context.saveCheckpoint();
+    console.log(chalk.green(`  ✅  Squad "${squad.name}" complete — checkpoint saved`));
   }
   _mergeOutputsToContext(allSquadResults, context);
 
@@ -311,7 +333,10 @@ async function runAllSquadsUpdate(updatePlan, context, toolSets, agentRegistry, 
   const allResults = [];
   for (const task of tasks) {
     const result = await task();
-    if (result) allResults.push(result);
+    if (!result) continue;
+    allResults.push(result);
+    context.saveCheckpoint();
+    console.log(chalk.green(`  ✅  Squad "${result.squad.name}" complete — checkpoint saved`));
   }
   _mergeOutputsToContext(allResults, context);
 

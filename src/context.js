@@ -202,6 +202,7 @@ class ProjectContext {
     this.squadSpecs = {};   // squadId → spec markdown content
     this.squadGaps  = {};   // squadId → gaps markdown content (cleared after fix)
     this.platformUpdateNotes = {}; // agentName → change description (set during update mode)
+    this.completedSquads = new Set(); // squadId → marked complete after all squad phases finish
   }
 
   setPlatformUpdateNote(agentName, note) {
@@ -249,6 +250,14 @@ class ProjectContext {
     return this.completedLayers.has(String(layerId));
   }
 
+  markSquadComplete(squadId) {
+    this.completedSquads.add(String(squadId));
+  }
+
+  isSquadComplete(squadId) {
+    return this.completedSquads.has(String(squadId));
+  }
+
   saveCheckpoint() {
     const checkpointPath = path.join(this.outputDir, '.build-checkpoint.json');
     fs.mkdirSync(this.outputDir, { recursive: true });
@@ -259,6 +268,7 @@ class ProjectContext {
       agentOutputs: this.agentOutputs,
       allFilesCreated: this.allFilesCreated,
       completedLayers: [...this.completedLayers],
+      completedSquads: [...this.completedSquads],
     }, null, 2), 'utf8');
   }
 
@@ -277,6 +287,7 @@ class ProjectContext {
     ctx.agentOutputs = checkpoint.agentOutputs || {};
     ctx.allFilesCreated = checkpoint.allFilesCreated || [];
     ctx.completedLayers = new Set(checkpoint.completedLayers || []);
+    ctx.completedSquads = new Set(checkpoint.completedSquads || []);
     ctx.squadPlan = checkpoint.squadPlan || null;
     return ctx;
   }
