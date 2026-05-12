@@ -773,8 +773,8 @@ async function orchestrate(requirements, projectName, outputDir, checkpoint = nu
       // Platform pipeline: spec → build → feature infra → QA loop → security → PM review → PM fix
       layerResults = await runPlatformPipeline(context, toolSets, AGENT_REGISTRY, activeAgents);
     } else if (layerDef.id === 3 && context.squadPlan) {
-      // ── Squad mode: run each squad's agents in parallel, sequential within squad
-      console.log(chalk.bold.cyan(`\n  Running ${context.squadPlan.squads.length} squads in parallel...`));
+      // ── Squad mode: run each squad sequentially to stay under API rate limits
+      console.log(chalk.bold.cyan(`\n  Running ${context.squadPlan.squads.length} squads sequentially...`));
       layerResults = await runAllSquads(context.squadPlan, context, toolSets, AGENT_REGISTRY, activeAgents);
     } else if (layerDef.parallel) {
       layerResults = await runLayerInParallel(agentConfigs, context, toolSets, AGENT_REGISTRY);

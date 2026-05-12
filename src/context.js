@@ -53,6 +53,16 @@ const GUIDELINE_MAP = {
   platformSecurityAgent:     'docs/guidelines/security-guidelines.md',
 };
 
+// Cap each dependency summary at this many characters.
+// Agents should use read_file on the listed files for full details.
+// Keeps a single agent's context well under the 30k input-tokens/min rate limit.
+const MAX_DEP_SUMMARY_CHARS = 400;
+
+function _truncateSummary(text) {
+  if (!text || text.length <= MAX_DEP_SUMMARY_CHARS) return text;
+  return text.slice(0, MAX_DEP_SUMMARY_CHARS) + '… (use read_file on the files listed below for full context)';
+}
+
 function _injectUniversalRules(lines) {
   lines.push(
     '# Universal Rules — apply to every agent without exception',
@@ -319,7 +329,7 @@ class ProjectContext {
           }
           lines.push(
             `## ${depName} Agent Output`,
-            output.summary,
+            _truncateSummary(output.summary),
             '',
             `Files created: ${output.files.join(', ')}`,
             '',
@@ -406,7 +416,7 @@ class ProjectContext {
     // Platform context
     ['systemArchitect', 'dataArchitect', 'apiDesigner'].forEach(dep => {
       const out = this.agentOutputs[dep];
-      if (out) lines.push(`# ${dep} Output`, out.summary, '');
+      if (out) lines.push(`# ${dep} Output`, _truncateSummary(out.summary), `Files: ${out.files.join(', ')}`, '');
     });
 
     lines.push(
@@ -510,7 +520,7 @@ class ProjectContext {
         const output = this.agentOutputs[depName];
         lines.push(
           `## ${depName}`,
-          output.summary,
+          _truncateSummary(output.summary),
           '',
           `Files: ${output.files.join(', ')}`,
           '',
@@ -619,7 +629,7 @@ class ProjectContext {
       lines.push('# Platform Context', '');
       for (const depName of availableDeps) {
         const output = this.agentOutputs[depName];
-        lines.push(`## ${depName}`, output.summary, '', `Files: ${output.files.join(', ')}`, '');
+        lines.push(`## ${depName}`, _truncateSummary(output.summary), '', `Files: ${output.files.join(', ')}`, '');
       }
     }
 
