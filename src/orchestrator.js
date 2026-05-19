@@ -371,8 +371,46 @@ const OPTIONAL_AGENTS_GUIDE = `
 - appStorePublisher    : App Store Connect + Google Play setup, Fastlane, code signing, release checklist
 - asoMarketingAgent    : App Store Optimization — keywords, store listing copy, screenshot strategy`;
 
+// ── Mock plan — used when global._mockMode is true ────────────────────────────
+const MOCK_PLAN = {
+  projectName:  'mock-project',
+  description:  'A mock project for pipeline testing.',
+  techStack: {
+    backend:    'Node.js + Express',
+    frontend:   'React + TypeScript',
+    database:   'PostgreSQL',
+    deployment: 'Docker + GitHub Actions',
+    auth:       'JWT',
+  },
+  layers: {
+    layer1: { agents: ['requirementsAnalyst', 'systemArchitect'] },
+    layer2: { agents: ['dataArchitect', 'apiDesigner', 'frontendArchitect'] },
+    layer3: { agents: ['backendDev', 'authAgent'], includeFrontend: true, includeIntegration: false, integrationReason: 'No third-party APIs required' },
+    layer4: { agents: ['testWriter', 'testRunner', 'testFixer', 'security', 'reviewer'] },
+    layer5: { agents: ['devops', 'documentation'] },
+  },
+  optionalAgents: [],
+  estimatedFiles: 20,
+};
+
+const MOCK_SQUAD_PLAN = {
+  squads: [{
+    id:             'squad-01',
+    name:           'Core Features',
+    description:    'Core application features: items CRUD and auth',
+    userFacingArea: 'Items management and authentication',
+    keyFeatures:    ['Create item', 'View items', 'Delete item'],
+    agents:         ['backendDev', 'frontendDev'],
+    backendModule:  'core',
+    frontendModule: 'core',
+  }],
+  platformNotes: 'Shared UI components, API client, and DB schema used by all squads.',
+};
+
 // ── PM Plan creation ──────────────────────────────────────────────────────────
 async function createPlan(requirements, projectName) {
+  if (global._mockMode) return { ...MOCK_PLAN, projectName };
+
   const client = new Anthropic();
 
   const response = await withRetry(() => client.messages.create({
@@ -689,7 +727,7 @@ async function orchestrate(requirements, projectName, outputDir, checkpoint = nu
     // ── Squad planning ────────────────────────────────────────────────────────
     console.log(chalk.yellow(t('generatingSquads')));
     try {
-      const squadPlan = await createSquadPlan(requirements, plan);
+      const squadPlan = global._mockMode ? MOCK_SQUAD_PLAN : await createSquadPlan(requirements, plan);
       const squadApproved = await approveStep(
         '🏢  Squad Division',
         'The system identified the following domains — each squad of agents will be responsible for one area:',
@@ -705,6 +743,9 @@ async function orchestrate(requirements, projectName, outputDir, checkpoint = nu
       console.log(chalk.yellow(`  ⚠️  Squad planning failed: ${err.message} — continuing without squad division.\n`));
     }
   }
+
+  if (global._mockMode) global._mockOutputDir = outputDir;
+
   const fsTools = createFileSystemTools(outputDir);
   const shellTools = createShellTools(outputDir);
   const toolSets = {

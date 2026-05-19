@@ -15,6 +15,7 @@ function ask(question) {
 }
 
 async function approveStep(stepName, description, details = null) {
+  if (global._mockMode) return true;
   console.log('\n' + chalk.cyan('─'.repeat(60)));
   console.log(chalk.bold.yellow(`📋  ${stepName}`));
   console.log(chalk.white(description));
@@ -27,6 +28,7 @@ async function approveStep(stepName, description, details = null) {
 }
 
 async function showAgentOutput(agentName, summary, filesCreated) {
+  if (global._mockMode) return true;
   console.log('\n' + chalk.cyan('═'.repeat(60)));
   console.log(chalk.bold.blue(t('agentDone', agentName)));
 
@@ -45,6 +47,7 @@ async function showAgentOutput(agentName, summary, filesCreated) {
 }
 
 async function approveLayer(layerName, layerResults) {
+  if (global._mockMode) return true;
   const agentNames = Object.keys(layerResults);
   const totalFiles = agentNames.reduce(
     (sum, name) => sum + (layerResults[name]?.filesCreated?.length || 0), 0
@@ -75,6 +78,7 @@ async function approveLayer(layerName, layerResults) {
 // Gate shown BEFORE a layer runs — lets user skip or stop without running.
 // Returns 'run' | 'skip' | 'stop'.
 async function approveLayerStart(layerName, agentNames) {
+  if (global._mockMode) return 'run';
   console.log('\n' + chalk.cyan('┄'.repeat(70)));
   console.log(chalk.bold.yellow(`⏭   Next: ${layerName}`));
   console.log(chalk.white(`   Agents : ${agentNames.join(', ')}`));

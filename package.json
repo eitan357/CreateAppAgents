@@ -5,11 +5,20 @@
   "main": "src/index.js",
   "scripts": {
     "start": "node src/index.js",
-    "dev": "node --watch src/index.js"
+    "dev": "node --watch src/index.js",
+    "test": "jest --testPathPattern=tests/ --forceExit",
+    "test:watch": "jest --testPathPattern=tests/ --watch"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.52.0",
     "chalk": "^4.1.2",
     "dotenv": "^16.4.5"
+  },
+  "devDependencies": {
+    "jest": "^29.7.0"
+  },
+  "jest": {
+    "testEnvironment": "node",
+    "testTimeout": 120000
   }
 }

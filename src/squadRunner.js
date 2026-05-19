@@ -23,6 +23,7 @@ async function _runSingleAgent(agentName, contextStr, squad, context, toolSets, 
 
   for (let attempt = 1; attempt <= 2; attempt++) {
     try {
+      global._currentSquadContext = squad;
       const needsShell = agentName === 'squadQaAgent';
       const toolSet = needsShell ? toolSets.all : toolSets.fs;
       const agent = createAgent(toolSet);
@@ -123,6 +124,7 @@ async function _handlePmGaps(squad, verdict, fixFn, qaContextFn, context, toolSe
 // ── PM review — returns 'ACCEPTED', 'GAPS', or 'UNKNOWN' ─────────────────────
 async function _runPmReview(squad, context, toolSets) {
   try {
+    global._currentSquadContext = squad;
     const reviewAgent = createSquadPmReviewAgent(toolSets.fs);
     await reviewAgent.run(context.buildSquadPmReviewContext(squad));
 
@@ -162,6 +164,7 @@ async function runSquad(squad, context, toolSets, agentRegistry, activeAgents) {
   if (!context.isSquadAgentComplete(squad.id, 'squadPmSpecAgent')) {
     console.log(chalk.bold.yellow(`    [${squad.name}] PM writing feature spec...`));
     try {
+      global._currentSquadContext = squad;
       const specAgent = createSquadPmSpecAgent(toolSets.fs);
       await specAgent.run(context.buildSquadPmSpecContext(squad));
       const specPath = path.join(context.outputDir, 'docs', 'squads', `${squad.id}-spec.md`);
