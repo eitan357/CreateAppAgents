@@ -46,6 +46,15 @@ function getMockResponse(agentName) {
 // ── Mock definitions — keyed by BaseAgent this.name ──────────────────────────
 const MOCK_DEFINITIONS = {
 
+  // ── Tier 0 — Single agent build ─────────────────────────────────────────────
+  'Simple App Builder': {
+    summary: '[MOCK] Simple app built. index.html with complete UI and README.',
+    files: {
+      'index.html': '<!DOCTYPE html>\n<html lang="en">\n<head><meta charset="UTF-8"><title>Simple App</title><style>body{font-family:sans-serif;max-width:600px;margin:40px auto;padding:20px}</style></head>\n<body><h1>Simple App</h1><p>Built by CreateApp Agents.</p></body>\n</html>\n',
+      'README.md': '# Simple App\n\nOpen `index.html` in a browser to run.\n',
+    },
+  },
+
   // ── Layer 1 — Discovery ─────────────────────────────────────────────────────
   RequirementsAnalyst: {
     summary: '[MOCK] Requirements analysis complete. 3 user stories defined across 2 domains.',

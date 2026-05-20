@@ -149,7 +149,12 @@ async function _runPmReview(squad, context, toolSets) {
 }
 
 // Run one squad: PM spec → designer → devs → cleanup → CMS → QA loop → security → PM review loop
+// Phases run based on build tier (context.plan.tier):
+//   tier 1 (Simple)  : PmSpec + devs + PmReview only
+//   tier 2 (Standard): + Designer + QA loop
+//   tier 3 (Full)    : + Cleanup + Security + all phases
 async function runSquad(squad, context, toolSets, agentRegistry, activeAgents) {
+  const tier = context.plan?.tier ?? 3;
   const devAgents = (squad.agents || ['backendDev', 'frontendDev'])
     .filter(name => SQUAD_DEV_AGENTS.has(name))
     .filter(name => agentRegistry[name])
@@ -186,8 +191,8 @@ async function runSquad(squad, context, toolSets, agentRegistry, activeAgents) {
     }
   }
 
-  // Phase 2: Squad Designer writes screen-by-screen design doc
-  if (agentRegistry['squadDesignerAgent']) {
+  // Phase 2: Squad Designer (tier 2+)
+  if (tier >= 2 && agentRegistry['squadDesignerAgent']) {
     await _skipOrRun('squadDesignerAgent', squad, context, async () => {
       console.log(chalk.bold.yellow(`    [${squad.name}] Designer writing design doc...`));
       return _runSingleAgent('squadDesignerAgent', devCtx('squadDesignerAgent'), squad, context, toolSets, agentRegistry);
@@ -197,17 +202,19 @@ async function runSquad(squad, context, toolSets, agentRegistry, activeAgents) {
   // Phase 3: Dev agents implement (each checkpointed individually)
   const squadResults = await _runDevAgents(squad, devAgents, context, toolSets, agentRegistry, devCtx);
 
-  // Phases 4a–4c: Error handling, cleanup, dedup
-  for (const agentName of CLEANUP_AGENTS) {
-    if (agentRegistry[agentName]) {
-      await _skipOrRun(agentName, squad, context, async () => {
-        console.log(chalk.bold.yellow(`    [${squad.name}] ${agentName}...`));
-        return _runSingleAgent(agentName, devCtx(agentName), squad, context, toolSets, agentRegistry);
-      });
+  // Phases 4a–4c: Error handling, cleanup, dedup (tier 3 only)
+  if (tier >= 3) {
+    for (const agentName of CLEANUP_AGENTS) {
+      if (agentRegistry[agentName]) {
+        await _skipOrRun(agentName, squad, context, async () => {
+          console.log(chalk.bold.yellow(`    [${squad.name}] ${agentName}...`));
+          return _runSingleAgent(agentName, devCtx(agentName), squad, context, toolSets, agentRegistry);
+        });
+      }
     }
   }
 
-  // Phase 5: CMS Integrator (per-squad, optional)
+  // Phase 5: CMS Integrator (per-squad, optional — all tiers if selected)
   if (agentRegistry['cmsIntegratorAgent'] && activeAgents.has('cmsIntegratorAgent')) {
     await _skipOrRun('cmsIntegratorAgent', squad, context, async () => {
       console.log(chalk.bold.yellow(`    [${squad.name}] CMS integration...`));
@@ -215,8 +222,8 @@ async function runSquad(squad, context, toolSets, agentRegistry, activeAgents) {
     });
   }
 
-  // Phase 6: QA + fix loop (entire block = one checkpoint unit)
-  if (agentRegistry['squadQaAgent']) {
+  // Phase 6: QA + fix loop (tier 2+)
+  if (tier >= 2 && agentRegistry['squadQaAgent']) {
     await _skipOrRun('squadQaAgent', squad, context, async () => {
       console.log(chalk.bold.yellow(`    [${squad.name}] QA: writing + running tests...`));
       await _runSingleAgent('squadQaAgent', qaCtx(), squad, context, toolSets, agentRegistry);
@@ -225,8 +232,8 @@ async function runSquad(squad, context, toolSets, agentRegistry, activeAgents) {
     });
   }
 
-  // Phase 7: Squad Security review
-  if (agentRegistry['squadSecurityAgent']) {
+  // Phase 7: Squad Security review (tier 3 only)
+  if (tier >= 3 && agentRegistry['squadSecurityAgent']) {
     await _skipOrRun('squadSecurityAgent', squad, context, async () => {
       console.log(chalk.bold.yellow(`    [${squad.name}] Security review...`));
       return _runSingleAgent('squadSecurityAgent', devCtx('squadSecurityAgent'), squad, context, toolSets, agentRegistry);

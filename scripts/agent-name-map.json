@@ -71,5 +71,6 @@
   "appStorePublisher": "AppStorePublisher",
   "userTestingAgent": "UserTesting",
   "asoMarketingAgent": "ASOMarketing",
-  "seoAgent": "SEO"
+  "seoAgent": "SEO",
+  "simpleAppBuilder": "Simple App Builder"
 }
