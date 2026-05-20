@@ -407,6 +407,39 @@ const MOCK_SQUAD_PLAN = {
   platformNotes: 'Shared UI components, API client, and DB schema used by all squads.',
 };
 
+const MOCK_SQUAD_PLAN_MULTI = {
+  squads: [
+    {
+      id:             'squad-01',
+      name:           'Core Features',
+      description:    'Core application features: items CRUD and auth',
+      userFacingArea: 'Items management and authentication',
+      keyFeatures:    ['Create item', 'View items', 'Delete item'],
+      agents:         ['backendDev', 'frontendDev'],
+      backendModule:  'core',
+      frontendModule: 'core',
+    },
+    {
+      id:             'squad-02',
+      name:           'User Settings',
+      description:    'User profile and settings management',
+      userFacingArea: 'Profile and settings screens',
+      keyFeatures:    ['Edit profile', 'Change password', 'Notification preferences'],
+      agents:         ['backendDev', 'frontendDev'],
+      backendModule:  'settings',
+      frontendModule: 'settings',
+    },
+  ],
+  platformNotes: 'Shared UI components, API client, and DB schema used by all squads.',
+};
+
+const MOCK_UPDATE_PLAN = {
+  summary: 'Add dark mode support to the UI',
+  affectedSquads: [{ id: 'squad-01', changeDescription: 'Add dark mode toggle component and CSS variables for theme switching.' }],
+  newSquads: [],
+  platformUpdates: null,
+};
+
 // ── PM Plan creation ──────────────────────────────────────────────────────────
 async function createPlan(requirements, projectName) {
   if (global._mockMode) return { ...MOCK_PLAN, projectName };
@@ -727,7 +760,7 @@ async function orchestrate(requirements, projectName, outputDir, checkpoint = nu
     // ── Squad planning ────────────────────────────────────────────────────────
     console.log(chalk.yellow(t('generatingSquads')));
     try {
-      const squadPlan = global._mockMode ? MOCK_SQUAD_PLAN : await createSquadPlan(requirements, plan);
+      const squadPlan = global._mockMode ? (global._mockSquadPlan || MOCK_SQUAD_PLAN) : await createSquadPlan(requirements, plan);
       const squadApproved = await approveStep(
         '🏢  Squad Division',
         'The system identified the following domains — each squad of agents will be responsible for one area:',
@@ -1030,6 +1063,7 @@ async function orchestrateUpdate(changeRequest, checkpointData, outputDir, githu
   console.log(chalk.bold.cyan('\n🔄  App Builder Agents — Update Mode\n'));
 
   const context = ProjectContext.fromCheckpoint({ ...checkpointData, outputDir });
+  if (global._mockMode) global._mockOutputDir = outputDir;
 
   if (!context.squadPlan) {
     console.log(chalk.red('❌  No squad plan found. Update mode requires a project built with a squad plan.'));
@@ -1040,7 +1074,7 @@ async function orchestrateUpdate(changeRequest, checkpointData, outputDir, githu
   console.log(chalk.yellow('⏳  Analyzing the change request...'));
   let updatePlan;
   try {
-    updatePlan = await analyzeUpdate(changeRequest, context.squadPlan);
+    updatePlan = global._mockMode ? MOCK_UPDATE_PLAN : await analyzeUpdate(changeRequest, context.squadPlan);
   } catch (err) {
     console.log(chalk.red(`❌  Request analysis failed: ${err.message}`));
     return;
@@ -1163,4 +1197,4 @@ async function orchestrateUpdate(changeRequest, checkpointData, outputDir, githu
   if (githubRepo) console.log(chalk.white(`🐙  GitHub: https://github.com/${githubRepo.full}`));
 }
 
-module.exports = { orchestrate, orchestrateUpdate, AGENT_REGISTRY };
+module.exports = { orchestrate, orchestrateUpdate, AGENT_REGISTRY, MOCK_PLAN, MOCK_SQUAD_PLAN, MOCK_SQUAD_PLAN_MULTI };

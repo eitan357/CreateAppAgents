@@ -3,7 +3,7 @@
 const fs   = require('fs');
 const os   = require('os');
 const path = require('path');
-const { orchestrate }    = require('../../src/orchestrator');
+const { orchestrate, MOCK_SQUAD_PLAN_MULTI } = require('../../src/orchestrator');
 const { ProjectContext } = require('../../src/context');
 
 const TEST_REQUIREMENTS = 'Simple todo app. Users can add, view, and delete items.';
@@ -89,6 +89,40 @@ test('shared platform files exist', () => {
 test('operations files exist', () => {
   expect(fs.existsSync(path.join(outputDir, 'Dockerfile'))).toBe(true);
   expect(fs.existsSync(path.join(outputDir, 'README.md'))).toBe(true);
+});
+
+// ── Multiple squads ──────────────────────────────────────────────────────────
+describe('multi-squad pipeline', () => {
+  let multiDir;
+
+  beforeAll(async () => {
+    global._mockSquadPlan = MOCK_SQUAD_PLAN_MULTI;
+    multiDir = fs.mkdtempSync(path.join(os.tmpdir(), 'pipeline-multi-'));
+    await orchestrate(TEST_REQUIREMENTS, 'multi-squad-app', multiDir, null, null);
+  });
+
+  afterAll(() => {
+    global._mockSquadPlan = null;
+    if (multiDir) fs.rmSync(multiDir, { recursive: true, force: true });
+  });
+
+  test('both squads are marked complete in checkpoint', () => {
+    const checkpoint = ProjectContext.loadCheckpoint(multiDir);
+    expect(checkpoint.completedSquads).toContain('squad-01');
+    expect(checkpoint.completedSquads).toContain('squad-02');
+  });
+
+  test('squad-01 review file exists', () => {
+    expect(fs.existsSync(path.join(multiDir, 'docs', 'squads', 'squad-01-review.md'))).toBe(true);
+  });
+
+  test('squad-02 review file exists', () => {
+    expect(fs.existsSync(path.join(multiDir, 'docs', 'squads', 'squad-02-review.md'))).toBe(true);
+  });
+
+  test('squad-02 QA report exists', () => {
+    expect(fs.existsSync(path.join(multiDir, 'docs', 'squads', 'squad-02-qa-report.md'))).toBe(true);
+  });
 });
 
 // ── Resume from checkpoint ───────────────────────────────────────────────────
