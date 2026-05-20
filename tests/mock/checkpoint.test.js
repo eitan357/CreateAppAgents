@@ -131,6 +131,78 @@ test('fromCheckpoint restores agentOutputs', () => {
   expect(restored.agentOutputs.requirementsAnalyst.summary).toBe('Requirements done');
 });
 
+// ── Squad completion tracking ────────────────────────────────────────────────
+test('isSquadComplete returns false before marking', () => {
+  expect(ctx.isSquadComplete('squad-01')).toBe(false);
+});
+
+test('isSquadComplete returns true after marking', () => {
+  ctx.markSquadComplete('squad-01');
+  expect(ctx.isSquadComplete('squad-01')).toBe(true);
+});
+
+test('fromCheckpoint restores completedSquads', () => {
+  ctx.markSquadComplete('squad-01');
+  ctx.markSquadComplete('squad-02');
+  ctx.saveCheckpoint();
+
+  const loaded = ProjectContext.loadCheckpoint(tmpDir);
+  const restored = ProjectContext.fromCheckpoint({ ...loaded, outputDir: tmpDir });
+
+  expect(restored.isSquadComplete('squad-01')).toBe(true);
+  expect(restored.isSquadComplete('squad-02')).toBe(true);
+  expect(restored.isSquadComplete('squad-03')).toBe(false);
+});
+
+// ── Partial squad resume ─────────────────────────────────────────────────────
+test('partial squad resume: only completed agents are marked done', () => {
+  // Simulate: backendDev and frontendDev finished, but authAgent and squadQaAgent did not
+  ctx.markSquadAgentComplete('squad-01', 'backendDev');
+  ctx.markSquadAgentComplete('squad-01', 'frontendDev');
+  ctx.saveCheckpoint();
+
+  const loaded = ProjectContext.loadCheckpoint(tmpDir);
+  const restored = ProjectContext.fromCheckpoint({ ...loaded, outputDir: tmpDir });
+
+  expect(restored.isSquadAgentComplete('squad-01', 'backendDev')).toBe(true);
+  expect(restored.isSquadAgentComplete('squad-01', 'frontendDev')).toBe(true);
+  expect(restored.isSquadAgentComplete('squad-01', 'authAgent')).toBe(false);
+  expect(restored.isSquadAgentComplete('squad-01', 'squadQaAgent')).toBe(false);
+  expect(restored.isSquadAgentComplete('squad-01', 'integrationAgent')).toBe(false);
+});
+
+test('partial squad resume: multiple squads with different completion states', () => {
+  // squad-01 fully done, squad-02 half done, squad-03 not started
+  ctx.markSquadAgentComplete('squad-01', 'backendDev');
+  ctx.markSquadAgentComplete('squad-01', 'frontendDev');
+  ctx.markSquadAgentComplete('squad-01', 'authAgent');
+  ctx.markSquadAgentComplete('squad-01', 'integrationAgent');
+  ctx.markSquadComplete('squad-01');
+
+  ctx.markSquadAgentComplete('squad-02', 'backendDev');
+  ctx.saveCheckpoint();
+
+  const loaded = ProjectContext.loadCheckpoint(tmpDir);
+  const restored = ProjectContext.fromCheckpoint({ ...loaded, outputDir: tmpDir });
+
+  expect(restored.isSquadComplete('squad-01')).toBe(true);
+  expect(restored.isSquadAgentComplete('squad-02', 'backendDev')).toBe(true);
+  expect(restored.isSquadAgentComplete('squad-02', 'frontendDev')).toBe(false);
+  expect(restored.isSquadAgentComplete('squad-03', 'backendDev')).toBe(false);
+});
+
+test('checkpoint after partial squad work is valid JSON', () => {
+  ctx.markLayerComplete(1);
+  ctx.markLayerComplete(2);
+  ctx.markSquadAgentComplete('squad-01', 'backendDev');
+  ctx.saveCheckpoint();
+
+  const raw = require('fs').readFileSync(require('path').join(tmpDir, '.build-checkpoint.json'), 'utf8');
+  expect(() => JSON.parse(raw)).not.toThrow();
+  const parsed = JSON.parse(raw);
+  expect(parsed.completedSquadAgents['squad-01']).toContain('backendDev');
+});
+
 // ── Agent output tracking ────────────────────────────────────────────────────
 test('addAgentOutput accumulates allFilesCreated', () => {
   ctx.addAgentOutput('agent1', 'done', ['a.js', 'b.js']);
