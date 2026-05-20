@@ -28,7 +28,7 @@ jobs:
       - name: Auto-generate missing mocks
         run: node scripts/generate-mocks.js
 
-      - name: Run tests
-        run: npm test
+      - name: Run mock tests
+        run: npm run test:mock
         env:
           ANTHROPIC_API_KEY: mock-key-for-testing

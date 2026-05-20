@@ -3,7 +3,7 @@
 const fs   = require('fs');
 const os   = require('os');
 const path = require('path');
-const { getMockResponse } = require('../src/mockResponses');
+const { getMockResponse } = require('../../src/mockResponses');
 
 let tmpDir;
 

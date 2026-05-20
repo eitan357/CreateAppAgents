@@ -3,8 +3,8 @@
 const fs   = require('fs');
 const os   = require('os');
 const path = require('path');
-const { orchestrate }    = require('../src/orchestrator');
-const { ProjectContext } = require('../src/context');
+const { orchestrate }    = require('../../src/orchestrator');
+const { ProjectContext } = require('../../src/context');
 
 const TEST_REQUIREMENTS = 'Simple todo app. Users can add, view, and delete items.';
 const TEST_PROJECT      = 'test-pipeline-app';

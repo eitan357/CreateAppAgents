@@ -3,7 +3,7 @@
 const fs   = require('fs');
 const os   = require('os');
 const path = require('path');
-const { ProjectContext } = require('../src/context');
+const { ProjectContext } = require('../../src/context');
 
 let tmpDir;
 let ctx;
