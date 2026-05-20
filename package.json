@@ -8,6 +8,9 @@
     "dev": "node --watch src/index.js",
     "test": "jest --testPathPattern=tests/ --forceExit",
     "test:watch": "jest --testPathPattern=tests/ --watch",
+    "mocks:build-map": "node scripts/build-agent-map.js",
+    "mocks:generate": "node scripts/generate-mocks.js",
+    "mocks:sync": "node scripts/build-agent-map.js && node scripts/generate-mocks.js",
     "prepare": "husky"
   },
   "dependencies": {

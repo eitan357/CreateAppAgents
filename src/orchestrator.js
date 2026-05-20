@@ -1163,4 +1163,4 @@ async function orchestrateUpdate(changeRequest, checkpointData, outputDir, githu
   if (githubRepo) console.log(chalk.white(`🐙  GitHub: https://github.com/${githubRepo.full}`));
 }
 
-module.exports = { orchestrate, orchestrateUpdate };
+module.exports = { orchestrate, orchestrateUpdate, AGENT_REGISTRY };

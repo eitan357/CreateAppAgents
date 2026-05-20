@@ -1,1 +1,4 @@
+node scripts/build-agent-map.js
+node scripts/generate-mocks.js
+git add scripts/agent-name-map.json scripts/auto-mocks.json
 npm test

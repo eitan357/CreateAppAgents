@@ -3,6 +3,13 @@
 const fs   = require('fs');
 const path = require('path');
 
+// Auto-generated stubs live in scripts/auto-mocks.json (created by scripts/generate-mocks.js).
+// Manual MOCK_DEFINITIONS always take priority over auto-generated ones.
+const AUTO_MOCKS_PATH = path.join(__dirname, '..', 'scripts', 'auto-mocks.json');
+const AUTO_MOCKS = fs.existsSync(AUTO_MOCKS_PATH)
+  ? JSON.parse(fs.readFileSync(AUTO_MOCKS_PATH, 'utf8'))
+  : {};
+
 function _write(outputDir, relPath, content) {
   const full = path.join(outputDir, relPath);
   fs.mkdirSync(path.dirname(full), { recursive: true });
@@ -19,7 +26,8 @@ function getMockResponse(agentName) {
 
   const files = [];
 
-  const def = MOCK_DEFINITIONS[agentName];
+  // Manual definitions take priority; auto-generated stubs fill the gaps.
+  const def = MOCK_DEFINITIONS[agentName] || AUTO_MOCKS[agentName];
   if (def) {
     const summary = typeof def.summary === 'function' ? def.summary(squadId, squadName) : def.summary;
     const fileMap = typeof def.files   === 'function' ? def.files(squadId, squadName)   : def.files;
@@ -564,4 +572,4 @@ const MOCK_DEFINITIONS = {
   },
 };
 
-module.exports = { getMockResponse };
+module.exports = { getMockResponse, MOCK_DEFINITIONS };
