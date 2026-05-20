@@ -113,6 +113,7 @@ const { createAppStorePublisherAgent }   = require('./agents/appStorePublisher')
 const { createUserTestingAgent }         = require('./agents/userTestingAgent');
 const { createASOMarketingAgent }        = require('./agents/asoMarketingAgent');
 const { createSeoAgent }                 = require('./agents/seoAgent');
+const { createDeploymentAdvisorAgent }   = require('./agents/deploymentAdvisorAgent');
 
 // ── Registry ──────────────────────────────────────────────────────────────────
 const AGENT_REGISTRY = {
@@ -201,6 +202,7 @@ const AGENT_REGISTRY = {
   userTestingAgent:         createUserTestingAgent,
   asoMarketingAgent:        createASOMarketingAgent,
   seoAgent:                 createSeoAgent,
+  deploymentAdvisor:        createDeploymentAdvisorAgent,
   // Tier 0 — single-agent build
   simpleAppBuilder:         createSimpleAppAgent,
 };
@@ -255,7 +257,7 @@ const LAYER_DEFINITIONS = [
   },
   {
     id: 5, name: 'Operations', parallel: true, minTier: 1, skipApprovalGate: true,
-    agents: ['devops', 'documentation', 'analyticsMonitoring', 'appStorePublisher', 'asoMarketingAgent', 'seoAgent'],
+    agents: ['devops', 'documentation', 'analyticsMonitoring', 'appStorePublisher', 'asoMarketingAgent', 'seoAgent', 'deploymentAdvisor'],
   },
 ];
 
@@ -297,7 +299,7 @@ const PM_PLAN_SCHEMA = `{
       "integrationReason": "why integration agent is or isn't needed"
     },
     "layer4": { "agents": ["testWriter", "testRunner", "testFixer", "security", "reviewer"] },
-    "layer5": { "agents": ["devops", "documentation"] }
+    "layer5": { "agents": ["devops", "documentation", "deploymentAdvisor"] }
   },
   "optionalAgents": [],
   "estimatedFiles": 52
@@ -351,7 +353,8 @@ const OPTIONAL_AGENTS_GUIDE = `
 - analyticsMonitoring  : Crash reporting (Sentry), Google Analytics 4 / Plausible, RUM, feature flags
 - seoAgent             : Technical SEO — meta tags, Open Graph, JSON-LD structured data, sitemap.xml, robots.txt, canonical URLs
 - appStorePublisher    : App Store Connect + Google Play setup, Fastlane, code signing, release checklist
-- asoMarketingAgent    : App Store Optimization — keywords, store listing copy, screenshot strategy`;
+- asoMarketingAgent    : App Store Optimization — keywords, store listing copy, screenshot strategy
+- deploymentAdvisor    : **Always include** — reads the project and produces docs/deployment-guide.md with 3 tier-appropriate deployment options, step-by-step instructions, cost estimates, and troubleshooting. Tier 1→free platforms (Vercel/Railway/Expo), Tier 2→managed cloud (DigitalOcean/Railway Pro/EAS), Tier 3→AWS/GCP/Azure/Kubernetes`;
 
 // ── Mock plan — used when global._mockMode is true ────────────────────────────
 const MOCK_PLAN = {
@@ -371,7 +374,7 @@ const MOCK_PLAN = {
     layer2: { agents: ['dataArchitect', 'apiDesigner', 'frontendArchitect'] },
     layer3: { agents: ['backendDev', 'authAgent'], includeFrontend: true, includeIntegration: false, integrationReason: 'No third-party APIs required' },
     layer4: { agents: ['testWriter', 'testRunner', 'testFixer', 'security', 'reviewer'] },
-    layer5: { agents: ['devops', 'documentation'] },
+    layer5: { agents: ['devops', 'documentation', 'deploymentAdvisor'] },
   },
   optionalAgents: [],
   estimatedFiles: 20,
@@ -443,7 +446,7 @@ Available agents by layer:
 - Layer 2 (Design, always included): dataArchitect, apiDesigner; frontendArchitect ONLY if project has a frontend
 - Layer 3 (Implementation): backendDev and authAgent always; frontendDev ONLY if project has a frontend; integrationAgent ONLY if requirements explicitly mention third-party APIs or webhooks
 - Layer 4 (Quality, always included): testWriter, testRunner, testFixer, security, reviewer
-- Layer 5 (Operations, always included): devops, documentation
+- Layer 5 (Operations, always included): devops, documentation, deploymentAdvisor
 
 Build tier — choose the tier that matches the project's true complexity:
 - tier 0: ≤5 files, pure static (HTML/CSS/JS) or a single script. No backend, no auth, no database.
@@ -515,6 +518,7 @@ function getActiveAgents(plan) {
   names.add('codeDeduplicationAgent');   // global cross-squad dedup (Layer 3f)
   names.add('errorAuditAgent');          // global error handling audit (Layer 4)
   names.add('codeQualityAuditAgent');    // global code quality audit (Layer 4)
+  names.add('deploymentAdvisor');        // always produce deployment guide (Layer 5)
 
   // Per-squad agents (run inside squadRunner — must be in activeAgents for registry lookup)
   names.add('squadErrorHandlingAgent');
@@ -676,7 +680,7 @@ function formatPlan(plan) {
   lines.push(`    Layer 4c — Test Fix       : testFixer`);
 
   const extraOps = optional.filter(a => ['analyticsMonitoring','seoAgent','appStorePublisher','asoMarketingAgent'].includes(a));
-  lines.push(`    Layer 5  — Operations     : devops, documentation${extraOps.length > 0 ? ', ' + extraOps.join(', ') : ''}`);
+  lines.push(`    Layer 5  — Operations     : devops, documentation, deploymentAdvisor${extraOps.length > 0 ? ', ' + extraOps.join(', ') : ''}`);
 
   lines.push(
     '',

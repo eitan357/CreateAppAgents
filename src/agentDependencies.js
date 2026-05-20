@@ -98,6 +98,9 @@ const DEPENDENCY_MAP = {
   // ── Web Operations ────────────────────────────────────────────────────────
   seoAgent:               ['frontendDev', 'renderingStrategyAgent', 'frontendArchitect'],
 
+  // ── Deployment Advisory ───────────────────────────────────────────────────
+  deploymentAdvisor:      ['systemArchitect', 'devops', 'requirementsAnalyst'],
+
   // ── Per-squad specialist agents ───────────────────────────────────────────
   squadDesignerAgent:        ['designLeadAgent', 'uxDesignerAgent'],
   squadQaAgent:              ['qaLeadAgent', 'backendDev', 'frontendDev', 'authAgent'],
