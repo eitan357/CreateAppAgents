@@ -35,7 +35,7 @@ class BaseAgent {
       return getMockResponse(this.name);
     }
 
-    const messages = [{ role: 'user', content: userMessage }];
+    const messages = [{ role: 'user', content: [{ type: 'text', text: userMessage, cache_control: { type: 'ephemeral' } }] }];
     this.filesCreated = [];
 
     while (true) {
@@ -57,7 +57,9 @@ class BaseAgent {
       }
 
       if (this.tools.length > 0) {
-        params.tools = this.tools;
+        params.tools = this.tools.map((t, i) =>
+          i === this.tools.length - 1 ? { ...t, cache_control: { type: 'ephemeral' } } : t
+        );
       }
 
       const response = await withRetry(() => this.client.messages.create(params, { timeout: 20 * 60 * 1000 }), this.name);

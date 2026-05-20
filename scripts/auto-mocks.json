@@ -1,1 +1,8 @@
-{}
+{
+  "DeploymentAdvisor": {
+    "summary": "[MOCK] DeploymentAdvisor completed successfully.",
+    "files": {
+      "docs/mock-stubs/deploymentadvisor.md": "# DeploymentAdvisor\n\n[Auto-generated mock stub — replace with real content if needed]\n"
+    }
+  }
+}

@@ -72,5 +72,6 @@
   "userTestingAgent": "UserTesting",
   "asoMarketingAgent": "ASOMarketing",
   "seoAgent": "SEO",
+  "deploymentAdvisor": "DeploymentAdvisor",
   "simpleAppBuilder": "Simple App Builder"
 }
