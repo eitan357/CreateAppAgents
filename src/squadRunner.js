@@ -315,6 +315,8 @@ function _mergeOutputsToContext(allSquadResults, context) {
 
 // ── Update mode ───────────────────────────────────────────────────────────────
 async function runSquadUpdate(squad, changeDescription, context, toolSets, agentRegistry, activeAgents) {
+  const tier = context.plan?.tier ?? 3;
+
   const devAgents = (squad.agents || ['backendDev', 'frontendDev'])
     .filter(name => SQUAD_DEV_AGENTS.has(name))
     .filter(name => agentRegistry[name])
@@ -342,23 +344,25 @@ async function runSquadUpdate(squad, changeDescription, context, toolSets, agent
   // Phase 2: Dev agents apply the change
   const squadResults = await devFn();
 
-  // Phase 3: Error handling, cleanup, dedup on updated code
-  for (const agentName of CLEANUP_AGENTS) {
-    if (agentRegistry[agentName]) {
-      console.log(chalk.bold.yellow(`    [${squad.name}] ${agentName} on updated code...`));
-      await _runSingleAgent(agentName, devCtx(agentName), squad, context, toolSets, agentRegistry);
+  // Phase 3: Error handling, cleanup, dedup (tier 3 only)
+  if (tier >= 3) {
+    for (const agentName of CLEANUP_AGENTS) {
+      if (agentRegistry[agentName]) {
+        console.log(chalk.bold.yellow(`    [${squad.name}] ${agentName} on updated code...`));
+        await _runSingleAgent(agentName, devCtx(agentName), squad, context, toolSets, agentRegistry);
+      }
     }
   }
 
-  // Phase 4: QA with fix loop
-  if (agentRegistry['squadQaAgent']) {
+  // Phase 4: QA with fix loop (tier 2+)
+  if (tier >= 2 && agentRegistry['squadQaAgent']) {
     console.log(chalk.bold.yellow(`    [${squad.name}] QA on updated code...`));
     await _runSingleAgent('squadQaAgent', qaCtx(), squad, context, toolSets, agentRegistry);
     await _runQaFixLoop(squad, devFn, qaCtx, context, toolSets, agentRegistry);
   }
 
-  // Phase 5: Security
-  if (agentRegistry['squadSecurityAgent']) {
+  // Phase 5: Security (tier 3 only)
+  if (tier >= 3 && agentRegistry['squadSecurityAgent']) {
     console.log(chalk.bold.yellow(`    [${squad.name}] Security review on updated code...`));
     await _runSingleAgent('squadSecurityAgent', devCtx('squadSecurityAgent'), squad, context, toolSets, agentRegistry);
   }

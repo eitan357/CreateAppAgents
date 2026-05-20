@@ -2,6 +2,7 @@
 
 const Anthropic = require('@anthropic-ai/sdk');
 const { withRetry } = require('../withRetry');
+const costTracker = require('../costTracker');
 
 // Global model config — set once before orchestrate() via setModelConfig()
 let _modelConfig = {
@@ -60,6 +61,7 @@ class BaseAgent {
       }
 
       const response = await withRetry(() => this.client.messages.create(params, { timeout: 20 * 60 * 1000 }), this.name);
+      costTracker.record(this.name, params.model, response.usage);
       messages.push({ role: 'assistant', content: response.content });
 
       if (response.stop_reason !== 'tool_use') {

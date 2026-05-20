@@ -12,6 +12,7 @@ const { createShellTools } = require('./tools/shell');
 const { runLayerInParallel, runLayerSequential, getFailedAgents } = require('./layerRunner');
 const { runAllSquads, runAllSquadsUpdate, runSquadUpdate } = require('./squadRunner');
 const { withRetry } = require('./withRetry');
+const costTracker = require('./costTracker');
 const { runPlatformPipeline } = require('./platformRunner');
 const { analyzeUpdate, formatUpdatePlan } = require('./updatePlanner');
 const { pushCheckpoint, pushToGithub } = require('./github');
@@ -691,6 +692,50 @@ function formatPlan(plan) {
   return lines.join('\n');
 }
 
+// ── Interactive tier selection ────────────────────────────────────────────────
+const TIER_DESCRIPTIONS = {
+  0: 'Single Agent  (~$0.50) — one agent builds the entire app',
+  1: 'Simple        (~$3)    — Discovery + Design + Squads. No Leaders, Platform, or Quality layers.',
+  2: 'Standard      (~$20)   — + Leaders Team + Platform shared library + squad Designer + squad QA.',
+  3: 'Full          (~$50)   — All layers: + Global dedup + Quality audit + Test runner + Security.',
+};
+
+function countAgentsForTier(plan, tier) {
+  if (tier === 0) return 1;
+  const activeAgents = getActiveAgents(plan);
+  return LAYER_DEFINITIONS
+    .filter(l => tier >= (l.minTier ?? 1))
+    .flatMap(l => filterLayerAgents(l, activeAgents, plan))
+    .length;
+}
+
+async function selectBuildTier(plan, askFn) {
+  if (global._mockMode) return plan.tier ?? 3;
+
+  const { ask: _ask } = require('./approval');
+  const askImpl = askFn || _ask;
+
+  const recommended = plan.tier ?? 3;
+  console.log(chalk.bold.cyan('\n━━━  Build Tier  ━━━'));
+  console.log(chalk.gray(`The PM recommends: Tier ${recommended} — ${plan.tierReason || ''}`));
+  console.log('');
+  for (const [t, desc] of Object.entries(TIER_DESCRIPTIONS)) {
+    const agents = countAgentsForTier(plan, Number(t));
+    const mark = Number(t) === recommended ? chalk.bold.green(' ◀ recommended') : '';
+    console.log(chalk.white(`  ${t}️⃣   ${desc}  (${agents} agent run${agents !== 1 ? 's' : ''})${mark}`));
+  }
+  console.log('');
+
+  let answer;
+  while (true) {
+    answer = (await askImpl(chalk.bold.green(`▶  Choose tier (0-3) [default: ${recommended}]: `))).trim();
+    if (answer === '') return recommended;
+    const n = parseInt(answer, 10);
+    if (n >= 0 && n <= 3) return n;
+    console.log(chalk.red('  Please enter 0, 1, 2, or 3.'));
+  }
+}
+
 // ── Quality re-run helper ─────────────────────────────────────────────────────
 async function runQualityLayers(activeAgents, context, toolSets, plan) {
   const results = {};
@@ -725,6 +770,7 @@ async function runPmReview(context, toolSets) {
 
 // ── Main orchestration ────────────────────────────────────────────────────────
 async function orchestrate(requirements, projectName, outputDir, checkpoint = null, githubRepo = null, options = {}) {
+  costTracker.reset();
   console.log(chalk.bold.cyan('\n🚀  App Builder Agents — Multi-Layer Edition\n'));
 
   let context;
@@ -753,6 +799,15 @@ async function orchestrate(requirements, projectName, outputDir, checkpoint = nu
     if (!planApproved) {
       console.log(chalk.red('\n❌  Stopped by user.'));
       return;
+    }
+
+    // ── Interactive tier selection ──────────────────────────────────────────
+    if (options.forceTier === undefined) {
+      const chosenTier = await selectBuildTier(plan);
+      if (chosenTier !== plan.tier) {
+        plan.tier = chosenTier;
+        plan.tierReason = `Build tier selected by user (Tier ${chosenTier}).`;
+      }
     }
 
     context = new ProjectContext(requirements, plan, outputDir);
@@ -1087,10 +1142,14 @@ async function orchestrate(requirements, projectName, outputDir, checkpoint = nu
   if (githubRepo) console.log(chalk.white(`🐙  GitHub: https://github.com/${githubRepo.full}`));
   console.log(chalk.white(`📊  Total files: ${context.allFilesCreated.length}`));
   context.allFilesCreated.forEach(f => console.log(chalk.green(`   ✓ ${f}`)));
+
+  const costSummary = costTracker.getSummary();
+  if (costSummary) console.log('\n' + chalk.bold.yellow(costSummary));
 }
 
 // ── Update Mode orchestration ─────────────────────────────────────────────────
 async function orchestrateUpdate(changeRequest, checkpointData, outputDir, githubRepo = null) {
+  costTracker.reset();
   console.log(chalk.bold.cyan('\n🔄  App Builder Agents — Update Mode\n'));
 
   const context = ProjectContext.fromCheckpoint({ ...checkpointData, outputDir });
@@ -1171,19 +1230,23 @@ async function orchestrateUpdate(changeRequest, checkpointData, outputDir, githu
     saveCheckpoint('Update — Platform');
   }
 
+  const updateTier = context.plan?.tier ?? 3;
+
   // Run squads
   console.log(chalk.bold.cyan('\n━━━  Updating Squads  ━━━'));
   await runAllSquadsUpdate(updatePlan, context, toolSets, AGENT_REGISTRY, activeAgents);
   saveCheckpoint('Update — Squads');
 
-  // Quality re-run
-  console.log(chalk.bold.cyan('\n━━━  Quality Re-check  ━━━'));
-  const qualityResults = await runQualityLayers(activeAgents, context, toolSets, context.plan);
+  // Quality re-run (tier 3 only)
+  if (updateTier >= 3) {
+    console.log(chalk.bold.cyan('\n━━━  Quality Re-check  ━━━'));
+    const qualityResults = await runQualityLayers(activeAgents, context, toolSets, context.plan);
 
-  const proceed = await approveLayer('Quality after Update', qualityResults);
-  if (!proceed) {
-    saveCheckpoint('Update — Quality');
-    return;
+    const proceed = await approveLayer('Quality after Update', qualityResults);
+    if (!proceed) {
+      saveCheckpoint('Update — Quality');
+      return;
+    }
   }
 
   // PM review
@@ -1204,7 +1267,9 @@ async function orchestrateUpdate(changeRequest, checkpointData, outputDir, githu
         .map(name => ({ name, needsShell: false }));
       await runLayerInParallel(fixConfigs, context, toolSets, AGENT_REGISTRY);
       context.setPmFeedbackNotes(null);
-      await runQualityLayers(activeAgents, context, toolSets, context.plan);
+      if (updateTier >= 3) {
+        await runQualityLayers(activeAgents, context, toolSets, context.plan);
+      }
       await runPmReview(context, toolSets);
     }
   } else {
@@ -1226,6 +1291,9 @@ async function orchestrateUpdate(changeRequest, checkpointData, outputDir, githu
   console.log(chalk.bold.green('\n✅  Update complete!'));
   console.log(chalk.white(`📂  Files at: ${outputDir}`));
   if (githubRepo) console.log(chalk.white(`🐙  GitHub: https://github.com/${githubRepo.full}`));
+
+  const costSummary = costTracker.getSummary();
+  if (costSummary) console.log('\n' + chalk.bold.yellow(costSummary));
 }
 
 module.exports = { orchestrate, orchestrateUpdate, AGENT_REGISTRY, MOCK_PLAN, MOCK_SQUAD_PLAN, MOCK_SQUAD_PLAN_MULTI };
