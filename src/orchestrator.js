@@ -81,6 +81,7 @@ const { createUiPrimitivesAgent }        = require('./agents/uiPrimitivesAgent')
 const { createUiCompositeAgent }         = require('./agents/uiCompositeAgent');
 const { createApiClientAgent }           = require('./agents/apiClientAgent');
 const { createDbSchemaAgent }            = require('./agents/dbSchemaAgent');
+const { createSimpleAppAgent }           = require('./agents/simpleAppAgent');
 
 // ── Per-squad specialist agents ───────────────────────────────────────────────
 const { createSquadErrorHandlingAgent }  = require('./agents/squadErrorHandlingAgent');
@@ -200,54 +201,43 @@ const AGENT_REGISTRY = {
   userTestingAgent:         createUserTestingAgent,
   asoMarketingAgent:        createASOMarketingAgent,
   seoAgent:                 createSeoAgent,
+  // Tier 0 — single-agent build
+  simpleAppBuilder:         createSimpleAppAgent,
 };
 
 // ── Layer definitions ─────────────────────────────────────────────────────────
 // Layer 3b and all optional agents are filtered to only those the PM selected.
+// minTier: minimum build tier required to run this layer (1=Simple, 2=Standard, 3=Full)
 const LAYER_DEFINITIONS = [
   {
-    id: 1,
-    name: 'Discovery',
-    parallel: false,
+    id: 1, name: 'Discovery', parallel: false, minTier: 1,
     agents: ['requirementsAnalyst', 'systemArchitect', 'mobileTechAdvisor', 'businessPlanningAgent', 'webTechAdvisor'],
   },
   {
-    id: 2,
-    name: 'Design',
-    parallel: true,
+    id: 2, name: 'Design', parallel: true, minTier: 1,
     agents: ['dataArchitect', 'apiDesigner', 'frontendArchitect', 'uxDesignerAgent'],
   },
   {
-    id: '2b',
-    name: 'Leaders Team',
-    parallel: true,
+    id: '2b', name: 'Leaders Team', parallel: true, minTier: 2,
     agents: ['vpPmAgent', 'techLeadAgent', 'qaLeadAgent', 'securityLeadAgent', 'designLeadAgent', 'renderingStrategyAgent', 'inputPolicyAgent'],
   },
   {
-    id: '2c',
-    name: 'Platform',
-    parallel: false,
+    id: '2c', name: 'Platform', parallel: false, minTier: 2,
     // Agents listed here are used only for skip-detection and display.
     // Execution is handled entirely by runPlatformPipeline() which runs all
     // 7 phases: spec → build → feature infra → QA loop → security → PM review → PM fix.
     agents: ['platformPmAgent', 'uiPrimitivesAgent', 'uiCompositeAgent', 'apiClientAgent', 'dbSchemaAgent'],
   },
   {
-    id: 3,
-    name: 'Implementation',
-    parallel: true,
+    id: 3, name: 'Implementation', parallel: true, minTier: 1,
     agents: ['backendDev', 'frontendDev', 'authAgent', 'integrationAgent'],
   },
   {
-    id: '3f',
-    name: 'Global Deduplication',
-    parallel: false,
+    id: '3f', name: 'Global Deduplication', parallel: false, minTier: 3,
     agents: ['codeDeduplicationAgent'],
   },
   {
-    id: 4,
-    name: 'Quality',
-    parallel: true,
+    id: 4, name: 'Quality', parallel: true, minTier: 3,
     agents: [
       'testWriter', 'security', 'reviewer',
       'performanceAgent', 'accessibilityAgent', 'loadTestingAgent',
@@ -256,26 +246,16 @@ const LAYER_DEFINITIONS = [
     ],
   },
   {
-    id: '4b',
-    name: 'Test Run',
-    parallel: false,
+    id: '4b', name: 'Test Run', parallel: false, minTier: 3,
     agents: ['testRunner'],
   },
   {
-    id: '4c',
-    name: 'Test Fix',
-    parallel: false,
+    id: '4c', name: 'Test Fix', parallel: false, minTier: 3,
     agents: ['testFixer'],
   },
   {
-    id: 5,
-    name: 'Operations',
-    parallel: true,
-    skipApprovalGate: true,
-    agents: [
-      'devops', 'documentation', 'analyticsMonitoring',
-      'appStorePublisher', 'asoMarketingAgent', 'seoAgent',
-    ],
+    id: 5, name: 'Operations', parallel: true, minTier: 1, skipApprovalGate: true,
+    agents: ['devops', 'documentation', 'analyticsMonitoring', 'appStorePublisher', 'asoMarketingAgent', 'seoAgent'],
   },
 ];
 
@@ -298,6 +278,8 @@ const MAX_PM_FIX_ROUNDS = 2;
 const PM_PLAN_SCHEMA = `{
   "projectName": "string",
   "description": "string (2-3 sentences about what this app does)",
+  "tier": 2,
+  "tierReason": "one sentence explaining why this tier was chosen",
   "techStack": {
     "backend": "e.g. Node.js + Express + MongoDB",
     "frontend": "e.g. React Native + Expo OR React + Next.js OR none",
@@ -371,8 +353,81 @@ const OPTIONAL_AGENTS_GUIDE = `
 - appStorePublisher    : App Store Connect + Google Play setup, Fastlane, code signing, release checklist
 - asoMarketingAgent    : App Store Optimization — keywords, store listing copy, screenshot strategy`;
 
+// ── Mock plan — used when global._mockMode is true ────────────────────────────
+const MOCK_PLAN = {
+  projectName:  'mock-project',
+  description:  'A mock project for pipeline testing.',
+  tier:         3,
+  tierReason:   'Mock plan uses full tier for comprehensive testing.',
+  techStack: {
+    backend:    'Node.js + Express',
+    frontend:   'React + TypeScript',
+    database:   'PostgreSQL',
+    deployment: 'Docker + GitHub Actions',
+    auth:       'JWT',
+  },
+  layers: {
+    layer1: { agents: ['requirementsAnalyst', 'systemArchitect'] },
+    layer2: { agents: ['dataArchitect', 'apiDesigner', 'frontendArchitect'] },
+    layer3: { agents: ['backendDev', 'authAgent'], includeFrontend: true, includeIntegration: false, integrationReason: 'No third-party APIs required' },
+    layer4: { agents: ['testWriter', 'testRunner', 'testFixer', 'security', 'reviewer'] },
+    layer5: { agents: ['devops', 'documentation'] },
+  },
+  optionalAgents: [],
+  estimatedFiles: 20,
+};
+
+const MOCK_SQUAD_PLAN = {
+  squads: [{
+    id:             'squad-01',
+    name:           'Core Features',
+    description:    'Core application features: items CRUD and auth',
+    userFacingArea: 'Items management and authentication',
+    keyFeatures:    ['Create item', 'View items', 'Delete item'],
+    agents:         ['backendDev', 'frontendDev'],
+    backendModule:  'core',
+    frontendModule: 'core',
+  }],
+  platformNotes: 'Shared UI components, API client, and DB schema used by all squads.',
+};
+
+const MOCK_SQUAD_PLAN_MULTI = {
+  squads: [
+    {
+      id:             'squad-01',
+      name:           'Core Features',
+      description:    'Core application features: items CRUD and auth',
+      userFacingArea: 'Items management and authentication',
+      keyFeatures:    ['Create item', 'View items', 'Delete item'],
+      agents:         ['backendDev', 'frontendDev'],
+      backendModule:  'core',
+      frontendModule: 'core',
+    },
+    {
+      id:             'squad-02',
+      name:           'User Settings',
+      description:    'User profile and settings management',
+      userFacingArea: 'Profile and settings screens',
+      keyFeatures:    ['Edit profile', 'Change password', 'Notification preferences'],
+      agents:         ['backendDev', 'frontendDev'],
+      backendModule:  'settings',
+      frontendModule: 'settings',
+    },
+  ],
+  platformNotes: 'Shared UI components, API client, and DB schema used by all squads.',
+};
+
+const MOCK_UPDATE_PLAN = {
+  summary: 'Add dark mode support to the UI',
+  affectedSquads: [{ id: 'squad-01', changeDescription: 'Add dark mode toggle component and CSS variables for theme switching.' }],
+  newSquads: [],
+  platformUpdates: null,
+};
+
 // ── PM Plan creation ──────────────────────────────────────────────────────────
 async function createPlan(requirements, projectName) {
+  if (global._mockMode) return { ...MOCK_PLAN, projectName };
+
   const client = new Anthropic();
 
   const response = await withRetry(() => client.messages.create({
@@ -389,6 +444,13 @@ Available agents by layer:
 - Layer 3 (Implementation): backendDev and authAgent always; frontendDev ONLY if project has a frontend; integrationAgent ONLY if requirements explicitly mention third-party APIs or webhooks
 - Layer 4 (Quality, always included): testWriter, testRunner, testFixer, security, reviewer
 - Layer 5 (Operations, always included): devops, documentation
+
+Build tier — choose the tier that matches the project's true complexity:
+- tier 0: ≤5 files, pure static (HTML/CSS/JS) or a single script. No backend, no auth, no database.
+- tier 1: Simple full-stack app. Basic CRUD, simple auth OK. No shared component library needed. ~10-20 files.
+- tier 2: Standard app. Auth required, shared UI library useful, multiple feature domains, database schema needed.
+- tier 3: Production-ready. Complex integrations, SaaS, mobile, high quality requirements, or >50 estimated files.
+Default to tier 2 when unsure. Tier 0 is only for the simplest static pages or scripts.
 
 Rules:
 - authAgent is always included (every app needs auth patterns)
@@ -658,7 +720,7 @@ async function runPmReview(context, toolSets) {
 }
 
 // ── Main orchestration ────────────────────────────────────────────────────────
-async function orchestrate(requirements, projectName, outputDir, checkpoint = null, githubRepo = null) {
+async function orchestrate(requirements, projectName, outputDir, checkpoint = null, githubRepo = null, options = {}) {
   console.log(chalk.bold.cyan('\n🚀  App Builder Agents — Multi-Layer Edition\n'));
 
   let context;
@@ -672,6 +734,11 @@ async function orchestrate(requirements, projectName, outputDir, checkpoint = nu
     // ── Fresh build ─────────────────────────────────────────────────────────
     console.log(chalk.yellow(t('generatingPlan')));
     const plan = await createPlan(requirements, projectName);
+    // Override tier if --minimal or --tier flag was passed
+    if (options.forceTier !== undefined) {
+      plan.tier = options.forceTier;
+      plan.tierReason = `Build tier forced via CLI flag (--minimal/--tier=${options.forceTier})`;
+    }
     // plan is block-scoped to this else branch intentionally — context.plan is the source of truth
 
     const planApproved = await approveStep(
@@ -689,7 +756,7 @@ async function orchestrate(requirements, projectName, outputDir, checkpoint = nu
     // ── Squad planning ────────────────────────────────────────────────────────
     console.log(chalk.yellow(t('generatingSquads')));
     try {
-      const squadPlan = await createSquadPlan(requirements, plan);
+      const squadPlan = global._mockMode ? (global._mockSquadPlan || MOCK_SQUAD_PLAN) : await createSquadPlan(requirements, plan);
       const squadApproved = await approveStep(
         '🏢  Squad Division',
         'The system identified the following domains — each squad of agents will be responsible for one area:',
@@ -705,6 +772,9 @@ async function orchestrate(requirements, projectName, outputDir, checkpoint = nu
       console.log(chalk.yellow(`  ⚠️  Squad planning failed: ${err.message} — continuing without squad division.\n`));
     }
   }
+
+  if (global._mockMode) global._mockOutputDir = outputDir;
+
   const fsTools = createFileSystemTools(outputDir);
   const shellTools = createShellTools(outputDir);
   const toolSets = {
@@ -731,6 +801,30 @@ async function orchestrate(requirements, projectName, outputDir, checkpoint = nu
     }
   }
 
+  // ── Tier 0: single-agent fast path ───────────────────────────────────────────
+  const buildTier = context.plan.tier ?? 3;
+  if (buildTier === 0) {
+    console.log(chalk.bold.cyan('\n⚡  Tier 0 — Simple App (single-agent build)\n'));
+    const agent = createSimpleAppAgent(toolSets.fs);
+    const result = await agent.run(
+      `Project: ${context.plan.projectName || 'app'}\n\nRequirements:\n${context.requirements}\n\nOutput Directory: ${outputDir}`
+    );
+    context.addAgentOutput('simpleAppBuilder', result.summary, result.filesCreated);
+    context.markLayerComplete('simple');
+    context.saveCheckpoint();
+    saveCheckpoint('Tier 0 — Complete');
+    console.log(chalk.bold.green('\n✅  Simple app built!\n'));
+    console.log(chalk.gray(`   Files created: ${result.filesCreated.length}`));
+    console.log(chalk.gray(`   Output: ${outputDir}`));
+    if (githubRepo) console.log(chalk.white(`🐙  GitHub: https://github.com/${githubRepo.full}`));
+    return;
+  }
+
+  // Display build tier info
+  const TIER_LABELS = { 1: 'Simple', 2: 'Standard', 3: 'Full' };
+  console.log(chalk.bold.cyan(`\n🏗  Build Tier: ${buildTier} — ${TIER_LABELS[buildTier] || 'Full'}`));
+  if (context.plan.tierReason) console.log(chalk.gray(`   ${context.plan.tierReason}`));
+
   // 4. Execute layers
   const allQualityResults = {};  // accumulates results from layers 4, 4b, 4c
 
@@ -738,6 +832,13 @@ async function orchestrate(requirements, projectName, outputDir, checkpoint = nu
     // Skip layers already completed in a previous run (checkpoint resume)
     if (context.isLayerComplete(layerDef.id)) {
       console.log(chalk.gray(`\nLayer ${layerDef.id} (${layerDef.name}): skipped (already completed in previous run)`));
+      continue;
+    }
+
+    // Skip layers above this build's tier
+    if (buildTier < (layerDef.minTier ?? 1)) {
+      console.log(chalk.gray(`\nLayer ${layerDef.id} (${layerDef.name}): skipped (tier ${buildTier} < required ${layerDef.minTier})`));
+      context.markLayerComplete(layerDef.id);
       continue;
     }
 
@@ -989,6 +1090,7 @@ async function orchestrateUpdate(changeRequest, checkpointData, outputDir, githu
   console.log(chalk.bold.cyan('\n🔄  App Builder Agents — Update Mode\n'));
 
   const context = ProjectContext.fromCheckpoint({ ...checkpointData, outputDir });
+  if (global._mockMode) global._mockOutputDir = outputDir;
 
   if (!context.squadPlan) {
     console.log(chalk.red('❌  No squad plan found. Update mode requires a project built with a squad plan.'));
@@ -999,7 +1101,7 @@ async function orchestrateUpdate(changeRequest, checkpointData, outputDir, githu
   console.log(chalk.yellow('⏳  Analyzing the change request...'));
   let updatePlan;
   try {
-    updatePlan = await analyzeUpdate(changeRequest, context.squadPlan);
+    updatePlan = global._mockMode ? MOCK_UPDATE_PLAN : await analyzeUpdate(changeRequest, context.squadPlan);
   } catch (err) {
     console.log(chalk.red(`❌  Request analysis failed: ${err.message}`));
     return;
@@ -1122,4 +1224,4 @@ async function orchestrateUpdate(changeRequest, checkpointData, outputDir, githu
   if (githubRepo) console.log(chalk.white(`🐙  GitHub: https://github.com/${githubRepo.full}`));
 }
 
-module.exports = { orchestrate, orchestrateUpdate };
+module.exports = { orchestrate, orchestrateUpdate, AGENT_REGISTRY, MOCK_PLAN, MOCK_SQUAD_PLAN, MOCK_SQUAD_PLAN_MULTI };

@@ -5,11 +5,27 @@
   "main": "src/index.js",
   "scripts": {
     "start": "node src/index.js",
-    "dev": "node --watch src/index.js"
+    "dev": "node --watch src/index.js",
+    "test": "jest --forceExit",
+    "test:mock": "jest --testPathPattern=tests/mock/ --forceExit",
+    "test:mock:watch": "jest --testPathPattern=tests/mock/ --watch",
+    "mocks:build-map": "node scripts/build-agent-map.js",
+    "mocks:generate": "node scripts/generate-mocks.js",
+    "mocks:sync": "node scripts/build-agent-map.js && node scripts/generate-mocks.js",
+    "prepare": "husky"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.52.0",
     "chalk": "^4.1.2",
     "dotenv": "^16.4.5"
+  },
+  "devDependencies": {
+    "husky": "^9.1.7",
+    "jest": "^29.7.0",
+    "nock": "^14.0.15"
+  },
+  "jest": {
+    "testEnvironment": "node",
+    "testTimeout": 120000
   }
 }

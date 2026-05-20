@@ -29,6 +29,11 @@ class BaseAgent {
   }
 
   async run(userMessage) {
+    if (global._mockMode) {
+      const { getMockResponse } = require('../mockResponses');
+      return getMockResponse(this.name);
+    }
+
     const messages = [{ role: 'user', content: userMessage }];
     this.filesCreated = [];
 

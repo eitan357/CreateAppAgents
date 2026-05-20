@@ -140,10 +140,23 @@ async function selectTier() {
   return selected;
 }
 
+// Parse --minimal / --tier=N flags from CLI args
+const _cliArgs = process.argv.slice(2);
+const _forcedTier = _cliArgs.includes('--minimal') ? 1
+  : (() => {
+      const t = _cliArgs.find(a => /^--tier=[0-3]$/.test(a));
+      return t ? parseInt(t.split('=')[1], 10) : undefined;
+    })();
+
 async function main() {
   console.log(chalk.bold.cyan('\n╔══════════════════════════════════════════╗'));
   console.log(chalk.bold.cyan('║       App Builder — Multi-Agent System    ║'));
   console.log(chalk.bold.cyan('╚══════════════════════════════════════════╝\n'));
+
+  if (_forcedTier !== undefined) {
+    const TIER_NAMES = { 0: 'Single Agent', 1: 'Simple (~$3)', 2: 'Standard (~$20)', 3: 'Full (~$50)' };
+    console.log(chalk.bold.yellow(`⚡  Build tier forced: Tier ${_forcedTier} — ${TIER_NAMES[_forcedTier]}\n`));
+  }
 
   if (!process.env.ANTHROPIC_API_KEY) {
     console.log(chalk.red('❌  Missing ANTHROPIC_API_KEY in environment.'));
@@ -190,7 +203,7 @@ async function main() {
       await selectTier();
       rl.close();
       try {
-        await orchestrate(checkpoint.requirements, projectName, outputDir, checkpoint, githubRepo);
+        await orchestrate(checkpoint.requirements, projectName, outputDir, checkpoint, githubRepo, { forceTier: _forcedTier });
       } catch (err) {
         console.error(chalk.red('\n❌  Critical error:'), err.message);
         if (process.env.DEBUG) console.error(err.stack);
@@ -290,7 +303,7 @@ async function main() {
   rl.close();
 
   try {
-    await orchestrate(requirements, projectName, outputDir, null, githubRepo);
+    await orchestrate(requirements, projectName, outputDir, null, githubRepo, { forceTier: _forcedTier });
   } catch (err) {
     console.error(chalk.red('\n❌  Critical error:'), err.message);
     if (process.env.DEBUG) console.error(err.stack);
