@@ -379,9 +379,13 @@ const MOCK_DEFINITIONS = {
   },
 
   SquadQa: {
-    summary: '[MOCK] QA complete. 5 tests passed, 0 failed. ALL PASS.',
+    summary: (squadId) => global._mockQaFails
+      ? '[MOCK] QA complete. 3 tests FAILING.'
+      : '[MOCK] QA complete. 5 tests passed, 0 failed. ALL PASS.',
     files: (squadId) => ({
-      [`docs/squads/${squadId}-qa-report.md`]: `# QA Report — ${squadId}\n\n## Results\nALL PASS — 5 passing (12ms)\n\n## Coverage\n- Services: 85%\n- Routes: 90%\n`,
+      [`docs/squads/${squadId}-qa-report.md`]: global._mockQaFails
+        ? `# QA Report — ${squadId}\n\n## Results\nFAILING — 3 tests failed\n\n- FAIL: POST /items returns 500\n- FAIL: DELETE /items/:id returns 404\n- FAIL: Auth middleware blocks valid token\n`
+        : `# QA Report — ${squadId}\n\n## Results\nALL PASS — 5 passing (12ms)\n\n## Coverage\n- Services: 85%\n- Routes: 90%\n`,
     }),
   },
 
@@ -393,9 +397,13 @@ const MOCK_DEFINITIONS = {
   },
 
   SquadPmReview: {
-    summary: '[MOCK] PM review complete. VERDICT: ACCEPTED',
+    summary: (squadId) => global._mockPmGaps
+      ? '[MOCK] PM review complete. VERDICT: GAPS'
+      : '[MOCK] PM review complete. VERDICT: ACCEPTED',
     files: (squadId) => ({
-      [`docs/squads/${squadId}-review.md`]: `# PM Review — ${squadId}\n\nVERDICT: ACCEPTED\n\nAll features implemented per spec. Acceptance criteria met.\n`,
+      [`docs/squads/${squadId}-review.md`]: global._mockPmGaps
+        ? `# PM Review — ${squadId}\n\nVERDICT: GAPS\n\n## Missing items\n- User profile page not implemented\n- Password reset flow missing\n`
+        : `# PM Review — ${squadId}\n\nVERDICT: ACCEPTED\n\nAll features implemented per spec. Acceptance criteria met.\n`,
     }),
   },
 

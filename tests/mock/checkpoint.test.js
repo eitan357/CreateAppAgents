@@ -203,6 +203,17 @@ test('checkpoint after partial squad work is valid JSON', () => {
   expect(parsed.completedSquadAgents['squad-01']).toContain('backendDev');
 });
 
+// ── Corrupted checkpoint ─────────────────────────────────────────────────────
+test('loadCheckpoint returns null for corrupted JSON', () => {
+  fs.writeFileSync(path.join(tmpDir, '.build-checkpoint.json'), '{ broken json ::::', 'utf8');
+  expect(ProjectContext.loadCheckpoint(tmpDir)).toBeNull();
+});
+
+test('loadCheckpoint returns null for empty file', () => {
+  fs.writeFileSync(path.join(tmpDir, '.build-checkpoint.json'), '', 'utf8');
+  expect(ProjectContext.loadCheckpoint(tmpDir)).toBeNull();
+});
+
 // ── Agent output tracking ────────────────────────────────────────────────────
 test('addAgentOutput accumulates allFilesCreated', () => {
   ctx.addAgentOutput('agent1', 'done', ['a.js', 'b.js']);

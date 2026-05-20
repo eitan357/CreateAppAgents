@@ -402,4 +402,4 @@ async function runAllSquadsUpdate(updatePlan, context, toolSets, agentRegistry, 
   return flatResults;
 }
 
-module.exports = { runAllSquads, runAllSquadsUpdate, runSquadUpdate };
+module.exports = { runAllSquads, runAllSquadsUpdate, runSquadUpdate, _qaHasIssues };

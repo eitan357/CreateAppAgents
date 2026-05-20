@@ -1,7 +1,7 @@
 'use strict';
 
 const nock = require('nock');
-const { parseGithubRepo, checkGithubAccess, createGithubRepo } = require('../../src/github');
+const { parseGithubRepo, checkGithubAccess, createGithubRepo, pushCheckpoint, pushToGithub } = require('../../src/github');
 
 afterEach(() => {
   nock.cleanAll();
@@ -154,5 +154,77 @@ describe('createGithubRepo', () => {
     expect(capturedBody.private).toBe(true);
     expect(capturedBody.auto_init).toBe(false);
     expect(capturedBody.name).toBe('myrepo');
+  });
+
+  test('rejects on network error', async () => {
+    nock('https://api.github.com')
+      .post('/user/repos')
+      .replyWithError('ECONNREFUSED');
+
+    await expect(createGithubRepo('newrepo', 'test-token', true))
+      .rejects.toThrow();
+  });
+});
+
+// ── checkGithubAccess edge cases ─────────────────────────────────────────────
+describe('checkGithubAccess edge cases', () => {
+  test('returns exists=true canPush=false when 200 body is malformed JSON', async () => {
+    nock('https://api.github.com')
+      .get('/repos/myuser/myrepo')
+      .reply(200, 'not-json-at-all');
+
+    const result = await checkGithubAccess('myuser', 'myrepo', 'test-token');
+    expect(result.exists).toBe(true);
+    expect(result.canPush).toBe(false);
+  });
+
+  test('returns status code on unexpected HTTP status', async () => {
+    nock('https://api.github.com')
+      .get('/repos/myuser/myrepo')
+      .reply(503, 'Service Unavailable');
+
+    const result = await checkGithubAccess('myuser', 'myrepo', 'test-token');
+    expect(result.status).toBe(503);
+    expect(result.canPush).toBe(false);
+  });
+});
+
+// ── pushCheckpoint ───────────────────────────────────────────────────────────
+describe('pushCheckpoint', () => {
+  const { execSync } = require('child_process');
+  const fs = require('fs');
+  const os = require('os');
+  const path = require('path');
+
+  let tmpDir;
+
+  beforeEach(() => {
+    tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'git-push-test-'));
+  });
+
+  afterEach(() => {
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+  });
+
+  test('returns success=false gracefully when git is not initialized', () => {
+    // tmpDir has no git repo, push will fail — must not throw
+    const result = pushCheckpoint(tmpDir, 'myuser', 'myrepo', 'bad-token', 'Layer 1');
+    expect(result.success).toBe(false);
+    expect(result.error).toBeDefined();
+  });
+
+  test('returns success=false gracefully when remote is unreachable', () => {
+    try {
+      execSync('git init', { cwd: tmpDir, stdio: 'pipe' });
+      execSync('git config user.email "test@test.com"', { cwd: tmpDir, stdio: 'pipe' });
+      execSync('git config user.name "Test"', { cwd: tmpDir, stdio: 'pipe' });
+      fs.writeFileSync(path.join(tmpDir, 'file.txt'), 'content');
+      execSync('git add -A && git commit -m "init"', { cwd: tmpDir, stdio: 'pipe' });
+    } catch { /* ignore setup errors */ }
+
+    // Push to non-existent remote — must return { success: false } not throw
+    const result = pushCheckpoint(tmpDir, 'no-such-user', 'no-such-repo', 'bad-token', 'Layer 1');
+    expect(result.success).toBe(false);
+    expect(result.error).toBeDefined();
   });
 });
