@@ -517,8 +517,10 @@ const MOCK_DEFINITIONS = {
 
   // ── Test Agents ─────────────────────────────────────────────────────────────
   TestWriter: {
-    summary: '[MOCK] Tests written. Unit tests for services and integration tests for all routes.',
-    files: {
+    summary: (squadId) => global._mockTestWriterNoFiles
+      ? '[MOCK] No test files to write — project has no testable backend code.'
+      : '[MOCK] Tests written. Unit tests for services and integration tests for all routes.',
+    files: (squadId) => global._mockTestWriterNoFiles ? {} : {
       'backend/src/__tests__/unit/sample.test.js':        '// MOCK stub\ndescribe("sample", () => { test("passes", () => expect(1+1).toBe(2)); });\n',
       'backend/src/__tests__/integration/health.test.js': '// MOCK stub\nconst request = require("supertest");\ndescribe("health", () => { test("GET /health returns 200", async () => {}); });\n',
       'docs/testing.md':                                  '# Testing\n\n## Commands\n```\nnpm test\n```\n\n## Coverage\n- Unit: services/\n- Integration: routes/\n',

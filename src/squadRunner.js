@@ -191,8 +191,9 @@ async function runSquad(squad, context, toolSets, agentRegistry, activeAgents) {
     }
   }
 
-  // Phase 2: Squad Designer (tier 2+)
-  if (tier >= 2 && agentRegistry['squadDesignerAgent']) {
+  // Phase 2: Squad Designer (tier 2+, only for squads with frontend work)
+  const hasFrontend = (squad.agents || []).includes('frontendDev');
+  if (tier >= 2 && hasFrontend && agentRegistry['squadDesignerAgent']) {
     await _skipOrRun('squadDesignerAgent', squad, context, async () => {
       console.log(chalk.bold.yellow(`    [${squad.name}] Designer writing design doc...`));
       return _runSingleAgent('squadDesignerAgent', devCtx('squadDesignerAgent'), squad, context, toolSets, agentRegistry);

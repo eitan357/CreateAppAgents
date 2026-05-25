@@ -535,11 +535,6 @@ function getActiveAgents(plan) {
     names.add('cmsQaAgent');
   }
 
-  // socialSharingAgent — any project with a frontend (mobile or web)
-  if (l3.includeFrontend !== false) {
-    names.add('socialSharingAgent');
-  }
-
   return names;
 }
 
@@ -899,6 +894,16 @@ async function orchestrate(requirements, projectName, outputDir, checkpoint = nu
       console.log(chalk.gray(`\nLayer ${layerDef.id} (${layerDef.name}): skipped (tier ${buildTier} < required ${layerDef.minTier})`));
       context.markLayerComplete(layerDef.id);
       continue;
+    }
+
+    // Skip testRunner + testFixer if testWriter produced no test files
+    if (layerDef.id === '4b' || layerDef.id === '4c') {
+      const testFiles = context.agentOutputs['testWriter']?.files || [];
+      if (testFiles.length === 0) {
+        console.log(chalk.gray(`\nLayer ${layerDef.id} (${layerDef.name}): skipped — testWriter wrote no test files`));
+        context.markLayerComplete(layerDef.id);
+        continue;
+      }
     }
 
     const agentConfigs = filterLayerAgents(layerDef, activeAgents, context.plan);
