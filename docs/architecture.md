@@ -69,12 +69,14 @@
 
 ### Build Tier Reference
 
-| Tier | Label | Layers that run | Default heavy model | Est. cost |
-|------|-------|-----------------|-------------------|-----------|
-| **0** | Single Agent | Tier 0 fast path only (simpleAppBuilder) | Sonnet 4.6 | ~$0.50 |
-| **1** | Simple | 1 · 2 · 3 · 5 (no leaders, no platform, no quality) | Sonnet 4.6 | ~$3 |
-| **2** | Standard | + 2b (Leaders) + 2c (Platform) + squad Designer + squad QA | Sonnet 4.6 + Thinking | ~$20 |
-| **3** | Full | + 3f (global dedup) + 4 (quality) + 4b (test run) + 4c (test fix) | Opus 4.7 | ~$50 |
+Light agents always default to **Haiku 4.5**; Medium agents always default to **Sonnet 4.6**. Only the Heavy agent default changes by tier. All three can be customized interactively at build start via `selectAgentModels()`.
+
+| Tier | Label | Layers that run | Default light model | Default medium model | Default heavy model | Est. cost |
+|------|-------|-----------------|--------------------|--------------------|-------------------|-----------|
+| **0** | Single Agent | Tier 0 fast path only (simpleAppBuilder) | Haiku 4.5 | Sonnet 4.6 | Sonnet 4.6 | ~$0.50 |
+| **1** | Simple | 1 · 2 · 3 · 5 (no leaders, no platform, no quality) | Haiku 4.5 | Sonnet 4.6 | Sonnet 4.6 | ~$3 |
+| **2** | Standard | + 2b (Leaders) + 2c (Platform) + squad Designer + squad QA | Haiku 4.5 | Sonnet 4.6 | Sonnet 4.6 + Thinking | ~$20 |
+| **3** | Full | + 3f (global dedup) + 4 (quality) + 4b (test run) + 4c (test fix) | Haiku 4.5 | Sonnet 4.6 | Opus 4.7 | ~$50 |
 
 ### Module Function Counts
 
