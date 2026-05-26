@@ -8,6 +8,101 @@
 
 ---
 
+## 📊 Statistics Dashboard
+
+### Totals
+
+| Metric | Count |
+|--------|-------|
+| Total agents | 75 |
+| Code-writing agents 💻 | 37 |
+| Guideline / document agents 📋 | ~15 |
+| Report / audit agents 🔍 | ~15 |
+| Config / ops agents ⚙️ | ~5 |
+| Infrastructure modules (src/*.js) | 19 |
+| Total exported functions across modules | ~70 |
+| Test suites | 12 |
+| Passing tests | 267 |
+| Phases per squad | 9 |
+| Platform pipeline phases | 7 |
+| Build tiers | 4 (0–3) |
+| Max quality fix rounds | 2 |
+| Max PM fix rounds | 2 |
+| Max QA fix rounds per squad | 2 |
+| Supported UI languages | 8 |
+
+### Agents by Role
+
+| Role | Count | Agents |
+|------|-------|--------|
+| **Software Developers** | 26 | `backendDev`, `frontendDev`, `authAgent`, `integrationAgent` (core 4) · `uiPrimitivesAgent`, `uiCompositeAgent`, `apiClientAgent`, `dbSchemaAgent` (platform build 4) · `notificationsAgent`, `deepLinksAgent`, `offlineFirstAgent`, `realtimeAgent`, `animationsAgent`, `onboardingAgent`, `monetizationAgent`, `mlMobileAgent`, `arVrAgent`, `widgetsExtensionsAgent`, `otaUpdatesAgent`, `socialSharingAgent` (mobile features 12) · `responsiveDesignAgent`, `pwaAgent`, `webMonetizationAgent`, `cmsIntegratorAgent` (web features 4) · `localizationAgent` (cross-platform 1) · `simpleAppBuilder` (Tier 0 1) |
+| **QA Engineers** | 5 | `testWriter`, `testRunner`, `testFixer`, `squadQaAgent`, `platformQaAgent` |
+| **Security Engineers** | 4 | `security`, `squadSecurityAgent`, `platformSecurityAgent`, `securityLeadAgent` |
+| **UX / Product Designers** | 3 | `uxDesignerAgent`, `squadDesignerAgent`, `designLeadAgent` |
+| **Tech Architects** | 8 | `requirementsAnalyst`, `systemArchitect`, `dataArchitect`, `apiDesigner`, `frontendArchitect`, `techLeadAgent`, `mobileTechAdvisor`, `webTechAdvisor` |
+| **Product Managers** | 4 | `vpPmAgent`, `platformPmAgent`, `pmReviewer`, `businessPlanningAgent` |
+| **Code Quality / Cleanup** | 5 | `reviewer`, `codeDeduplicationAgent`, `squadErrorHandlingAgent`, `squadCodeCleanupAgent`, `squadDeduplicationAgent` |
+| **Audit (report-only)** | 3 | `errorAuditAgent`, `codeQualityAuditAgent`, `cmsQaAgent` |
+| **Performance & Accessibility** | 4 | `loadTestingAgent`, `performanceAgent`, `webPerformanceAgent`, `accessibilityAgent` |
+| **Policy & Standards** | 3 | `qaLeadAgent`, `inputPolicyAgent`, `renderingStrategyAgent` |
+| **DevOps / Operations** | 7 | `devops`, `documentation`, `deploymentAdvisor`, `analyticsMonitoring`, `seoAgent`, `appStorePublisher`, `asoMarketingAgent` |
+| **Compliance / Legal** | 3 | `privacyEthicsAgent`, `dependencyManagementAgent`, `userTestingAgent` |
+| **Total** | **75** | |
+
+### Agents by Model Category
+
+| Category | Count | Default model | Who |
+|----------|-------|--------------|-----|
+| **Light** | 14 | Haiku 4.5 · 4k tokens | `documentation`, `devops`, `deploymentAdvisor`, `analyticsMonitoring`, `seoAgent`, `appStorePublisher`, `asoMarketingAgent`, `businessPlanningAgent`, `userTestingAgent`, `privacyEthicsAgent`, `dependencyManagementAgent`, `squadCodeCleanupAgent`, `squadDeduplicationAgent`, `localizationAgent` |
+| **Medium** | 29 | Sonnet 4.6 · 8k tokens | All architects, leaders, reviewers, audit agents — see [Agent Model Selection](#️-agent-model-selection) |
+| **Heavy** | 32 | Tier 3: Opus 4.7 · 32k | All core devs, security, platform build, mobile feature agents |
+
+### Agents by Output Type
+
+| Output | Symbol | Count | Examples |
+|--------|--------|-------|---------|
+| Source code | 💻 | 37 | backendDev, frontendDev, authAgent, uiPrimitivesAgent, testWriter… |
+| Guideline / spec docs | 📋 | ~15 | requirementsAnalyst, systemArchitect, vpPmAgent, techLeadAgent, deploymentAdvisor… |
+| Review / audit reports | 🔍 | ~15 | security, reviewer, errorAuditAgent, performanceAgent, pmReviewer… |
+| Config / ops files | ⚙️ | ~5 | devops, appStorePublisher |
+| Mixed (code + report) | 💻+🔍 | ~5 | squadQaAgent, platformQaAgent, squadSecurityAgent, analyticsMonitoring… |
+
+### Build Tier Reference
+
+| Tier | Label | Layers that run | Default heavy model | Est. cost |
+|------|-------|-----------------|-------------------|-----------|
+| **0** | Single Agent | Tier 0 fast path only (simpleAppBuilder) | Sonnet 4.6 | ~$0.50 |
+| **1** | Simple | 1 · 2 · 3 · 5 (no leaders, no platform, no quality) | Sonnet 4.6 | ~$3 |
+| **2** | Standard | + 2b (Leaders) + 2c (Platform) + squad Designer + squad QA | Sonnet 4.6 + Thinking | ~$20 |
+| **3** | Full | + 3f (global dedup) + 4 (quality) + 4b (test run) + 4c (test fix) | Opus 4.7 | ~$50 |
+
+### Module Function Counts
+
+| Module | Exported functions | Total functions (incl. private) |
+|--------|-------------------|---------------------------------|
+| orchestrator.js | 2 (orchestrate, orchestrateUpdate) | 13 |
+| squadRunner.js | 4 (runSquad, runAllSquads, runSquadUpdate, runAllSquadsUpdate) | 14 |
+| platformRunner.js | 1 (runPlatformPipeline) | 4 |
+| context.js — ProjectContext | 19 methods + 2 static | 24 (incl. 5 private injectors) |
+| layerRunner.js | 3 (runLayerInParallel, runLayerSequential, getFailedAgents) | 5 |
+| costTracker.js | 4 (record, getTotal, getSummary, reset) | 4 |
+| agentModels.js | 2 (getAgentCategory, getDefaultModels) | 2 |
+| agentModelSelector.js | 1 (selectAgentModels) | 3 |
+| base.js | 3 (BaseAgent class + setModelConfigs + getModelConfigs) | 5 |
+| withRetry.js | 2 (withRetry, sleep) | 3 |
+| approval.js | 4 (approveStep, approveLayer, approveLayerStart, showAgentOutput) | 5 |
+| github.js | 5 (parseGithubRepo, checkGithubAccess, createGithubRepo, pushCheckpoint, pushToGithub) | 6 |
+| squadPlanner.js | 2 (createSquadPlan, formatSquadPlan) | 2 |
+| updatePlanner.js | 2 (analyzeUpdate, formatUpdatePlan) | 2 |
+| agentDependencies.js | 1 (DEPENDENCY_MAP constant) | 0 |
+| tools/fileSystem.js | 1 (createFileSystemTools) | 3 |
+| tools/shell.js | 1 (createShellTools) | 2 |
+| lang.js | 5 (setLanguage, getLanguage, getLangName, getLangInstruction, t) | 5 |
+| planner.js | 1 (runPlanningSession) | 5 |
+| designPicker.js | 1 (runDesignPicker) | 8 |
+
+---
+
 ## System Structure — 3 Tiers
 
 ```
@@ -714,25 +809,294 @@ Only for very complex bots — multi-turn conversation management, intent classi
 
 ## Core Infrastructure Modules
 
-| Module | Role |
-|--------|------|
-| **base.js** | `BaseAgent` class. Model selected per category: Light→Haiku 4.5, Medium→Sonnet 4.6, Heavy→Opus 4.7 (Tier 3) / Sonnet+Thinking (Tier 2) / Sonnet (Tier 1). All API calls use prompt caching (`cache_control: ephemeral` on system prompt, user message, and last tool). Timeout: 20 min. |
-| **agentModels.js** | `LIGHT_KEYS` (14) + `MEDIUM_KEYS` (29) sets. `getAgentCategory(displayName)` — maps display name → light/medium/heavy via agent-name-map.json. `getDefaultModels(tier)` — returns the three configs for a given tier. `MODEL_OPTIONS` — 4 presets: haiku / sonnet / sonnetThinking / opus. |
-| **agentModelSelector.js** | `selectAgentModels(plan, askFn)` — interactive prompt after tier selection. Shows default config per group, asks "continue (y) / customize (c)". Customize loop lets user pick a preset per group. In mock mode: returns defaults immediately. |
-| **costTracker.js** | `record(agentName, model, usage)` — accumulates per-agent cost from API usage. `getTotal()` — sum of all records. `getSummary()` — formatted table sorted by cost. `reset()` — called at the start of every `orchestrate()` / `orchestrateUpdate()`. Prints summary at end of build. |
-| **lang.js** | `selectLanguage()` — 8 supported languages. `t(key)` for all user-facing strings. `getLangInstruction()` injected into AI prompts (planner, designPicker, etc.). |
-| **context.js** | `ProjectContext` — shared state throughout a build. `buildScopedContext()` + `buildSquadScopedContext()`. Injectors: `_injectUniversalRules()`, `_injectPlatformRules()`, `_injectLeadershipGuidelines()`, `_injectSelfPlanningPrompt()` — each applied automatically per agent role. |
-| **agentDependencies.js** | `DEPENDENCY_MAP` — defines what each agent "sees" from agents that ran before it. |
-| **layerRunner.js** | `runLayerInParallel` / `runLayerSequential` — retry ×2 per agent. |
-| **squadRunner.js** | `runAllSquads`, `runSquadUpdate`, `runAllSquadsUpdate` — 9-phase squad pipeline. |
-| **platformRunner.js** | `runPlatformPipeline` — 7-phase platform pipeline (spec → build → feature infra → QA loop → security → PM review → PM fix). |
-| **squadPlanner.js** | `createSquadPlan` — Sonnet 4.6 splits into squads. |
-| **updatePlanner.js** | `analyzeUpdate` — Sonnet 4.6 analyzes a change request → affectedSquads + newSquads + platformUpdates. |
-| **withRetry.js** | `withRetry(fn, agentName)` — wraps any API call with exponential-backoff retry for overload / rate-limit errors. Used by `BaseAgent.run()` and `createPlan()`. |
-| **tools/fileSystem.js** | `read_file` / `write_file` / `list_files` — available to all agents. |
-| **tools/shell.js** | `run_command` — available to testRunner, devops, and squadQaAgent only. See: [Shell Access](#shell-access--package-installation). |
-| **approval.js** | Approval gates between layers. |
-| **github.js** | GitHub: validation, repo creation, checkpoint push, final push. |
+### orchestrator.js
+
+Entry point for a build run. Owns layer definitions, agent registry, plan schema, and all top-level build logic.
+
+| Function | Signature | Returns | Purpose |
+|----------|-----------|---------|---------|
+| `createPlan` | `(requirements, projectName)` | JSON plan | Calls Sonnet to produce the PM plan. Mock-aware. |
+| `getActiveAgents` | `(plan)` | `Set<string>` | Computes which agent keys are active for this build from the plan + optionalAgents. |
+| `filterLayerAgents` | `(layerDef, activeAgents, plan)` | `{name, needsShell}[]` | Filters a layer's agent list down to active agents; marks shell-access agents. |
+| `buildQualityFeedback` | `(layerResults)` | `string \| null` | Collects summaries from quality agents into a single feedback string for the fix loop. |
+| `buildPmFeedback` | `(pmReviewResult)` | `string \| null` | Returns PM review text only if verdict is not ACCEPTED. |
+| `mapFindingsToSquads` | `(feedbackText, squadPlan)` | `{squadFindings, platformAffected, platformFindings}` | Parses findings text, maps each section to the responsible squad(s) by file path. Sections without a path go to all squads. |
+| `formatPlan` | `(plan)` | `string` | Human-readable plan summary shown in the approval gate. |
+| `countAgentsForTier` | `(plan, tier)` | `number` | Counts how many agent runs a given tier produces, used to annotate the tier-selection prompt. |
+| `selectBuildTier` | `(plan, askFn?)` | `number` | Interactive tier selection (0–3). Shows PM recommendation, accepts override. Mock-aware. |
+| `runQualityLayers` | `(activeAgents, context, toolSets, plan)` | `results` | Re-runs layers 4, 4b, 4c as a group (used inside the quality fix loop). |
+| `runPmReview` | `(context, toolSets)` | `result \| null` | Runs pmReviewer once and returns its result. |
+| `orchestrate` | `(requirements, projectName, outputDir, checkpoint?, githubRepo?, options?)` | `void` | **Main build function.** Runs the full layer pipeline from plan creation to GitHub push. |
+| `orchestrateUpdate` | `(changeRequest, checkpointData, outputDir, githubRepo?)` | `void` | **Update mode.** Runs analyzeUpdate → targeted squad updates → quality re-run → GitHub push. |
+
+---
+
+### squadRunner.js
+
+Manages the 9-phase pipeline for one squad and for collections of squads.
+
+| Function | Signature | Returns | Purpose |
+|----------|-----------|---------|---------|
+| `_retryDelay` *(private)* | `(err)` | `ms` | Returns 20 s for 529, 60 s for 429, 5 s otherwise. |
+| `_runSingleAgent` *(private)* | `(agentName, contextStr, squad, context, toolSets, agentRegistry)` | `result` | Creates and runs one agent; records output in context. |
+| `_qaHasIssues` *(private)* | `(context, squad)` | `boolean` | Reads the squad's QA report file and returns true if it contains FAIL. |
+| `_skipOrRun` *(private)* | `(phaseName, squad, context, fn, bypassCheckpoint?)` | `result` | Checkpoint-aware phase gate: skips if already complete, otherwise runs `fn` and marks complete. |
+| `_runDevAgents` *(private)* | `(squad, agents, context, toolSets, agentRegistry, contextFn, label?, bypass?)` | `results` | Runs a list of dev agents sequentially, each checkpointed individually. |
+| `_runQaFixLoop` *(private)* | `(squad, fixFn, qaContextFn, context, toolSets, agentRegistry)` | `void` | QA → if issues → run fixFn → QA re-check. Max 2 rounds. |
+| `_handlePmGaps` *(private)* | `(squad, verdict, fixFn, qaContextFn, context, toolSets, agentRegistry)` | `void` | If PM verdict is GAPS → run fixFn → QA re-check → PM re-review. Max 2 rounds. |
+| `_runPmReview` *(private)* | `(squad, context, toolSets)` | `verdict string` | Runs Squad PM Review agent and returns the verdict (ACCEPTED / GAPS). |
+| `_rebuildSquadResults` *(private)* | `(squad, context)` | `results` | Reconstructs a squad's result map from already-recorded context outputs (used on resume). |
+| `runSquad` | `(squad, context, toolSets, agentRegistry, activeAgents)` | `void` | Runs the full 9-phase pipeline for one squad. |
+| `runAllSquads` | `(squadPlan, context, toolSets, agentRegistry, activeAgents)` | `void` | Runs all squads in parallel, then calls `_mergeOutputsToContext`. |
+| `_mergeOutputsToContext` *(private)* | `(allSquadResults, context)` | `void` | Merges per-squad agent outputs so global Layer 4 agents see all squads' work. |
+| `runSquadUpdate` | `(squad, changeDescription, context, toolSets, agentRegistry, activeAgents)` | `void` | Runs update-mode pipeline for one squad (PM update spec → dev fix → QA → security → PM review). |
+| `runAllSquadsUpdate` | `(updatePlan, context, toolSets, agentRegistry, activeAgents)` | `void` | Runs update on all affected squads in parallel; adds new squads via full pipeline. |
+
+---
+
+### platformRunner.js
+
+Manages the 7-phase platform pipeline (spec → build → feature infra → QA loop → security → PM review → PM fix).
+
+| Function | Signature | Returns | Purpose |
+|----------|-----------|---------|---------|
+| `_platformQaHasIssues` *(private)* | `(outputDir)` | `boolean` | Reads platform-review.md and returns true if it contains INCOMPLETE. |
+| `_platformPmHasGaps` *(private)* | `(outputDir)` | `boolean` | Reads platform-pm-review.md and returns true if it contains GAPS. |
+| `_runPlatformPmReview` *(private)* | `(context, toolSets)` | `void` | Runs platformPmReview agent and saves result to context. |
+| `runPlatformPipeline` | `(context, toolSets, agentRegistry, activeAgents)` | `void` | Executes all 7 phases in order. Phases 4 and 7 are loop-guarded (max 2 rounds each). |
+
+---
+
+### context.js — ProjectContext
+
+Shared state for an entire build run. Every agent gets its context string from one of the `build*Context` methods.
+
+**Private helpers (module-level):**
+
+| Function | Signature | Purpose |
+|----------|-----------|---------|
+| `_truncateSummary` | `(text)` | Truncates long dependency summaries with a read_file hint. |
+| `_injectUniversalRules` | `(lines)` | Appends language + output quality + file operation rules to every agent context. |
+| `_injectSelfPlanningPrompt` | `(lines, agentName, squadId)` | Appends Step 0 self-planning instruction for all 37 code-writing agents. |
+| `_injectLeadershipGuidelines` | `(lines, agentName, agentOutputs)` | Appends the relevant guideline doc (tech / QA / security / design) for agents that depend on a leader's output. |
+| `_injectPlatformRules` | `(lines, agentOutputs)` | Appends mandatory shared/ import instructions when platform build outputs exist. |
+
+**Instance methods:**
+
+| Method | Signature | Returns | Purpose |
+|--------|-----------|---------|---------|
+| `constructor` | `(requirements, plan, outputDir)` | `ProjectContext` | Initialises all state fields. |
+| `setPlatformUpdateNote` | `(agentName, note)` | `void` | Stores a note injected into platform agent context during update mode. |
+| `addAgentOutput` | `(agentName, summary, files)` | `void` | Records an agent's summary and file list — used by all context builders as dependency data. |
+| `setFeedbackNotes` | `(notes)` | `void` | Stores quality-loop feedback text injected into dev agents during fix rounds. |
+| `setPmFeedbackNotes` | `(notes)` | `void` | Stores PM review gaps injected into dev agents during PM fix rounds. |
+| `setSquadPlan` | `(squadPlan)` | `void` | Stores the squad division produced by squadPlanner. |
+| `setSquadSpec` | `(squadId, content)` | `void` | Caches squad spec content so review/update contexts can include it without a file read. |
+| `setSquadGaps` | `(squadId, content)` | `void` | Caches PM gap text for a squad's fix round. |
+| `markLayerComplete` | `(layerId)` | `void` | Records a layer id in `completedLayers`; persisted in checkpoint. |
+| `isLayerComplete` | `(layerId)` | `boolean` | Returns true if the layer was already completed (resume guard). |
+| `markSquadComplete` | `(squadId)` | `void` | Marks an entire squad pipeline as done. |
+| `isSquadComplete` | `(squadId)` | `boolean` | Resume guard for whole-squad checkpoint. |
+| `markSquadAgentComplete` | `(squadId, agentName)` | `void` | Marks an individual agent phase within a squad as done. |
+| `isSquadAgentComplete` | `(squadId, agentName)` | `boolean` | Resume guard for per-agent checkpoint within a squad. |
+| `saveCheckpoint` | `()` | `void` | Serialises all state to `.build-checkpoint.json` in outputDir. |
+| `static loadCheckpoint` | `(outputDir)` | `checkpoint \| null` | Reads and parses the checkpoint file; returns null if not found. |
+| `static fromCheckpoint` | `(checkpoint)` | `ProjectContext` | Reconstructs a full ProjectContext from a serialised checkpoint. |
+| `buildScopedContext` | `(agentName)` | `string` | Builds the context string for a **layer agent** (non-squad). Injects universal rules, leadership guidelines, platform rules, self-planning prompt, and all relevant dependency outputs. |
+| `buildSquadPmSpecContext` | `(squad)` | `string` | Builds the context for **Squad PM Spec**: requirements + squad info + pm-guidelines + design docs. |
+| `buildSquadPmReviewContext` | `(squad)` | `string` | Builds the context for **Squad PM Review**: squad spec + all squad files listed. |
+| `buildSquadScopedContext` | `(agentName, squad)` | `string` | Builds the context for a **squad implementation agent**: universal rules + leadership guidelines + platform rules + self-planning + squad spec + design doc + relevant dependency outputs. |
+| `buildSquadPmUpdateSpecContext` | `(squad, changeDescription)` | `string` | Update-mode context for Squad PM: existing spec + what to change. |
+| `buildSquadUpdateContext` | `(agentName, squad, changeDescription)` | `string` | Update-mode context for squad dev agents: existing code context + change description. |
+
+---
+
+### layerRunner.js
+
+Runs a set of agents either in parallel (up to `PARALLEL_AGENTS` concurrent, default 1) or sequentially. Both variants retry once on failure.
+
+| Function | Signature | Returns | Purpose |
+|----------|-----------|---------|---------|
+| `retryDelay` *(private)* | `(err)` | `ms` | 20 s for 529, 60 s for 429, 5 s default. |
+| `runAgentWithRetry` | `(agentConfig, context, toolSets, agentRegistry)` | `result \| null` | Creates and runs one agent with one automatic retry. Returns null if agent key unknown. |
+| `runLayerInParallel` | `(agentConfigs, context, toolSets, agentRegistry)` | `{[name]: result}` | Runs all agents concurrently (batched by `MAX_PARALLEL_AGENTS`). |
+| `runLayerSequential` | `(agentConfigs, context, toolSets, agentRegistry)` | `{[name]: result}` | Runs agents one after another in declaration order. |
+| `getFailedAgents` | `(layerResults)` | `string[]` | Returns agent names whose results contain an error. |
+
+---
+
+### costTracker.js
+
+Module-level singleton. Tracks API cost across the entire build run.
+
+| Function | Signature | Returns | Purpose |
+|----------|-----------|---------|---------|
+| `record` | `(agentName, model, usage)` | `void` | Computes cost from `usage.input_tokens`, `output_tokens`, `cache_read_input_tokens`, `cache_creation_input_tokens`. Pushes record to internal array. Ignores null/undefined usage. |
+| `getTotal` | `()` | `number` | Sum of `totalCost` across all records (USD). |
+| `getSummary` | `()` | `string \| null` | Returns a formatted table sorted by agent cost descending, with TOTAL row. Returns null if no records. |
+| `reset` | `()` | `void` | Clears all records. Called at the start of every `orchestrate()` / `orchestrateUpdate()`. |
+
+---
+
+### agentModels.js
+
+Defines the three model categories and the default configs per tier.
+
+| Function / Export | Signature | Returns | Purpose |
+|-------------------|-----------|---------|---------|
+| `getAgentCategory` | `(displayName)` | `'light' \| 'medium' \| 'heavy'` | Looks up an agent's display name in the pre-built `_categoryMap`. Defaults to `'heavy'` if not found. |
+| `getDefaultModels` | `(tier)` | `{ light, medium, heavy }` | Returns three model config objects for a given tier. Heavy varies by tier; light and medium are always Haiku and Sonnet respectively. |
+| `MODEL_OPTIONS` | constant | — | 4 model presets: `haiku`, `sonnet`, `sonnetThinking`, `opus` — each with `model`, `max_tokens`, `thinking`. |
+| `LIGHT_KEYS` | constant | `Set<string>` | 14 camelCase registry keys for light agents. |
+| `MEDIUM_KEYS` | constant | `Set<string>` | 29 camelCase registry keys for medium agents. |
+
+---
+
+### agentModelSelector.js
+
+Interactive model selection prompt. Called once per build after tier is finalised.
+
+| Function | Signature | Returns | Purpose |
+|----------|-----------|---------|---------|
+| `describeConfig` *(private)* | `(cfg)` | `string` | Formats a model config as a human-readable label + price string for display. |
+| `selectGroupModel` *(private)* | `(groupKey, currentConfig, askFn)` | `modelConfig` | Shows a numbered preset list for one group and awaits user selection. Enter = keep current. |
+| `selectAgentModels` | `(plan, askFn?)` | `{ light, medium, heavy }` | Shows defaults summary, asks "continue / customize". If customizing, calls `selectGroupModel` for each group. In mock mode returns defaults immediately. |
+
+---
+
+### base.js — BaseAgent
+
+Base class for all 75 agents. Handles API calls, prompt caching, tool execution loop, and cost recording.
+
+| Function / Method | Signature | Returns | Purpose |
+|-------------------|-----------|---------|---------|
+| `setModelConfigs` | `(configs)` | `void` | Sets the global `{ light, medium, heavy }` model config. Called once by orchestrator before any agent runs. |
+| `getModelConfigs` | `()` | `{ light, medium, heavy }` | Returns the current model configs. |
+| `constructor` | `(name, systemPrompt, tools, toolHandlers)` | `BaseAgent` | Stores agent identity, creates Anthropic client, initialises `filesCreated[]`. |
+| `run` | `(userMessage)` | `{ summary, filesCreated }` | Main agent loop. Selects model by category, builds cached params, calls API with retry, executes tool calls, iterates until `stop_reason !== 'tool_use'`. In mock mode returns a mock response. |
+
+---
+
+### withRetry.js
+
+Shared retry utility for all Anthropic API calls.
+
+| Function | Signature | Returns | Purpose |
+|----------|-----------|---------|---------|
+| `sleep` | `(ms)` | `Promise` | Simple promise-based delay. Used by retry loops and layerRunner. |
+| `_retryDelay` *(private)* | `(errMessage)` | `ms` | 20 s for 529 (overload), 60 s for 429 (rate limit), 5 s default. |
+| `withRetry` | `(fn, label)` | `result` | Calls `fn()`. On overload/rate-limit error: logs a warning and retries after `_retryDelay`. On other errors: throws immediately. |
+
+---
+
+### approval.js
+
+User-facing approval gates between layers. All gates are skipped in mock mode.
+
+| Function | Signature | Returns | Purpose |
+|----------|-----------|---------|---------|
+| `ask` | `(question)` | `string` | Raw readline prompt. |
+| `approveStep` | `(stepName, description, details?)` | `boolean` | Shows a formatted approval gate (plan / squad plan). Returns true if user approves. |
+| `showAgentOutput` | `(agentName, summary, filesCreated)` | `void` | Prints a collapsible agent result summary. |
+| `approveLayer` | `(layerName, layerResults)` | `boolean` | Shows all agent results for a layer and asks for approval before the fix loop. |
+| `approveLayerStart` | `(layerName, agentNames)` | `boolean` | Shows which agents are about to run and asks for approval before a layer starts. |
+
+---
+
+### github.js
+
+All GitHub interactions: repo validation, creation, checkpoint push, final push.
+
+| Function | Signature | Returns | Purpose |
+|----------|-----------|---------|---------|
+| `parseGithubRepo` | `(input)` | `{owner, repo, full} \| null` | Parses `owner/repo`, HTTPS URL, or SSH URL into a normalised object. |
+| `checkGithubAccess` | `(owner, repo, token)` | `{exists, canPush, authError, networkError, private}` | Uses GitHub API to verify the repo exists and the token has push rights. |
+| `createGithubRepo` | `(repoName, token, isPrivate?)` | `void` | Creates a new repository under the authenticated user. |
+| `pushCheckpoint` | `(outputDir, owner, repo, token, layerLabel)` | `{success, error?}` | **Non-fatal.** Commits all files in outputDir and pushes to GitHub with a checkpoint message. Errors are logged but don't stop the build. |
+| `pushToGithub` | `(outputDir, owner, repo, token)` | `{success, error?}` | **Fatal.** Final push at the end of a build. Errors are propagated. |
+
+---
+
+### squadPlanner.js
+
+| Function | Signature | Returns | Purpose |
+|----------|-----------|---------|---------|
+| `createSquadPlan` | `(requirements, plan)` | `squadPlan` | Calls Sonnet 4.6 to divide the project into 2–6 squads by domain. Mock-aware. |
+| `formatSquadPlan` | `(squadPlan)` | `string` | Human-readable squad summary shown in the approval gate. |
+
+---
+
+### updatePlanner.js
+
+| Function | Signature | Returns | Purpose |
+|----------|-----------|---------|---------|
+| `analyzeUpdate` | `(changeRequest, existingSquadPlan)` | `{affectedSquads, newSquads, platformUpdates}` | Calls Sonnet 4.6 to analyse a change request against the existing squad plan and identify what needs to be updated. Mock-aware. |
+| `formatUpdatePlan` | `(updatePlan)` | `string` | Human-readable update plan summary for the approval gate. |
+
+---
+
+### tools/fileSystem.js
+
+Creates the tool set used by all agents. All paths are scoped to `outputDir`.
+
+| Function | Signature | Returns | Purpose |
+|----------|-----------|---------|---------|
+| `deepMerge` *(private)* | `(target, source)` | `object` | Recursively merges two objects (used for JSON file merging). |
+| `mergeEnvContent` *(private)* | `(existing, incoming)` | `string` | Smart `.env` merge — adds new keys, updates existing values, preserves comments. |
+| `createFileSystemTools` | `(outputDir)` | `{ tools, handlers }` | Returns three tools: `read_file`, `write_file` (with JSON/env smart merge), `list_files`. |
+
+---
+
+### tools/shell.js
+
+Creates the shell tool used only by `testRunner`, `devops`, and `squadQaAgent`.
+
+| Function | Signature | Returns | Purpose |
+|----------|-----------|---------|---------|
+| `_translateForPowerShell` *(private)* | `(command)` | `string` | Translates Unix commands to PowerShell equivalents when running on Windows. |
+| `createShellTools` | `(outputDir)` | `{ tools, handlers }` | Returns one tool: `run_command` — executes shell commands in `outputDir` with a 5-minute timeout. |
+
+---
+
+### lang.js
+
+UI language system. All user-facing strings go through `t()`. AI prompts receive `getLangInstruction()`.
+
+| Function | Signature | Returns | Purpose |
+|----------|-----------|---------|---------|
+| `setLanguage` | `(code)` | `void` | Sets the active language code (e.g. `'en'`, `'he'`). |
+| `getLanguage` | `()` | `string` | Returns the current language code. |
+| `getLangName` | `()` | `string` | Returns the human-readable language name (e.g. `'Hebrew'`). |
+| `getLangInstruction` | `()` | `string` | Returns a prompt injection string (e.g. `"Write all output in Hebrew."`). |
+| `t` | `(key, ...args)` | `string` | Looks up a translation key; substitutes `%s` args. Falls back to English if key missing. |
+
+---
+
+### planner.js
+
+Interactive AI planning session that produces a structured requirements document.
+
+| Function | Signature | Returns | Purpose |
+|----------|-----------|---------|---------|
+| `runPlanningSession` | `(ask, outputDir)` | `string` | Runs a multi-turn conversation with Sonnet to clarify requirements. Saves the result to `docs/requirements-draft.md`. Returns the final requirements string. |
+
+---
+
+### designPicker.js
+
+Interactive design-theme picker. Runs before the build starts; appends the chosen design spec to requirements.
+
+| Function | Signature | Returns | Purpose |
+|----------|-----------|---------|---------|
+| `runDesignPicker` | `(requirements, ask)` | `string \| null` | Generates 3 design concepts, shows them to the user, and returns the formatted design spec for the chosen concept. Returns null if user skips. |
+
+---
+
+### agentDependencies.js
+
+| Export | Type | Purpose |
+|--------|------|---------|
+| `DEPENDENCY_MAP` | `Record<string, string[]>` | Maps every agent name to the list of agent names whose outputs it reads. Used by `buildScopedContext` to inject only the relevant dependency summaries. |
 
 ---
 
