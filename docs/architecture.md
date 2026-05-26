@@ -454,6 +454,176 @@ Execution order in Update Mode:
 
 ---
 
+## 🎛️ Agent Model Selection
+
+Every agent belongs to one of three **model categories**. The category is determined by the agent's display name looked up in `agentModels.js` via `scripts/agent-name-map.json`. Before any layer runs, `selectAgentModels()` sets the three model configs and `setModelConfigs()` stores them in `base.js`.
+
+### Categories
+
+| Category | Count | Rationale | Member agents (key examples) |
+|----------|-------|-----------|------------------------------|
+| **Light** | 14 | Formatting, docs, config, publishing — output quality is less sensitive to model power | `documentation`, `devops`, `deploymentAdvisor`, `analyticsMonitoring`, `seoAgent`, `appStorePublisher`, `asoMarketingAgent`, `businessPlanningAgent`, `userTestingAgent`, `privacyEthicsAgent`, `dependencyManagementAgent`, `squadCodeCleanupAgent`, `squadDeduplicationAgent`, `localizationAgent` |
+| **Medium** | 29 | Analysis, design, review, planning — benefit from deeper reasoning | `requirementsAnalyst`, `systemArchitect`, `apiDesigner`, `dataArchitect`, `frontendArchitect`, `uxDesignerAgent`, `designLeadAgent`, `inputPolicyAgent`, `renderingStrategyAgent`, `reviewer`, `pmReviewer`, `testWriter`, `loadTestingAgent`, `accessibilityAgent`, `performanceAgent`, `webPerformanceAgent`, `errorAuditAgent`, `codeQualityAuditAgent`, `codeDeduplicationAgent`, `squadDesignerAgent`, `vpPmAgent`, `techLeadAgent`, `qaLeadAgent`, `securityLeadAgent`, `platformPmAgent`, `platformQaAgent`, `platformSecurityAgent`, `mobileTechAdvisor`, `webTechAdvisor` |
+| **Heavy** | 32 | Core implementation — most time-consuming, highest impact on code quality | `backendDev`, `frontendDev`, `authAgent`, `integrationAgent`, `testRunner`, `testFixer`, `security`, `uiPrimitivesAgent`, `uiCompositeAgent`, `apiClientAgent`, `dbSchemaAgent`, `squadErrorHandlingAgent`, `squadQaAgent`, `squadSecurityAgent`, all mobile feature agents, `cmsIntegratorAgent`, `cmsQaAgent`, `responsiveDesignAgent`, `pwaAgent`, `webMonetizationAgent`, `simpleAppBuilder` |
+
+### Default Models per Tier
+
+| Category | Tier 1 — Simple | Tier 2 — Standard | Tier 3 — Full |
+|----------|-----------------|--------------------|----------------|
+| **Light** | Haiku 4.5 · 4,096 tokens | Haiku 4.5 · 4,096 tokens | Haiku 4.5 · 4,096 tokens |
+| **Medium** | Sonnet 4.6 · 8,096 tokens | Sonnet 4.6 · 8,096 tokens | Sonnet 4.6 · 8,096 tokens |
+| **Heavy** | Sonnet 4.6 · 8,096 tokens | Sonnet 4.6 + Thinking · 16,000 tokens | Opus 4.7 · 32,000 tokens |
+
+### Available Model Presets
+
+| Preset | Model ID | max_tokens | Thinking | Price (per MTok) |
+|--------|----------|-----------|---------|-----------------|
+| `haiku` | claude-haiku-4-5-20251001 | 4,096 | off | $1 in · $5 out |
+| `sonnet` | claude-sonnet-4-6 | 8,096 | off | $3 in · $15 out |
+| `sonnetThinking` | claude-sonnet-4-6 | 16,000 | adaptive | $3 in · $15 out |
+| `opus` | claude-opus-4-7 | 32,000 | adaptive | $5 in · $25 out |
+
+### Interactive Selection UX (agentModelSelector.js)
+
+```
+Triggered inside orchestrate() immediately after tier is finalized.
+
+1. Compute defaults via getDefaultModels(plan.tier)
+2. Print a summary:
+     Light agents      →  Haiku 4.5           ($1/MTok in  · $5/MTok out)
+     Medium agents     →  Sonnet 4.6          ($3/MTok in  · $15/MTok out)
+     Heavy agents      →  Opus 4.7            ($5/MTok in  · $25/MTok out)
+3. Ask: "Continue with defaults (y) or customize (c)? [default: y]"
+4. If defaults accepted → return immediately.
+5. If customize → loop over ['light', 'medium', 'heavy']:
+     - Print group description and example agents
+     - Show numbered preset list, marking the current selection
+     - Ask: "Choose (1-4) [Enter = keep current]"
+     - Enter = keep; 1-4 = switch to that preset
+6. Call setModelConfigs({ light, medium, heavy }) → stored in base.js
+
+Edge cases:
+  - Mock mode:       returns defaults immediately, no prompt shown
+  - Resume build:    applies getDefaultModels(checkpoint.plan.tier), no prompt
+  - Update mode:     applies getDefaultModels(checkpoint.plan.tier), no prompt
+  - Unknown agent:   getAgentCategory() returns 'heavy' as fallback
+```
+
+---
+
+## ⚡ Smart Agent Skips
+
+Three conditional skips are applied automatically during a build. All three check **runtime context** (not disk state), so they work correctly on fresh builds, resumed builds, and builds run after previous failures.
+
+### Skip 1 — `squadDesignerAgent`: backend-only squads
+
+| | |
+|-|-|
+| **Where** | `squadRunner.js` — Phase 2 of every squad |
+| **Condition** | `squad.agents` does not include `'frontendDev'` OR build tier < 2 |
+| **Code** | `const hasFrontend = squad.agents.includes('frontendDev'); if (tier >= 2 && hasFrontend) { run designer }` |
+| **Effect** | No `docs/squads/{id}-design.md` created; dev agents fall back to tech-guidelines alone |
+| **Why** | A backend-only squad has no screens — running the designer would produce irrelevant output |
+
+### Skip 2 — `socialSharingAgent`: not in optionalAgents
+
+| | |
+|-|-|
+| **Where** | `orchestrator.js` — `getActiveAgents()` |
+| **Condition** | `'socialSharingAgent'` not present in `plan.optionalAgents` |
+| **Code** | socialSharingAgent is NOT unconditionally added for frontend projects; it only enters `activeAgents` if the PM explicitly included it |
+| **Effect** | `shared/sharing/` not created; squads do not receive `useShare()` / `OpenInApp` |
+| **Why** | Previously added unconditionally for all frontend projects; corrected to be optional so projects that don't need sharing don't carry the infrastructure |
+
+### Skip 3 — `testRunner` + `testFixer`: testWriter wrote no files
+
+| | |
+|-|-|
+| **Where** | `orchestrator.js` — main layer loop, evaluated before Layer 4b and again before Layer 4c |
+| **Condition** | `context.agentOutputs['testWriter']?.files?.length === 0` |
+| **Code** | `const testFiles = context.agentOutputs['testWriter']?.files \|\| []; if (testFiles.length === 0) { markLayerComplete; continue; }` |
+| **Effect** | Layers 4b and 4c are marked complete immediately; execution proceeds to Layer 5 without running testRunner or testFixer |
+| **Why** | If testWriter produced nothing, testRunner would find no tests to run and testFixer would have no failures to fix — both would waste time and produce empty reports |
+
+**Resume safety:** Skip evaluation happens when the build loop **reaches** each layer. If a build was stopped before Layer 4b, the decision is re-evaluated on resume using the current context. A layer that hasn't been reached yet is never pre-marked as skipped.
+
+**Disk safety (Skip 3):** The check uses `context.agentOutputs['testWriter'].files` (the list of files written in the current run), not a filesystem scan. This prevents detecting test files left on disk by a previous build run.
+
+---
+
+## 🗜️ Prompt Caching & Cost Tracking
+
+### Prompt Caching (base.js)
+
+Every API call made by `BaseAgent.run()` applies `cache_control: { type: 'ephemeral' }` at three positions:
+
+```
+Position 1 — System prompt (constant for the agent's entire run):
+  params.system = [{
+    type: 'text',
+    text: this.systemPrompt,
+    cache_control: { type: 'ephemeral' }   ← agent role definition cached here
+  }]
+
+Position 2 — First user message (project context, constant across tool-use turns):
+  messages = [{ role: 'user', content: [{
+    type: 'text',
+    text: userMessage,
+    cache_control: { type: 'ephemeral' }   ← full project context cached here
+  }]}]
+
+Position 3 — Last tool definition (tool list sent every turn):
+  params.tools = tools.map((t, i) =>
+    i === tools.length - 1
+      ? { ...t, cache_control: { type: 'ephemeral' } }   ← last tool cached
+      : t
+  )
+```
+
+**Why only the last tool?** Anthropic's API requires `cache_control` to be placed on **contiguous trailing blocks**. All tool definitions must be sent on every turn, so the last one is the correct anchor point for the cache.
+
+**Cache type `ephemeral`:** 5-minute TTL. Reused across all turns within the same agent conversation (the while-loop in `BaseAgent.run()`). Not shared across different agent instances.
+
+**Pricing impact of cache hits vs full input:**
+
+| Model | Full input | Cache read | Cache write | Saving on hit |
+|-------|-----------|-----------|------------|---------------|
+| Sonnet 4.6 | $3.00/MTok | $0.30/MTok | $3.75/MTok | 90% cheaper |
+| Opus 4.7 | $5.00/MTok | $0.50/MTok | $6.25/MTok | 90% cheaper |
+| Haiku 4.5 | $1.00/MTok | $0.10/MTok | $1.25/MTok | 90% cheaper |
+
+### Cost Tracking (costTracker.js)
+
+`costTracker` is a module-level singleton (plain array, no class). Its lifecycle per build:
+
+```
+orchestrate() / orchestrateUpdate() start
+  → costTracker.reset()              clears all records from any previous run
+
+  [agents run — each call to client.messages.create]
+  → costTracker.record(agentName, model, response.usage)
+       inputCost  = (input_tokens  / 1_000_000) × price.input
+       outputCost = (output_tokens / 1_000_000) × price.output
+       cacheRCost = (cache_read_input_tokens     / 1_000_000) × price.cacheRead
+       cacheWCost = (cache_creation_input_tokens / 1_000_000) × price.cacheWrite
+       totalCost  = sum of above → pushed to _records[]
+
+build completes
+  → costTracker.getSummary()         sorted by agent cost (desc), only if records exist
+  → printed to console as:
+       💰  Build Cost Summary:
+           backendDev                       $0.8240
+           frontendDev                      $0.6110
+           ...
+           TOTAL                            $2.1450
+```
+
+**Multi-turn accounting:** `record()` is called after **every** API response, including intermediate tool-use turns. A single agent that makes 5 tool calls generates 5 cost records. `getSummary()` groups by `agentName` and sums across all records.
+
+**Unknown model fallback:** if the model string is not in `PRICING`, Sonnet 4.6 pricing is used.
+
+---
+
 ## 🐙 GitHub Integration (github.js)
 
 | Function | Role |
