@@ -263,7 +263,7 @@ async function main() {
 
   const skipDesign = (await ask(chalk.bold.green(t('designBeforeDev')))).trim().toLowerCase();
   if (skipDesign === 'y' || skipDesign === 'yes' || skipDesign === '') {
-    const designSpec = await runDesignPicker(requirements, ask);
+    const designSpec = await runDesignPicker(requirements, ask, outputDir);
     if (designSpec) {
       requirements = requirements + '\n\n' + designSpec;
       console.log(chalk.green(`\n${t('designAdded')}\n`));

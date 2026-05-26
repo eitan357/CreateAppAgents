@@ -2,6 +2,9 @@
 
 const Anthropic = require('@anthropic-ai/sdk');
 const chalk = require('chalk');
+const fs = require('fs');
+const path = require('path');
+const { spawn } = require('child_process');
 const { getLangInstruction, t } = require('./lang');
 const { withRetry } = require('./withRetry');
 
@@ -182,14 +185,169 @@ ${concept.layoutStyle}
 ${concept.inspiration}`.trim();
 }
 
+// ── HTML preview ──────────────────────────────────────────────────────────────
+function generateHtmlPreview(concepts, outputDir) {
+  const fonts = [...new Set(
+    concepts.flatMap(c => [c.typography.heading, c.typography.body])
+  )].map(f => f.replace(/ /g, '+')).join('&family=');
+
+  const cardHtml = concepts.map((c, i) => {
+    const col = c.colors;
+    const swatches = [
+      ['Primary',    col.primary],
+      ['Secondary',  col.secondary],
+      ['Accent',     col.accent],
+      ['Background', col.background],
+      ['Surface',    col.surface],
+      ['Text',       col.text],
+    ].map(([label, hex]) => `
+      <div class="swatch-item">
+        <div class="swatch-box" style="background:${hex}"></div>
+        <div class="swatch-label">${label}<br><span>${hex}</span></div>
+      </div>`).join('');
+
+    const moodBullets = c.mood.split('. ').filter(Boolean)
+      .map(s => `<li>${s.trim()}</li>`).join('');
+
+    return `
+    <div class="card">
+      <div class="card-header" style="background:${col.primary}; font-family:'${c.typography.heading}',sans-serif">
+        <span class="card-num">${i + 1}</span>
+        <div>
+          <div class="card-name">${c.name}</div>
+          <div class="card-tagline">"${c.tagline}"</div>
+        </div>
+      </div>
+
+      <div class="card-body" style="background:${col.background}; color:${col.text}">
+
+        <section class="section">
+          <h3 style="font-family:'${c.typography.heading}',sans-serif">Color Palette</h3>
+          <div class="swatches">${swatches}</div>
+        </section>
+
+        <section class="section">
+          <h3 style="font-family:'${c.typography.heading}',sans-serif">Typography</h3>
+          <p style="font-family:'${c.typography.heading}',sans-serif; font-size:1.4rem; margin:0 0 4px">
+            Heading — ${c.typography.heading}
+          </p>
+          <p style="font-family:'${c.typography.body}',sans-serif; margin:0 0 4px">
+            Body — ${c.typography.body}
+          </p>
+          <p class="meta">${c.typography.style}</p>
+        </section>
+
+        <section class="section">
+          <h3 style="font-family:'${c.typography.heading}',sans-serif">UI Preview</h3>
+          <div class="ui-preview" style="border-radius:${c.cornerRadius === 'Sharp' ? '2px' : c.cornerRadius === 'Medium' ? '8px' : '16px'}; overflow:hidden; border:1px solid ${col.surface}">
+            <div class="ui-nav" style="background:${col.primary}; font-family:'${c.typography.heading}',sans-serif">
+              <span style="font-weight:700">◉ ${c.name}</span>
+              <span style="opacity:.7; font-size:.8rem">Home · Features · Pricing</span>
+            </div>
+            <div class="ui-content" style="background:${col.background}; color:${col.text}; font-family:'${c.typography.body}',sans-serif">
+              <div class="ui-card" style="background:${col.surface}; border-radius:${c.cornerRadius === 'Sharp' ? '2px' : c.cornerRadius === 'Medium' ? '8px' : '16px'}; box-shadow:${c.shadows === 'None' ? 'none' : c.shadows === 'Subtle' ? '0 2px 8px rgba(0,0,0,.08)' : '0 8px 32px rgba(0,0,0,.18)'}">
+                <p style="margin:0 0 12px; font-family:'${c.typography.heading}',sans-serif; font-weight:700">Sample Card</p>
+                <p style="margin:0 0 16px; font-size:.9rem; opacity:.75">This is how content will look inside the application surfaces and modals.</p>
+                <div class="ui-buttons">
+                  <button style="background:${col.primary}; color:#fff; border:none; padding:8px 18px; border-radius:${c.cornerRadius === 'Sharp' ? '2px' : c.cornerRadius === 'Medium' ? '6px' : '999px'}; font-family:'${c.typography.body}',sans-serif; cursor:pointer">Primary Action</button>
+                  <button style="background:transparent; color:${col.primary}; border:2px solid ${col.primary}; padding:8px 18px; border-radius:${c.cornerRadius === 'Sharp' ? '2px' : c.cornerRadius === 'Medium' ? '6px' : '999px'}; font-family:'${c.typography.body}',sans-serif; cursor:pointer">Secondary</button>
+                  <button style="background:${col.accent}; color:#fff; border:none; padding:8px 18px; border-radius:${c.cornerRadius === 'Sharp' ? '2px' : c.cornerRadius === 'Medium' ? '6px' : '999px'}; font-family:'${c.typography.body}',sans-serif; cursor:pointer">Accent</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section class="section">
+          <h3 style="font-family:'${c.typography.heading}',sans-serif">Style Details</h3>
+          <div class="tags">
+            <span class="tag" style="background:${col.surface}">Corners: ${c.cornerRadius}</span>
+            <span class="tag" style="background:${col.surface}">Shadows: ${c.shadows}</span>
+            <span class="tag" style="background:${col.surface}">Animation: ${c.animations}</span>
+            <span class="tag" style="background:${col.surface}">Dark mode: ${c.darkMode}</span>
+          </div>
+          <p class="meta" style="margin-top:10px">${c.layoutStyle}</p>
+        </section>
+
+        <section class="section">
+          <h3 style="font-family:'${c.typography.heading}',sans-serif">Character</h3>
+          <ul class="mood-list">${moodBullets}</ul>
+          <p class="meta">Inspired by: ${c.inspiration}</p>
+        </section>
+
+      </div>
+    </div>`;
+  }).join('');
+
+  const html = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Design Concepts</title>
+  <link href="https://fonts.googleapis.com/css2?family=${fonts}&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: system-ui, sans-serif; background: #0f0f0f; color: #eee; padding: 32px 24px; min-height: 100vh; }
+    h1 { text-align: center; font-size: 1.6rem; font-weight: 700; margin-bottom: 8px; color: #fff; }
+    .subtitle { text-align: center; color: #888; margin-bottom: 32px; font-size: .95rem; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap: 28px; max-width: 1300px; margin: 0 auto; }
+    .card { border-radius: 12px; overflow: hidden; box-shadow: 0 8px 40px rgba(0,0,0,.5); display: flex; flex-direction: column; }
+    .card-header { display: flex; align-items: center; gap: 16px; padding: 20px 24px; color: #fff; }
+    .card-num { font-size: 2rem; font-weight: 900; opacity: .9; min-width: 32px; }
+    .card-name { font-size: 1.3rem; font-weight: 700; }
+    .card-tagline { font-size: .85rem; opacity: .75; margin-top: 2px; }
+    .card-body { flex: 1; padding: 24px; display: flex; flex-direction: column; gap: 24px; }
+    .section h3 { font-size: .75rem; text-transform: uppercase; letter-spacing: .08em; opacity: .5; margin-bottom: 12px; }
+    .swatches { display: flex; flex-wrap: wrap; gap: 10px; }
+    .swatch-item { display: flex; align-items: center; gap: 8px; }
+    .swatch-box { width: 32px; height: 32px; border-radius: 6px; border: 1px solid rgba(255,255,255,.1); flex-shrink: 0; }
+    .swatch-label { font-size: .75rem; line-height: 1.4; }
+    .swatch-label span { opacity: .55; font-size: .68rem; }
+    .ui-nav { display: flex; justify-content: space-between; align-items: center; padding: 12px 16px; color: #fff; }
+    .ui-content { padding: 16px; }
+    .ui-card { padding: 16px; }
+    .ui-buttons { display: flex; flex-wrap: wrap; gap: 8px; }
+    .tags { display: flex; flex-wrap: wrap; gap: 8px; }
+    .tag { padding: 4px 10px; border-radius: 999px; font-size: .78rem; opacity: .85; }
+    .mood-list { padding-left: 18px; display: flex; flex-direction: column; gap: 4px; font-size: .9rem; opacity: .85; }
+    .meta { font-size: .82rem; opacity: .6; margin-top: 4px; }
+  </style>
+</head>
+<body>
+  <h1>Design Concepts</h1>
+  <p class="subtitle">Choose a concept in the terminal — type 1, 2, or 3 to select, or describe changes to refine.</p>
+  <div class="grid">${cardHtml}</div>
+</body>
+</html>`;
+
+  try {
+    fs.mkdirSync(outputDir, { recursive: true });
+    const filePath = path.join(outputDir, 'design-preview.html');
+    fs.writeFileSync(filePath, html, 'utf8');
+    const opener = process.platform === 'darwin' ? 'open'
+      : process.platform === 'win32' ? 'cmd'
+      : 'xdg-open';
+    const args = process.platform === 'win32' ? ['/c', 'start', filePath] : [filePath];
+    spawn(opener, args, { detached: true, stdio: 'ignore' }).unref();
+    return filePath;
+  } catch {
+    return null;
+  }
+}
+
 // ── Main export ───────────────────────────────────────────────────────────────
-async function runDesignPicker(requirements, ask) {
+async function runDesignPicker(requirements, ask, outputDir) {
   const client = new Anthropic();
 
   console.log(chalk.bold.cyan(`\n${t('generatingDesigns')}`));
 
   let concepts = await generateConcepts(client, requirements, []);
   displayAllConcepts(concepts);
+  if (outputDir) {
+    const previewPath = generateHtmlPreview(concepts, outputDir);
+    if (previewPath) console.log(chalk.gray(`  🌐  Preview opened in browser — ${previewPath}\n`));
+  }
 
   const refinementHistory = [
     {
@@ -237,6 +395,7 @@ async function runDesignPicker(requirements, ask) {
       concepts = await generateConcepts(client, requirements, refinementHistory);
       refinementHistory.push({ role: 'assistant', content: JSON.stringify(concepts) });
       displayAllConcepts(concepts);
+      if (outputDir) generateHtmlPreview(concepts, outputDir);
 
       console.log(chalk.bold.yellow('\n' + t('designNow')));
       console.log(chalk.white(t('designNowOpts') + '\n'));
