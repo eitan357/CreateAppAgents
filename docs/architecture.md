@@ -103,7 +103,7 @@ Cost range: **min** = all agents on Haiku · **max** = default model configurati
 | tools/shell.js | 1 (createShellTools) | 2 |
 | lang.js | 5 (setLanguage, getLanguage, getLangName, getLangInstruction, t) | 5 |
 | planner.js | 1 (runPlanningSession) | 5 |
-| designPicker.js | 1 (runDesignPicker) | 8 |
+| designPicker.js | 2 (runDesignPicker, generateHtmlPreview) | 9 |
 
 ---
 
@@ -153,6 +153,9 @@ Cost range: **min** = all agents on Haiku · **max** = default model configurati
    validateGithubAccess() — or create a new repo
 
 4. designPicker.js (optional): Sonnet proposes 3 design themes, user picks one.
+   After generating concepts, generateHtmlPreview() writes design-preview.html
+   to output/<project-name>/ and opens it automatically in the browser.
+   The preview refreshes on every refinement round.
    The chosen spec is appended to requirements before orchestrate() is called.
 
 5. Checkpoint check: if .build-checkpoint.json exists, show 3 options:
@@ -1092,7 +1095,8 @@ Interactive design-theme picker. Runs before the build starts; appends the chose
 
 | Function | Signature | Returns | Purpose |
 |----------|-----------|---------|---------|
-| `runDesignPicker` | `(requirements, ask)` | `string \| null` | Generates 3 design concepts, shows them to the user, and returns the formatted design spec for the chosen concept. Returns null if user skips. |
+| `runDesignPicker` | `(requirements, ask, outputDir)` | `string \| null` | Generates 3 design concepts via Claude Sonnet, displays them in the terminal, opens an HTML browser preview, and returns the formatted design spec for the chosen concept. Returns null if user skips. |
+| `generateHtmlPreview` | `(concepts, outputDir)` | `string \| null` | Writes `design-preview.html` to `outputDir` with all 3 concepts rendered side-by-side (color swatches, Google Fonts typography, live UI preview). Opens the file in the OS default browser. Refreshes on each refinement round. Returns the file path, or null on failure. |
 
 ---
 
