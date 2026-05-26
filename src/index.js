@@ -8,16 +8,9 @@ const chalk = require('chalk');
 const { orchestrate, orchestrateUpdate } = require('./orchestrator');
 const { runPlanningSession } = require('./planner');
 const { runDesignPicker } = require('./designPicker');
-const { setModelConfig } = require('./agents/base');
 const { ProjectContext } = require('./context');
 const { parseGithubRepo, checkGithubAccess, createGithubRepo } = require('./github');
 const { SUPPORTED, setLanguage, t } = require('./lang');
-
-const TIERS = {
-  '1': { model: 'claude-sonnet-4-6', thinking: null,                  max_tokens: 16000 },
-  '2': { model: 'claude-sonnet-4-6', thinking: { type: 'adaptive' },  max_tokens: 16000 },
-  '3': { model: 'claude-opus-4-7',   thinking: { type: 'adaptive' },  max_tokens: 32000 },
-};
 
 const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
 
@@ -122,24 +115,6 @@ async function askForGithubRepo() {
   }
 }
 
-async function selectTier() {
-  console.log(chalk.bold.cyan(`\n━━━  ${t('qualityTitle')}  ━━━`));
-  console.log(chalk.gray('Higher tiers use Extended Thinking for deeper reasoning and higher quality output:\n'));
-  Object.entries(TIERS).forEach(([key, tier]) => {
-    const tokens = tier.max_tokens.toLocaleString();
-    console.log(chalk.white(`  ${key}️⃣   ${t(`tier${key}`)}  (max ${tokens} tokens)`));
-  });
-  console.log('');
-  let tier = '';
-  while (!Object.keys(TIERS).includes(tier)) {
-    tier = (await ask(chalk.bold.green(t('chooseLevel')))).trim() || '2';
-  }
-  const selected = TIERS[tier];
-  setModelConfig({ thinking: selected.thinking, max_tokens: selected.max_tokens });
-  console.log(chalk.green(`\n${t('tierSelected', t(`tier${tier}`))}\n`));
-  return selected;
-}
-
 // Parse --minimal / --tier=N flags from CLI args
 const _cliArgs = process.argv.slice(2);
 const _forcedTier = _cliArgs.includes('--minimal') ? 1
@@ -200,7 +175,6 @@ async function main() {
     }
 
     if (choice === '2') {
-      await selectTier();
       rl.close();
       try {
         await orchestrate(checkpoint.requirements, projectName, outputDir, checkpoint, githubRepo, { forceTier: _forcedTier });
@@ -226,7 +200,6 @@ async function main() {
         console.log(chalk.red(t('errNoChange')));
         process.exit(1);
       }
-      await selectTier();
       rl.close();
       try {
         await orchestrateUpdate(changeRequest, checkpoint, outputDir, githubRepo);
@@ -283,9 +256,6 @@ async function main() {
       process.exit(1);
     }
   }
-
-  // ── Tier selection ────────────────────────────────────────────────────────
-  await selectTier();
 
   // ── Design Picker ─────────────────────────────────────────────────────────
   console.log(chalk.bold.cyan('\n━━━  Design Phase  ━━━'));

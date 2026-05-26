@@ -3,20 +3,17 @@
 const Anthropic = require('@anthropic-ai/sdk');
 const { withRetry } = require('../withRetry');
 const costTracker = require('../costTracker');
+const { getAgentCategory, getDefaultModels } = require('../agentModels');
 
-// Global model config — set once before orchestrate() via setModelConfig()
-let _modelConfig = {
-  model: 'claude-sonnet-4-6',
-  thinking: { type: 'adaptive' },
-  max_tokens: 8096,
-};
+// Per-category model configs — set once before orchestrate() via setModelConfigs()
+let _modelConfigs = getDefaultModels(3);
 
-function setModelConfig(config) {
-  _modelConfig = config;
+function setModelConfigs(configs) {
+  _modelConfigs = configs;
 }
 
-function getModelConfig() {
-  return _modelConfig;
+function getModelConfigs() {
+  return _modelConfigs;
 }
 
 class BaseAgent {
@@ -39,9 +36,12 @@ class BaseAgent {
     this.filesCreated = [];
 
     while (true) {
+      const category = getAgentCategory(this.name);
+      const cfg = _modelConfigs[category] || _modelConfigs.heavy;
+
       const params = {
-        model: _modelConfig.model || 'claude-sonnet-4-6',
-        max_tokens: _modelConfig.max_tokens,
+        model: cfg.model || 'claude-sonnet-4-6',
+        max_tokens: cfg.max_tokens,
         system: [
           {
             type: 'text',
@@ -52,8 +52,8 @@ class BaseAgent {
         messages,
       };
 
-      if (_modelConfig.thinking) {
-        params.thinking = _modelConfig.thinking;
+      if (cfg.thinking) {
+        params.thinking = cfg.thinking;
       }
 
       if (this.tools.length > 0) {
@@ -102,4 +102,4 @@ class BaseAgent {
   }
 }
 
-module.exports = { BaseAgent, setModelConfig, getModelConfig };
+module.exports = { BaseAgent, setModelConfigs, getModelConfigs };

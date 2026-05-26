@@ -13,6 +13,8 @@ const { runLayerInParallel, runLayerSequential, getFailedAgents } = require('./l
 const { runAllSquads, runAllSquadsUpdate, runSquadUpdate } = require('./squadRunner');
 const { withRetry } = require('./withRetry');
 const costTracker = require('./costTracker');
+const { selectAgentModels } = require('./agentModelSelector');
+const { setModelConfigs, getModelConfigs } = require('./agents/base');
 const { runPlatformPipeline } = require('./platformRunner');
 const { analyzeUpdate, formatUpdatePlan } = require('./updatePlanner');
 const { pushCheckpoint, pushToGithub } = require('./github');
@@ -775,6 +777,9 @@ async function orchestrate(requirements, projectName, outputDir, checkpoint = nu
     console.log(chalk.bold.green(t('resuming')));
     console.log(chalk.gray(`    ${t('completedLayers')} ${[...new Set(checkpoint.completedLayers)].join(', ')}`));
     context = ProjectContext.fromCheckpoint({ ...checkpoint, outputDir });
+    // Apply default model configs for the resumed tier (no interactive prompt on resume)
+    const { getDefaultModels } = require('./agentModels');
+    setModelConfigs(getDefaultModels(context.plan?.tier ?? 3));
   } else {
     // ── Fresh build ─────────────────────────────────────────────────────────
     console.log(chalk.yellow(t('generatingPlan')));
@@ -804,6 +809,10 @@ async function orchestrate(requirements, projectName, outputDir, checkpoint = nu
         plan.tierReason = `Build tier selected by user (Tier ${chosenTier}).`;
       }
     }
+
+    // ── Per-category model selection ────────────────────────────────────────
+    const modelConfigs = await selectAgentModels(plan);
+    setModelConfigs(modelConfigs);
 
     context = new ProjectContext(requirements, plan, outputDir);
 
@@ -1159,6 +1168,10 @@ async function orchestrateUpdate(changeRequest, checkpointData, outputDir, githu
 
   const context = ProjectContext.fromCheckpoint({ ...checkpointData, outputDir });
   if (global._mockMode) global._mockOutputDir = outputDir;
+
+  // Apply default model configs for the project's tier
+  const { getDefaultModels: _getDefaults } = require('./agentModels');
+  setModelConfigs(_getDefaults(context.plan?.tier ?? 3));
 
   if (!context.squadPlan) {
     console.log(chalk.red('❌  No squad plan found. Update mode requires a project built with a squad plan.'));
