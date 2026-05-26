@@ -1,9 +1,9 @@
 'use strict';
 
 const PRICING = {
-  'claude-sonnet-4-6':         { input: 3.00,  output: 15.00,  cacheRead: 0.30,  cacheWrite: 3.75  },
-  'claude-opus-4-7':           { input: 15.00, output: 75.00,  cacheRead: 1.50,  cacheWrite: 18.75 },
-  'claude-haiku-4-5-20251001': { input: 0.80,  output: 4.00,   cacheRead: 0.08,  cacheWrite: 1.00  },
+  'claude-sonnet-4-6':         { input: 3.00, output: 15.00, cacheRead: 0.30, cacheWrite: 3.75 },
+  'claude-opus-4-7':           { input: 5.00, output: 25.00, cacheRead: 0.50, cacheWrite: 6.25 },
+  'claude-haiku-4-5-20251001': { input: 1.00, output:  5.00, cacheRead: 0.10, cacheWrite: 1.25 },
 };
 
 const _records = [];

@@ -47,12 +47,12 @@ describe('costTracker — unit', () => {
 
   test('record() uses opus pricing for claude-opus-4-7', () => {
     costTracker.record('TestAgent', 'claude-opus-4-7', { input_tokens: 1_000_000, output_tokens: 0 });
-    expect(costTracker.getTotal()).toBeCloseTo(15.00, 5);
+    expect(costTracker.getTotal()).toBeCloseTo(5.00, 5);
   });
 
   test('record() uses haiku pricing for claude-haiku-4-5-20251001', () => {
     costTracker.record('TestAgent', 'claude-haiku-4-5-20251001', { input_tokens: 1_000_000, output_tokens: 0 });
-    expect(costTracker.getTotal()).toBeCloseTo(0.80, 5);
+    expect(costTracker.getTotal()).toBeCloseTo(1.00, 5);
   });
 
   test('record() falls back to sonnet pricing for unknown model', () => {
